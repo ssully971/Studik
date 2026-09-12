@@ -42,11 +42,7 @@ a {
 .mark {
   width: 34px;
   height: 34px;
-  border: 1px solid var(--text-dim);
-  display: grid;
-  place-items: center;
-  font-size: 16px;
-  font-weight: 600;
+  object-fit: contain;
 }
 
 .login-screen {
@@ -617,6 +613,10 @@ nav a.active {
   border: 1px solid var(--hairline);
 }
 
+.now-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 .now-cell {
   background: var(--ink);
   padding: 16px 18px;
@@ -776,8 +776,13 @@ nav a.active {
     grid-column: 1 / -1;
   }
 
-  .now-grid {
+  .now-grid,
+  .now-grid-3 {
     grid-template-columns: 1fr;
+  }
+
+  .matiere-edit-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .checkbox-label {
@@ -944,9 +949,6 @@ nav a.active {
 .settings-card {
   display: flex;
   flex-direction: column;
-}
-
-.settings-card {
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: 8px;

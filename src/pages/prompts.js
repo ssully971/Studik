@@ -48,7 +48,7 @@ export function renderPrompts(container) {
   const list = document.getElementById('prompts-list')
   list.innerHTML = PROMPTS.map(
     (p) => `
-    <div class="fiche-row" style="grid-template-columns: 4px 1fr auto;">
+    <div class="fiche-row">
       <div class="tab"></div>
       <div class="fiche-body">
         <div class="fiche-top"><span class="fiche-title voice">${p.titre}</span></div>

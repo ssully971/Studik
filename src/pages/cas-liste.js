@@ -73,7 +73,7 @@ export async function renderCasListe(container) {
     listEl.innerHTML = list
       .map(
         (c) => `
-        <div class="fiche-row type-${c.type}" data-id="${c.id}" style="grid-template-columns: 4px 1fr auto;">
+        <div class="fiche-row type-${c.type}" data-id="${c.id}">
           <div class="tab"></div>
           <div class="fiche-body">
             <div class="fiche-top">

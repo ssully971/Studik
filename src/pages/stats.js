@@ -67,7 +67,7 @@ export async function renderStats(container) {
           ${totalTentatives > 0 ? `<button id="reset-all-btn" class="btn" style="width: auto; color: #C46A5C;">Tout réinitialiser</button>` : ''}
         </div>
 
-        <div class="now-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 40px;">
+        <div class="now-grid now-grid-3" style="margin-bottom: 40px;">
           <div class="now-cell">
             <div class="label">fiches</div>
             <div class="value voice">${totalFiches} au total</div>
@@ -142,7 +142,7 @@ export async function renderStats(container) {
           const color = { clinique: 'var(--clinique)', mecanisme: 'var(--mecanisme)', structure: 'var(--structure)' }[t.type]
           const taux = Math.round((t.reussies / t.total) * 100)
           return `
-          <div class="fiche-row type-${t.type}" style="grid-template-columns: 4px 1fr auto;">
+          <div class="fiche-row type-${t.type}">
             <div class="tab"></div>
             <div class="fiche-body">
               <div class="fiche-top">
@@ -170,7 +170,7 @@ export async function renderStats(container) {
           const cas = t.cas_cliniques
           if (!cas) return ''
           return `
-          <div class="fiche-row type-${cas.type}" style="grid-template-columns: 4px 1fr auto;">
+          <div class="fiche-row type-${cas.type}">
             <div class="tab"></div>
             <div class="fiche-body">
               <div class="fiche-top">

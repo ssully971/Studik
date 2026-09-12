@@ -26,7 +26,7 @@ function renderLogin() {
   app.innerHTML = `
     <div class="login-screen">
       <form id="login-form" class="login-card">
-        <div class="mark voice">S</div>
+        <img src="/logo-white.png" alt="Studik" class="mark" />
         <h1 class="voice">Studik</h1>
         <input type="email" id="email" placeholder="Email" required />
         <input type="password" id="password" placeholder="Mot de passe" required />
@@ -56,7 +56,7 @@ function renderShell(user) {
     <header class="topbar">
       <div class="header-row">
         <div class="brand-group">
-          <div class="mark">S</div>
+          <img src="/logo-white.png" alt="Studik" class="mark" />
           <div class="brand voice">Studik</div>
           <select id="periode-select" class="periode-select"></select>
         </div>
@@ -308,7 +308,7 @@ function setupRaccourcisClavier() {
 }
 
 async function init() {
-  let currentUserId = null
+  let currentUserId = undefined
 
   function handleUser(user) {
     const uid = user?.id ?? null
