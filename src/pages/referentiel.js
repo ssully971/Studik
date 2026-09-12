@@ -1,0 +1,127 @@
+import { getFiches } from '../lib/fiches.js'
+import { getMatieres } from '../lib/matieres.js'
+import { getPeriodeActuelle } from '../lib/periode.js'
+import { exporterFichesPDF } from '../lib/pdf.js'
+
+const TYPE_LABELS = {
+  clinique: 'clinique',
+  mecanisme: 'mécanisme',
+  structure: 'structure',
+}
+
+export async function renderReferentiel(container) {
+  container.innerHTML = `
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="voice">Référentiel</h2>
+        <span class="count" id="fiche-count"></span>
+      </div>
+
+      <input type="text" id="search-input" class="search-input" placeholder="Rechercher un signe, une structure, un mécanisme…" />
+
+      <div class="filters" id="type-filters">
+        <button class="filter-btn active" data-type="">Tous</button>
+        <button class="filter-btn" data-type="clinique">Clinique</button>
+        <button class="filter-btn" data-type="mecanisme">Mécanisme</button>
+        <button class="filter-btn" data-type="structure">Structure</button>
+        <select id="matiere-filter" class="periode-select"></select>
+        <button id="export-pdf-btn" class="btn" style="width: auto; margin-left: auto;">Exporter en PDF</button>
+      </div>
+
+      <div id="fiches-list" class="fiches-list"></div>
+    </div>
+  `
+
+  let allFiches = []
+  let currentFiltered = []
+  let activeType = ''
+  let activeMatiere = ''
+
+  function applyFilters() {
+    const searchTerm = document.getElementById('search-input').value.toLowerCase()
+    const filtered = allFiches.filter((f) => {
+      const matchesType = !activeType || f.type === activeType
+      const matchesMatiere = !activeMatiere || f.matiere === activeMatiere
+      const matchesSearch =
+        !searchTerm ||
+        f.titre.toLowerCase().includes(searchTerm) ||
+        f.tags.some((t) => t.toLowerCase().includes(searchTerm)) ||
+        (f.synonymes || []).some((s) => s.toLowerCase().includes(searchTerm))
+      return matchesType && matchesMatiere && matchesSearch
+    })
+    currentFiltered = filtered
+    renderList(filtered)
+  }
+
+  function renderList(fiches) {
+    document.getElementById('fiche-count').textContent = `${fiches.length} fiche${fiches.length !== 1 ? 's' : ''}`
+    const list = document.getElementById('fiches-list')
+
+    if (fiches.length === 0) {
+      list.innerHTML = `<p class="empty-note">Aucune fiche ne correspond.</p>`
+      return
+    }
+
+    list.innerHTML = fiches
+      .map(
+        (f) => `
+        <div class="fiche-row type-${f.type}" data-id="${f.id}">
+          <div class="tab"></div>
+          <div class="fiche-body">
+            <div class="fiche-top">
+              <span class="fiche-title voice">${f.titre}</span>
+              ${f.dernier_resultat === 'pas_bien' ? '<span class="pas-top-dot" title="Marquée pas top à la dernière révision"></span>' : ''}
+              <span class="type-label">${TYPE_LABELS[f.type]}</span>
+            </div>
+            <div class="fiche-meta">${f.matiere}${f.tags.length ? ' · ' + f.tags.join(', ') : ''}</div>
+          </div>
+        </div>
+      `
+      )
+      .join('')
+
+    list.querySelectorAll('.fiche-row').forEach((row) => {
+      row.addEventListener('click', () => {
+        window.location.hash = `#fiche/${row.dataset.id}`
+      })
+    })
+  }
+
+  document.getElementById('search-input').addEventListener('input', applyFilters)
+
+  document.getElementById('type-filters').addEventListener('click', (e) => {
+    const btn = e.target.closest('.filter-btn')
+    if (!btn) return
+    document.querySelectorAll('#type-filters .filter-btn').forEach((b) => b.classList.remove('active'))
+    btn.classList.add('active')
+    activeType = btn.dataset.type
+    applyFilters()
+  })
+
+  document.getElementById('export-pdf-btn').addEventListener('click', () => {
+    if (currentFiltered.length === 0) return
+    const nom = activeMatiere ? `studik-${activeMatiere}` : 'studik-referentiel'
+    exporterFichesPDF(currentFiltered, nom)
+  })
+
+  try {
+    const matieres = await getMatieres({})
+    const matiereSelect = document.getElementById('matiere-filter')
+    matiereSelect.innerHTML =
+      `<option value="">Toutes matières</option>` + matieres.map((m) => `<option value="${m.nom}">${m.nom}</option>`).join('')
+    matiereSelect.addEventListener('change', (e) => {
+      activeMatiere = e.target.value
+      applyFilters()
+    })
+  } catch {
+    // silencieux : le filtre matière reste optionnel
+  }
+
+  try {
+    const periode = getPeriodeActuelle()
+    allFiches = await getFiches(periode ? { annee: periode.annee, semestre: periode.semestre } : {})
+    applyFilters()
+  } catch (err) {
+    document.getElementById('fiches-list').innerHTML = `<p class="empty-note">Erreur de chargement : ${err.message}</p>`
+  }
+}

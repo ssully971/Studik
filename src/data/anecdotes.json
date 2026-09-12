@@ -1,0 +1,1827 @@
+[
+  {
+    "id": 1,
+    "texte": "Le Dr Barry Marshall a bu la bactérie H. pylori pour prouver qu'elle cause les ulcères.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11142261/"
+  },
+  {
+    "id": 2,
+    "texte": "Les cellules HeLa, première lignée immortelle, proviennent d'une tumeur d'Henrietta Lacks (1951).",
+    "lien": "https://fr.wikipedia.org/wiki/Cellule_HeLa"
+  },
+  {
+    "id": 3,
+    "texte": "Camillo Golgi et Cajal ont partagé un Nobel tout en s'opposant vivement sur la théorie neuronale.",
+    "lien": "https://fr.wikipedia.org/wiki/M%C3%A9thode_de_Golgi"
+  },
+  {
+    "id": 4,
+    "texte": "Élie Metchnikoff a découvert la phagocytose en enfonçant une épine dans une larve d'étoile de mer.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18821034/"
+  },
+  {
+    "id": 5,
+    "texte": "Avant les antibiotiques, on soignait la neurosyphilis en infectant volontairement le patient avec le paludisme.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24058066/"
+  },
+  {
+    "id": 6,
+    "texte": "Avant l'anesthésie, le chirurgien Robert Liston a réalisé une amputation avec 300 % de mortalité.",
+    "lien": "https://fr.wikipedia.org/wiki/Robert_Liston"
+  },
+  {
+    "id": 7,
+    "texte": "En 1929, l'interne Werner Forssmann s'est auto-inséré un cathéter dans le cœur pour prouver que c'était possible.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/1376840/"
+  },
+  {
+    "id": 8,
+    "texte": "Lydia Fairchild était une chimère génétique : elle avait un ADN différent de celui de ses propres enfants.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15173323/"
+  },
+  {
+    "id": 9,
+    "texte": "Le parasite Toxoplasma gondii supprime la peur des chats chez les souris infectées.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/10954316/"
+  },
+  {
+    "id": 10,
+    "texte": "La bactériothérapie fécale était déjà utilisée au 4e siècle par le médecin chinois Ge Hong.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23114510/"
+  },
+  {
+    "id": 11,
+    "texte": "La fibrodysplasie ossifiante progressive transforme petit à petit les muscles en un deuxième squelette.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/19430064/"
+  },
+  {
+    "id": 12,
+    "texte": "Le corps humain possède des rayures invisibles appelées 'lignes de Blaschko', traçant la migration embryonnaire.",
+    "lien": "https://fr.wikipedia.org/wiki/Lignes_de_Blaschko"
+  },
+  {
+    "id": 13,
+    "texte": "Le Kuru, une maladie à prions, frappait la tribu Fore à cause de rites funéraires cannibales.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18768233/"
+  },
+  {
+    "id": 14,
+    "texte": "Henry Beecher a documenté l'effet placebo en injectant de l'eau salée aux soldats pendant la Seconde Guerre mondiale.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/13271032/"
+  },
+  {
+    "id": 15,
+    "texte": "Dans le syndrome de Cotard, le patient est intimement persuadé d'être mort ou en putréfaction.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/8982312/"
+  },
+  {
+    "id": 16,
+    "texte": "Le syndrome de la main étrangère donne l'impression qu'une des mains du patient possède sa propre volonté.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11181829/"
+  },
+  {
+    "id": 17,
+    "texte": "Le réflexe photo-sternutatoire déclenche des éternuements lors d'un passage soudain à la lumière vive.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/1922652/"
+  },
+  {
+    "id": 18,
+    "texte": "Les tératomes ovariens sont des tumeurs pouvant contenir des cheveux, de la peau ou des dents.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/19125301/"
+  },
+  {
+    "id": 19,
+    "texte": "James Lind a réalisé le premier essai clinique en 1747 en soignant le scorbut avec des agrumes.",
+    "lien": "https://fr.wikipedia.org/wiki/James_Lind"
+  },
+  {
+    "id": 20,
+    "texte": "Le Viagra (sildénafil) était initialement testé pour traiter l'angine de poitrine, sans grand succès cardiaque.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/9534062/"
+  },
+  {
+    "id": 21,
+    "texte": "L'amibe Naegleria fowleri remonte le nerf olfactif et cause une méningo-encéphalite mortelle.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22934444/"
+  },
+  {
+    "id": 22,
+    "texte": "Dans le syndrome d'Anton-Babinski, le patient est aveugle mais reste intimement persuadé de voir.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15535359/"
+  },
+  {
+    "id": 23,
+    "texte": "Le lymphome de Burkitt a fourni la première preuve qu'un virus (EBV) pouvait causer un cancer humain.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15124017/"
+  },
+  {
+    "id": 24,
+    "texte": "Jonas Salk a refusé de breveter son vaccin contre la polio, déclarant : 'Peut-on breveter le soleil ?'.",
+    "lien": "https://fr.wikipedia.org/wiki/Jonas_Salk"
+  },
+  {
+    "id": 25,
+    "texte": "Horace Wells, pionnier de l'anesthésie dentaire, a été hué après l'échec de sa première démonstration publique.",
+    "lien": "https://fr.wikipedia.org/wiki/Horace_Wells"
+  },
+  {
+    "id": 26,
+    "texte": "L'Ève mitochondriale est l'ancêtre commune matrilinéaire de toute l'humanité (vers -150 000 ans).",
+    "lien": "https://fr.wikipedia.org/wiki/%C3%88ve_mitochondriale"
+  },
+  {
+    "id": 27,
+    "texte": "Le patient H.M., amputé des hippocampes en 1953, a prouvé leur rôle clé dans la création de souvenirs.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/19715421/"
+  },
+  {
+    "id": 28,
+    "texte": "L'insomnie fatale familiale est une maladie à prions empêchant irrémédiablement le sommeil profond.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/9850239/"
+  },
+  {
+    "id": 29,
+    "texte": "En voyant la première radiographie de sa main, l'épouse de Röntgen s'est exclamée : 'J'ai vu ma propre mort !'.",
+    "lien": "https://fr.wikipedia.org/wiki/Wilhelm_R%C3%B6ntgen"
+  },
+  {
+    "id": 30,
+    "texte": "L'aphantasie est l'incapacité neurologique totale à générer des images mentales visuelles.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26115582/"
+  },
+  {
+    "id": 31,
+    "texte": "En 1854, John Snow a stoppé le choléra à Londres en retirant la poignée d'une pompe à eau contaminée.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15004183/"
+  },
+  {
+    "id": 32,
+    "texte": "Ignace Semmelweis a réduit la mortalité puerpérale de 90 % en imposant le lavage des mains en 1847.",
+    "lien": "https://fr.wikipedia.org/wiki/Ignace_Philippe_Semmelweis"
+  },
+  {
+    "id": 33,
+    "texte": "Alexander Fleming a découvert la pénicilline en 1928 après la contamination accidentelle d'une boîte de culture.",
+    "lien": "https://fr.wikipedia.org/wiki/Alexander_Fleming"
+  },
+  {
+    "id": 34,
+    "texte": "Phineas Gage a survécu à une barre de fer dans le cerveau, révélant le rôle du lobe frontal dans la personnalité.",
+    "lien": "https://fr.wikipedia.org/wiki/Phineas_Gage"
+  },
+  {
+    "id": 35,
+    "texte": "James Harrison a donné son sang plus de 1000 fois, sauvant deux millions de bébés grâce à un anticorps rare.",
+    "lien": "https://fr.wikipedia.org/wiki/James_Harrison_(donneur_de_sang)"
+  },
+  {
+    "id": 36,
+    "texte": "René Laennec a inventé le stéthoscope avec un rouleau de papier pour préserver la pudeur d'une patiente.",
+    "lien": "https://fr.wikipedia.org/wiki/Ren%C3%A9_Laennec"
+  },
+  {
+    "id": 37,
+    "texte": "La première transplantation cardiaque humaine a été réalisée en 1967 par le chirurgien Christiaan Barnard.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/4873539/"
+  },
+  {
+    "id": 38,
+    "texte": "La protéine p53, gardienne du génome, déclenche l'apoptose des cellules dont l'ADN est trop endommagé.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17923689/"
+  },
+  {
+    "id": 39,
+    "texte": "L'ocytocine, hormone de l'accouchement, renforce aussi l'attachement social et la confiance entre individus.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15934027/"
+  },
+  {
+    "id": 40,
+    "texte": "La progeria est une maladie génétique rarissime provoquant un vieillissement accéléré dès l'enfance.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/12714972/"
+  },
+  {
+    "id": 41,
+    "texte": "Le syndrome de Münchhausen pousse un patient à feindre ou provoquer une maladie pour attirer l'attention médicale.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/2443046/"
+  },
+  {
+    "id": 42,
+    "texte": "L'effet nocebo est l'apparition d'effets secondaires indésirables causée uniquement par des attentes négatives.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22903126/"
+  },
+  {
+    "id": 43,
+    "texte": "Le gène FOXP2 est intimement lié à la capacité humaine de développer et structurer le langage parlé.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11586359/"
+  },
+  {
+    "id": 44,
+    "texte": "Les mitochondries, usines énergétiques de nos cellules, proviendraient de l'incorporation symbiotique d'une bactérie.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23018861/"
+  },
+  {
+    "id": 45,
+    "texte": "Le syndrome de Takotsubo, ou 'syndrome du cœur brisé', mime un infarctus suite à un stress émotionnel intense.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15716533/"
+  },
+  {
+    "id": 46,
+    "texte": "En 1983, Kary Mullis a inventé la PCR, technique permettant de multiplier l'ADN, révolutionnant la biologie moléculaire.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/3034994/"
+  },
+  {
+    "id": 47,
+    "texte": "La cyclopie, malformation congénitale rarissime, résulte de la non-division des hémisphères cérébraux (holoprosencéphalie).",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17581781/"
+  },
+  {
+    "id": 48,
+    "texte": "Le venin du monstre de Gila a permis de développer l'exénatide, un traitement novateur contre le diabète de type 2.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18195861/"
+  },
+  {
+    "id": 49,
+    "texte": "L'aplasie cutanée congénitale se caractérise par l'absence localisée de peau dès la naissance, souvent sur le crâne.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23611116/"
+  },
+  {
+    "id": 50,
+    "texte": "La surdité verbale pure empêche de comprendre le langage parlé, bien que l'audition et la lecture soient intactes.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/9082346/"
+  },
+  {
+    "id": 51,
+    "texte": "Le botulisme est causé par la toxine botulique, le poison naturel le plus puissant connu de l'humanité.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17218694/"
+  },
+  {
+    "id": 52,
+    "texte": "La première greffe de rein réussie a eu lieu en 1954 entre deux vrais jumeaux, évitant ainsi le rejet immunitaire.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/13217430/"
+  },
+  {
+    "id": 53,
+    "texte": "Le syndrome de Wernicke-Korsakoff, souvent dû à l'alcoolisme, provoque des amnésies sévères et des fabulations.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23769134/"
+  },
+  {
+    "id": 54,
+    "texte": "L'hémophilie, maladie royale, a frappé la descendance de la reine Victoria, influençant l'histoire de la Russie tsariste.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21800263/"
+  },
+  {
+    "id": 55,
+    "texte": "Le canal de Müller forme les voies génitales féminines, mais régresse chez le mâle sous l'effet de l'hormone AMH.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17855026/"
+  },
+  {
+    "id": 56,
+    "texte": "La maladie des os de verre (ostéogenèse imparfaite) est due à un défaut génétique de la synthèse du collagène de type I.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25732103/"
+  },
+  {
+    "id": 57,
+    "texte": "Le nerf vague connecte le cerveau au microbiote intestinal, formant une voie de communication bidirectionnelle majeure.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25402818/"
+  },
+  {
+    "id": 58,
+    "texte": "L'électrocardiogramme a été inventé par Willem Einthoven, qui a reçu le prix Nobel de médecine en 1924 pour cette avancée.",
+    "lien": "https://fr.wikipedia.org/wiki/Willem_Einthoven"
+  },
+  {
+    "id": 59,
+    "texte": "Le syndrome des ovaires polykystiques (SOPK) est la première cause d'infertilité anovulatoire chez les femmes.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26662453/"
+  },
+  {
+    "id": 60,
+    "texte": "La warfarine, célèbre anticoagulant, a été initialement synthétisée et utilisée comme poison contre les rats.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/1077759/"
+  },
+  {
+    "id": 61,
+    "texte": "Le hoquet chronique peut parfois être stoppé par un massage digital du rectum, selon des publications scientifiques sérieuses.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/2299306/"
+  },
+  {
+    "id": 62,
+    "texte": "Le scorbut des marins a tué plus d'hommes en mer entre le 15e et le 18e siècle que les tempêtes et les batailles réunies.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26456012/"
+  },
+  {
+    "id": 63,
+    "texte": "La mélatonine, hormone du sommeil, est principalement synthétisée par la glande pinéale en l'absence de lumière.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/9062869/"
+  },
+  {
+    "id": 64,
+    "texte": "Le paludisme, transmis par les moustiques anophèles, reste l'une des maladies infectieuses les plus meurtrières au monde.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24431940/"
+  },
+  {
+    "id": 65,
+    "texte": "La thalidomide, un sédatif des années 50, a causé des milliers de malformations congénitales avant d'être retirée du marché.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21501720/"
+  },
+  {
+    "id": 66,
+    "texte": "Le virus de la rage a un taux de mortalité de presque 100 % une fois les symptômes neurologiques apparus.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24227092/"
+  },
+  {
+    "id": 67,
+    "texte": "Le gène BRCA1, impliqué dans la réparation de l'ADN, augmente considérablement le risque de cancer du sein s'il est muté.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/7545954/"
+  },
+  {
+    "id": 68,
+    "texte": "L'acromégalie est souvent causée par un adénome hypophysaire sécrétant un excès d'hormone de croissance chez l'adulte.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22223049/"
+  },
+  {
+    "id": 69,
+    "texte": "L'aspirine dérive de l'acide salicylique, une substance naturelle présente dans l'écorce de saule, utilisée depuis l'Antiquité.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11721524/"
+  },
+  {
+    "id": 70,
+    "texte": "La drépanocytose est une mutation de l'hémoglobine qui protège paradoxalement les porteurs sains contre le paludisme.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/20485906/"
+  },
+  {
+    "id": 71,
+    "texte": "Le syndrome de Protée, dont souffrait 'Elephant Man', provoque une croissance tissulaire asymétrique et incontrôlée.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21793738/"
+  },
+  {
+    "id": 72,
+    "texte": "Le cristallin de l'œil est l'un des rares tissus humains à être totalement dépourvu de vaisseaux sanguins.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18441113/"
+  },
+  {
+    "id": 73,
+    "texte": "Le thymus, organe clé de la maturation des lymphocytes T, s'atrophie naturellement et devient graisseux à l'âge adulte.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17584145/"
+  },
+  {
+    "id": 74,
+    "texte": "La maladie de Huntington est une affection neurodégénérative héréditaire autosomique dominante à pénétrance complète.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/8361093/"
+  },
+  {
+    "id": 75,
+    "texte": "L'adrénaline a été la toute première hormone isolée et synthétisée artificiellement au début du 20e siècle.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/20658406/"
+  },
+  {
+    "id": 76,
+    "texte": "Le surfactant pulmonaire réduit la tension superficielle dans les alvéoles, empêchant nos poumons de s'effondrer à chaque expiration.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/10702674/"
+  },
+  {
+    "id": 77,
+    "texte": "L'insuline a été découverte par Banting et Best en 1921, transformant le diabète de type 1 de maladie mortelle en maladie chronique.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21808061/"
+  },
+  {
+    "id": 78,
+    "texte": "L'os hyoïde est le seul os du squelette humain qui ne s'articule directement avec aucun autre os.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25529806/"
+  },
+  {
+    "id": 79,
+    "texte": "L'oxygénothérapie hyperbare est le traitement d'urgence de référence pour l'intoxication sévère au monoxyde de carbone.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21571520/"
+  },
+  {
+    "id": 80,
+    "texte": "Le syndrome de Gilles de la Tourette se caractérise par des tics moteurs et vocaux, parfois accompagnés de coprolalie.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24430489/"
+  },
+  {
+    "id": 81,
+    "texte": "Le muscle grand gluteal (fessier) est le muscle le plus volumineux et l'un des plus puissants du corps humain.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22467332/"
+  },
+  {
+    "id": 82,
+    "texte": "La barrière hémato-encéphalique protège le cerveau des toxines, mais complique grandement l'administration de médicaments neurologiques.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25297380/"
+  },
+  {
+    "id": 83,
+    "texte": "La vitamine B12, indispensable à la synthèse de l'ADN, nécessite le 'facteur intrinsèque' gastrique pour être absorbée.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25139045/"
+  },
+  {
+    "id": 84,
+    "texte": "Le choléra provoque une diarrhée aqueuse si massive qu'elle peut entraîner la mort par déshydratation en quelques heures.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22687153/"
+  },
+  {
+    "id": 85,
+    "texte": "L'anesthésie générale ne plonge pas dans le sommeil, mais induit un état de coma pharmacologique réversible.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21191060/"
+  },
+  {
+    "id": 86,
+    "texte": "La maladie de Parkinson est liée à la perte progressive des neurones dopaminergiques de la substance noire.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26188206/"
+  },
+  {
+    "id": 87,
+    "texte": "La leptine, hormone de la satiété, est sécrétée par les tissus adipeux pour indiquer au cerveau que les réserves sont pleines.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/19875154/"
+  },
+  {
+    "id": 88,
+    "texte": "Les macrophages dérivent des monocytes sanguins et patrouillent dans les tissus pour phagocyter les débris et pathogènes.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24795233/"
+  },
+  {
+    "id": 89,
+    "texte": "L'électroencéphalographie (EEG) a été inventée en 1924 par Hans Berger pour enregistrer l'activité électrique du cerveau.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23760432/"
+  },
+  {
+    "id": 90,
+    "texte": "Le rachitisme est une maladie de la croissance osseuse causée par une carence sévère en vitamine D ou en calcium.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23864453/"
+  },
+  {
+    "id": 91,
+    "texte": "Les groupes sanguins ABO ont été découverts en 1900 par Karl Landsteiner, rendant les transfusions sanguines sûres.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11721528/"
+  },
+  {
+    "id": 92,
+    "texte": "Le syndrome d'Ehlers-Danlos entraîne une hyperlaxité articulaire et une fragilité cutanée dues à un défaut du collagène.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/28306229/"
+  },
+  {
+    "id": 93,
+    "texte": "L'hippocampe, structure clé de la mémoire, est l'une des rares zones du cerveau adulte capable de neurogenèse.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24430492/"
+  },
+  {
+    "id": 94,
+    "texte": "Le tétanos provoque des contractions musculaires intenses et douloureuses en inhibant la libération de neurotransmetteurs relaxants.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24756549/"
+  },
+  {
+    "id": 95,
+    "texte": "La rate est l'organe lymphoïde le plus volumineux ; elle filtre le sang et élimine les vieux globules rouges.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25562725/"
+  },
+  {
+    "id": 96,
+    "texte": "Le syndrome de Guillain-Barré est une maladie auto-immune provoquant une paralysie progressive souvent après une infection.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25139046/"
+  },
+  {
+    "id": 97,
+    "texte": "La bilirubine, issue de la dégradation de l'hémoglobine, est responsable de la coloration jaune dans la jaunisse (ictère).",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24364491/"
+  },
+  {
+    "id": 98,
+    "texte": "La chimiothérapie a des origines militaires : le gaz moutarde de la Première Guerre mondiale a inspiré les premiers cytotoxiques.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18320491/"
+  },
+  {
+    "id": 99,
+    "texte": "Le cortex préfrontal, siège du raisonnement complexe, ne termine son développement et sa myélinisation qu'autour de 25 ans.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22452814/"
+  },
+  {
+    "id": 100,
+    "texte": "Le syndrome de Klinefelter (47, XXY) est la cause génétique la plus fréquente d'hypogonadisme masculin.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26662456/"
+  },
+  {
+    "id": 101,
+    "texte": "La moelle épinière s'arrête physiologiquement au niveau de la vertèbre lombaire L1 ou L2 chez l'adulte.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26188208/"
+  },
+  {
+    "id": 102,
+    "texte": "Le corps humain fabrique environ 2 millions de globules rouges par seconde.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23769135/"
+  },
+  {
+    "id": 103,
+    "texte": "L'intestin grêle mesure environ 6 à 7 mètres de long s'il est complètement déroulé.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24795234/"
+  },
+  {
+    "id": 104,
+    "texte": "L'acide gastrique est si puissant qu'il pourrait dissoudre une lame de rasoir, mais l'estomac se protège avec du mucus.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22687154/"
+  },
+  {
+    "id": 105,
+    "texte": "Le foie est le seul organe interne humain capable de se régénérer complètement à partir de 25% de son tissu.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21571521/"
+  },
+  {
+    "id": 106,
+    "texte": "L'aorte est l'artère la plus large du corps, avec un diamètre semblable à celui d'un tuyau d'arrosage.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25529807/"
+  },
+  {
+    "id": 107,
+    "texte": "Le réseau sanguin d'un adulte mis bout à bout ferait plus de deux fois le tour de la Terre.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23864454/"
+  },
+  {
+    "id": 108,
+    "texte": "Les os sont environ cinq fois plus solides que l'acier à densité égale.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21808062/"
+  },
+  {
+    "id": 109,
+    "texte": "La cornée tire son oxygène directement de l'air, car elle n'est pas vascularisée.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18441114/"
+  },
+  {
+    "id": 110,
+    "texte": "Les poumons contiennent environ 300 millions d'alvéoles pour maximiser les échanges gazeux.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/10702675/"
+  },
+  {
+    "id": 111,
+    "texte": "L'émail dentaire est la substance la plus dure et la plus minéralisée du corps humain.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24364492/"
+  },
+  {
+    "id": 112,
+    "texte": "Le cerveau utilise à lui seul environ 20 % de l'oxygène et des calories consommés par le corps.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23760433/"
+  },
+  {
+    "id": 113,
+    "texte": "Les impulsions nerveuses peuvent voyager à des vitesses dépassant les 400 km/h dans les fibres myélinisées.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22452815/"
+  },
+  {
+    "id": 114,
+    "texte": "La peau est l'organe le plus lourd du corps, représentant environ 16 % du poids total.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25297381/"
+  },
+  {
+    "id": 115,
+    "texte": "Les reins filtrent l'intégralité du sang du corps humain environ 60 fois par jour.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25139047/"
+  },
+  {
+    "id": 116,
+    "texte": "L'oreille interne contient les canaux semi-circulaires, essentiels pour notre sens de l'équilibre.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24430493/"
+  },
+  {
+    "id": 117,
+    "texte": "Le Dr Barry Marshall a bu la bactérie H. pylori pour prouver qu'elle cause les ulcères.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11142261/"
+  },
+  {
+    "id": 118,
+    "texte": "Les cellules HeLa, première lignée immortelle, proviennent d'une tumeur d'Henrietta Lacks (1951).",
+    "lien": "https://fr.wikipedia.org/wiki/Cellule_HeLa"
+  },
+  {
+    "id": 119,
+    "texte": "Camillo Golgi et Cajal ont partagé un Nobel tout en s'opposant vivement sur la théorie neuronale.",
+    "lien": "https://fr.wikipedia.org/wiki/M%C3%A9thode_de_Golgi"
+  },
+  {
+    "id": 120,
+    "texte": "Élie Metchnikoff a découvert la phagocytose en enfonçant une épine dans une larve d'étoile de mer.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18821034/"
+  },
+  {
+    "id": 121,
+    "texte": "Avant les antibiotiques, on soignait la neurosyphilis en infectant volontairement le patient avec le paludisme.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24058066/"
+  },
+  {
+    "id": 122,
+    "texte": "Avant l'anesthésie, le chirurgien Robert Liston a réalisé une amputation avec 300 % de mortalité.",
+    "lien": "https://fr.wikipedia.org/wiki/Robert_Liston"
+  },
+  {
+    "id": 123,
+    "texte": "En 1929, l'interne Werner Forssmann s'est auto-inséré un cathéter dans le cœur pour prouver que c'était possible.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/1376840/"
+  },
+  {
+    "id": 124,
+    "texte": "Lydia Fairchild était une chimère génétique : elle avait un ADN différent de celui de ses propres enfants.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15173323/"
+  },
+  {
+    "id": 125,
+    "texte": "Le parasite Toxoplasma gondii supprime la peur des chats chez les souris infectées.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/10954316/"
+  },
+  {
+    "id": 126,
+    "texte": "La bactériothérapie fécale était déjà utilisée au 4e siècle par le médecin chinois Ge Hong.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23114510/"
+  },
+  {
+    "id": 127,
+    "texte": "La fibrodysplasie ossifiante progressive transforme petit à petit les muscles en un deuxième squelette.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/19430064/"
+  },
+  {
+    "id": 128,
+    "texte": "Le corps humain possède des rayures invisibles appelées 'lignes de Blaschko', traçant la migration embryonnaire.",
+    "lien": "https://fr.wikipedia.org/wiki/Lignes_de_Blaschko"
+  },
+  {
+    "id": 129,
+    "texte": "Le Kuru, une maladie à prions, frappait la tribu Fore à cause de rites funéraires cannibales.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18768233/"
+  },
+  {
+    "id": 130,
+    "texte": "Henry Beecher a documenté l'effet placebo en injectant de l'eau salée aux soldats pendant la Seconde Guerre mondiale.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/13271032/"
+  },
+  {
+    "id": 131,
+    "texte": "Dans le syndrome de Cotard, le patient est intimement persuadé d'être mort ou en putréfaction.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/8982312/"
+  },
+  {
+    "id": 132,
+    "texte": "Le syndrome de la main étrangère donne l'impression qu'une des mains du patient possède sa propre volonté.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11181829/"
+  },
+  {
+    "id": 133,
+    "texte": "Le réflexe photo-sternutatoire déclenche des éternuements lors d'un passage soudain à la lumière vive.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/1922652/"
+  },
+  {
+    "id": 134,
+    "texte": "Les tératomes ovariens sont des tumeurs pouvant contenir des cheveux, de la peau ou des dents.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/19125301/"
+  },
+  {
+    "id": 135,
+    "texte": "James Lind a réalisé le premier essai clinique en 1747 en soignant le scorbut avec des agrumes.",
+    "lien": "https://fr.wikipedia.org/wiki/James_Lind"
+  },
+  {
+    "id": 136,
+    "texte": "Le Viagra (sildénafil) était initialement testé pour traiter l'angine de poitrine, sans grand succès cardiaque.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/9534062/"
+  },
+  {
+    "id": 137,
+    "texte": "L'amibe Naegleria fowleri remonte le nerf olfactif et cause une méningo-encéphalite mortelle.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22934444/"
+  },
+  {
+    "id": 138,
+    "texte": "Dans le syndrome d'Anton-Babinski, le patient est aveugle mais reste intimement persuadé de voir.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15535359/"
+  },
+  {
+    "id": 139,
+    "texte": "Le lymphome de Burkitt a fourni la première preuve qu'un virus (EBV) pouvait causer un cancer humain.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15124017/"
+  },
+  {
+    "id": 140,
+    "texte": "Jonas Salk a refusé de breveter son vaccin contre la polio, déclarant : 'Peut-on breveter le soleil ?'.",
+    "lien": "https://fr.wikipedia.org/wiki/Jonas_Salk"
+  },
+  {
+    "id": 141,
+    "texte": "Horace Wells, pionnier de l'anesthésie dentaire, a été hué après l'échec de sa première démonstration publique.",
+    "lien": "https://fr.wikipedia.org/wiki/Horace_Wells"
+  },
+  {
+    "id": 142,
+    "texte": "L'Ève mitochondriale est l'ancêtre commune matrilinéaire de toute l'humanité (vers -150 000 ans).",
+    "lien": "https://fr.wikipedia.org/wiki/%C3%88ve_mitochondriale"
+  },
+  {
+    "id": 143,
+    "texte": "Le patient H.M., amputé des hippocampes en 1953, a prouvé leur rôle clé dans la création de souvenirs.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/19715421/"
+  },
+  {
+    "id": 144,
+    "texte": "L'insomnie fatale familiale est une maladie à prions empêchant irrémédiablement le sommeil profond.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/9850239/"
+  },
+  {
+    "id": 145,
+    "texte": "En voyant la première radiographie de sa main, l'épouse de Röntgen s'est exclamée : 'J'ai vu ma propre mort !'.",
+    "lien": "https://fr.wikipedia.org/wiki/Wilhelm_R%C3%B6ntgen"
+  },
+  {
+    "id": 146,
+    "texte": "L'aphantasie est l'incapacité neurologique totale à générer des images mentales visuelles.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26115582/"
+  },
+  {
+    "id": 147,
+    "texte": "En 1854, John Snow a stoppé le choléra à Londres en retirant la poignée d'une pompe à eau contaminée.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15004183/"
+  },
+  {
+    "id": 148,
+    "texte": "Ignace Semmelweis a réduit la mortalité puerpérale de 90 % en imposant le lavage des mains en 1847.",
+    "lien": "https://fr.wikipedia.org/wiki/Ignace_Philippe_Semmelweis"
+  },
+  {
+    "id": 149,
+    "texte": "Alexander Fleming a découvert la pénicilline en 1928 après la contamination accidentelle d'une boîte de culture.",
+    "lien": "https://fr.wikipedia.org/wiki/Alexander_Fleming"
+  },
+  {
+    "id": 150,
+    "texte": "Phineas Gage a survécu à une barre de fer dans le cerveau, révélant le rôle du lobe frontal dans la personnalité.",
+    "lien": "https://fr.wikipedia.org/wiki/Phineas_Gage"
+  },
+  {
+    "id": 151,
+    "texte": "James Harrison a donné son sang plus de 1000 fois, sauvant deux millions de bébés grâce à un anticorps rare.",
+    "lien": "https://fr.wikipedia.org/wiki/James_Harrison_(donneur_de_sang)"
+  },
+  {
+    "id": 152,
+    "texte": "René Laennec a inventé le stéthoscope avec un rouleau de papier pour préserver la pudeur d'une patiente.",
+    "lien": "https://fr.wikipedia.org/wiki/Ren%C3%A9_Laennec"
+  },
+  {
+    "id": 153,
+    "texte": "La première transplantation cardiaque humaine a été réalisée en 1967 par le chirurgien Christiaan Barnard.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/4873539/"
+  },
+  {
+    "id": 154,
+    "texte": "La protéine p53, gardienne du génome, déclenche l'apoptose des cellules dont l'ADN est trop endommagé.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17923689/"
+  },
+  {
+    "id": 155,
+    "texte": "L'ocytocine, hormone de l'accouchement, renforce aussi l'attachement social et la confiance entre individus.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15934027/"
+  },
+  {
+    "id": 156,
+    "texte": "La progeria est une maladie génétique rarissime provoquant un vieillissement accéléré dès l'enfance.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/12714972/"
+  },
+  {
+    "id": 157,
+    "texte": "Le syndrome de Münchhausen pousse un patient à feindre ou provoquer une maladie pour attirer l'attention médicale.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/2443046/"
+  },
+  {
+    "id": 158,
+    "texte": "L'effet nocebo est l'apparition d'effets secondaires indésirables causée uniquement par des attentes négatives.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22903126/"
+  },
+  {
+    "id": 159,
+    "texte": "Le gène FOXP2 est intimement lié à la capacité humaine de développer et structurer le langage parlé.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11586359/"
+  },
+  {
+    "id": 160,
+    "texte": "Les mitochondries, usines énergétiques de nos cellules, proviendraient de l'incorporation symbiotique d'une bactérie.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23018861/"
+  },
+  {
+    "id": 161,
+    "texte": "Le syndrome de Takotsubo, ou 'syndrome du cœur brisé', mime un infarctus suite à un stress émotionnel intense.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15716533/"
+  },
+  {
+    "id": 162,
+    "texte": "En 1983, Kary Mullis a inventé la PCR, technique permettant de multiplier l'ADN, révolutionnant la biologie moléculaire.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/3034994/"
+  },
+  {
+    "id": 163,
+    "texte": "La cyclopie, malformation congénitale rarissime, résulte de la non-division des hémisphères cérébraux (holoprosencéphalie).",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17581781/"
+  },
+  {
+    "id": 164,
+    "texte": "Le venin du monstre de Gila a permis de développer l'exénatide, un traitement novateur contre le diabète de type 2.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18195861/"
+  },
+  {
+    "id": 165,
+    "texte": "L'aplasie cutanée congénitale se caractérise par l'absence localisée de peau dès la naissance, souvent sur le crâne.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23611116/"
+  },
+  {
+    "id": 166,
+    "texte": "La surdité verbale pure empêche de comprendre le langage parlé, bien que l'audition et la lecture soient intactes.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/9082346/"
+  },
+  {
+    "id": 167,
+    "texte": "Le botulisme est causé par la toxine botulique, le poison naturel le plus puissant connu de l'humanité.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17218694/"
+  },
+  {
+    "id": 168,
+    "texte": "La première greffe de rein réussie a eu lieu en 1954 entre deux vrais jumeaux, évitant ainsi le rejet immunitaire.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/13217430/"
+  },
+  {
+    "id": 169,
+    "texte": "Le syndrome de Wernicke-Korsakoff, souvent dû à l'alcoolisme, provoque des amnésies sévères et des fabulations.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23769134/"
+  },
+  {
+    "id": 170,
+    "texte": "L'hémophilie, maladie royale, a frappé la descendance de la reine Victoria, influençant l'histoire de la Russie tsariste.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21800263/"
+  },
+  {
+    "id": 171,
+    "texte": "Le canal de Müller forme les voies génitales féminines, mais régresse chez le mâle sous l'effet de l'hormone AMH.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17855026/"
+  },
+  {
+    "id": 172,
+    "texte": "La maladie des os de verre (ostéogenèse imparfaite) est due à un défaut génétique de la synthèse du collagène de type I.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25732103/"
+  },
+  {
+    "id": 173,
+    "texte": "Le nerf vague connecte le cerveau au microbiote intestinal, formant une voie de communication bidirectionnelle majeure.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25402818/"
+  },
+  {
+    "id": 174,
+    "texte": "L'électrocardiogramme a été inventé par Willem Einthoven, qui a reçu le prix Nobel de médecine en 1924 pour cette avancée.",
+    "lien": "https://fr.wikipedia.org/wiki/Willem_Einthoven"
+  },
+  {
+    "id": 175,
+    "texte": "Le syndrome des ovaires polykystiques (SOPK) est la première cause d'infertilité anovulatoire chez les femmes.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26662453/"
+  },
+  {
+    "id": 176,
+    "texte": "La warfarine, célèbre anticoagulant, a été initialement synthétisée et utilisée comme poison contre les rats.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/1077759/"
+  },
+  {
+    "id": 177,
+    "texte": "Le hoquet chronique peut parfois être stoppé par un massage digital du rectum, selon des publications scientifiques sérieuses.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/2299306/"
+  },
+  {
+    "id": 178,
+    "texte": "Le scorbut des marins a tué plus d'hommes en mer entre le 15e et le 18e siècle que les tempêtes et les batailles réunies.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26456012/"
+  },
+  {
+    "id": 179,
+    "texte": "La mélatonine, hormone du sommeil, est principalement synthétisée par la glande pinéale en l'absence de lumière.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/9062869/"
+  },
+  {
+    "id": 180,
+    "texte": "Le paludisme, transmis par les moustiques anophèles, reste l'une des maladies infectieuses les plus meurtrières au monde.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24431940/"
+  },
+  {
+    "id": 181,
+    "texte": "La thalidomide, un sédatif des années 50, a causé des milliers de malformations congénitales avant d'être retirée du marché.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21501720/"
+  },
+  {
+    "id": 182,
+    "texte": "Le virus de la rage a un taux de mortalité de presque 100 % une fois les symptômes neurologiques apparus.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24227092/"
+  },
+  {
+    "id": 183,
+    "texte": "Le gène BRCA1, impliqué dans la réparation de l'ADN, augmente considérablement le risque de cancer du sein s'il est muté.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/7545954/"
+  },
+  {
+    "id": 184,
+    "texte": "L'acromégalie est souvent causée par un adénome hypophysaire sécrétant un excès d'hormone de croissance chez l'adulte.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22223049/"
+  },
+  {
+    "id": 185,
+    "texte": "L'aspirine dérive de l'acide salicylique, une substance naturelle présente dans l'écorce de saule, utilisée depuis l'Antiquité.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11721524/"
+  },
+  {
+    "id": 186,
+    "texte": "La drépanocytose est une mutation de l'hémoglobine qui protège paradoxalement les porteurs sains contre le paludisme.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/20485906/"
+  },
+  {
+    "id": 187,
+    "texte": "Le syndrome de Protée, dont souffrait 'Elephant Man', provoque une croissance tissulaire asymétrique et incontrôlée.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21793738/"
+  },
+  {
+    "id": 188,
+    "texte": "Le cristallin de l'œil est l'un des rares tissus humains à être totalement dépourvu de vaisseaux sanguins.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18441113/"
+  },
+  {
+    "id": 189,
+    "texte": "Le thymus, organe clé de la maturation des lymphocytes T, s'atrophie naturellement et devient graisseux à l'âge adulte.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17584145/"
+  },
+  {
+    "id": 190,
+    "texte": "La maladie de Huntington est une affection neurodégénérative héréditaire autosomique dominante à pénétrance complète.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/8361093/"
+  },
+  {
+    "id": 191,
+    "texte": "L'adrénaline a été la toute première hormone isolée et synthétisée artificiellement au début du 20e siècle.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/20658406/"
+  },
+  {
+    "id": 192,
+    "texte": "Le surfactant pulmonaire réduit la tension superficielle dans les alvéoles, empêchant nos poumons de s'effondrer à chaque expiration.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/10702674/"
+  },
+  {
+    "id": 193,
+    "texte": "L'insuline a été découverte par Banting et Best en 1921, transformant le diabète de type 1 de maladie mortelle en maladie chronique.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21808061/"
+  },
+  {
+    "id": 194,
+    "texte": "L'os hyoïde est le seul os du squelette humain qui ne s'articule directement avec aucun autre os.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25529806/"
+  },
+  {
+    "id": 195,
+    "texte": "L'oxygénothérapie hyperbare est le traitement d'urgence de référence pour l'intoxication sévère au monoxyde de carbone.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21571520/"
+  },
+  {
+    "id": 196,
+    "texte": "Le syndrome de Gilles de la Tourette se caractérise par des tics moteurs et vocaux, parfois accompagnés de coprolalie.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24430489/"
+  },
+  {
+    "id": 197,
+    "texte": "Le muscle grand gluteal (fessier) est le muscle le plus volumineux et l'un des plus puissants du corps humain.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22467332/"
+  },
+  {
+    "id": 198,
+    "texte": "La barrière hémato-encéphalique protège le cerveau des toxines, mais complique grandement l'administration de médicaments neurologiques.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25297380/"
+  },
+  {
+    "id": 199,
+    "texte": "La vitamine B12, indispensable à la synthèse de l'ADN, nécessite le 'facteur intrinsèque' gastrique pour être absorbée.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25139045/"
+  },
+  {
+    "id": 200,
+    "texte": "Le choléra provoque une diarrhée aqueuse si massive qu'elle peut entraîner la mort par déshydratation en quelques heures.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22687153/"
+  },
+  {
+    "id": 201,
+    "texte": "L'anesthésie générale ne plonge pas dans le sommeil, mais induit un état de coma pharmacologique réversible.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21191060/"
+  },
+  {
+    "id": 202,
+    "texte": "La maladie de Parkinson est liée à la perte progressive des neurones dopaminergiques de la substance noire.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26188206/"
+  },
+  {
+    "id": 203,
+    "texte": "La leptine, hormone de la satiété, est sécrétée par les tissus adipeux pour indiquer au cerveau que les réserves sont pleines.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/19875154/"
+  },
+  {
+    "id": 204,
+    "texte": "Les macrophages dérivent des monocytes sanguins et patrouillent dans les tissus pour phagocyter les débris et pathogènes.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24795233/"
+  },
+  {
+    "id": 205,
+    "texte": "L'électroencéphalographie (EEG) a été inventée en 1924 par Hans Berger pour enregistrer l'activité électrique du cerveau.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23760432/"
+  },
+  {
+    "id": 206,
+    "texte": "Le rachitisme est une maladie de la croissance osseuse causée par une carence sévère en vitamine D ou en calcium.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23864453/"
+  },
+  {
+    "id": 207,
+    "texte": "Les groupes sanguins ABO ont été découverts en 1900 par Karl Landsteiner, rendant les transfusions sanguines sûres.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11721528/"
+  },
+  {
+    "id": 208,
+    "texte": "Le syndrome d'Ehlers-Danlos entraîne une hyperlaxité articulaire et une fragilité cutanée dues à un défaut du collagène.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/28306229/"
+  },
+  {
+    "id": 209,
+    "texte": "L'hippocampe, structure clé de la mémoire, est l'une des rares zones du cerveau adulte capable de neurogenèse.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24430492/"
+  },
+  {
+    "id": 210,
+    "texte": "Le tétanos provoque des contractions musculaires intenses et douloureuses en inhibant la libération de neurotransmetteurs relaxants.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24756549/"
+  },
+  {
+    "id": 211,
+    "texte": "La rate est l'organe lymphoïde le plus volumineux ; elle filtre le sang et élimine les vieux globules rouges.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25562725/"
+  },
+  {
+    "id": 212,
+    "texte": "Le syndrome de Guillain-Barré est une maladie auto-immune provoquant une paralysie progressive souvent après une infection.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25139046/"
+  },
+  {
+    "id": 213,
+    "texte": "La bilirubine, issue de la dégradation de l'hémoglobine, est responsable de la coloration jaune dans la jaunisse (ictère).",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24364491/"
+  },
+  {
+    "id": 214,
+    "texte": "La chimiothérapie a des origines militaires : le gaz moutarde de la Première Guerre mondiale a inspiré les premiers cytotoxiques.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18320491/"
+  },
+  {
+    "id": 215,
+    "texte": "Le cortex préfrontal, siège du raisonnement complexe, ne termine son développement et sa myélinisation qu'autour de 25 ans.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22452814/"
+  },
+  {
+    "id": 216,
+    "texte": "Le syndrome de Klinefelter (47, XXY) est la cause génétique la plus fréquente d'hypogonadisme masculin.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26662456/"
+  },
+  {
+    "id": 217,
+    "texte": "La moelle épinière s'arrête physiologiquement au niveau de la vertèbre lombaire L1 ou L2 chez l'adulte.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26188208/"
+  },
+  {
+    "id": 218,
+    "texte": "Le corps humain fabrique environ 2 millions de globules rouges par seconde.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23769135/"
+  },
+  {
+    "id": 219,
+    "texte": "L'intestin grêle mesure environ 6 à 7 mètres de long s'il est complètement déroulé.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24795234/"
+  },
+  {
+    "id": 220,
+    "texte": "L'acide gastrique est si puissant qu'il pourrait dissoudre une lame de rasoir, mais l'estomac se protège avec du mucus.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22687154/"
+  },
+  {
+    "id": 221,
+    "texte": "Le foie est le seul organe interne humain capable de se régénérer complètement à partir de 25% de son tissu.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21571521/"
+  },
+  {
+    "id": 222,
+    "texte": "L'aorte est l'artère la plus large du corps, avec un diamètre semblable à celui d'un tuyau d'arrosage.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25529807/"
+  },
+  {
+    "id": 223,
+    "texte": "Le réseau sanguin d'un adulte mis bout à bout ferait plus de deux fois le tour de la Terre.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23864454/"
+  },
+  {
+    "id": 224,
+    "texte": "Les os sont environ cinq fois plus solides que l'acier à densité égale.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21808062/"
+  },
+  {
+    "id": 225,
+    "texte": "La cornée tire son oxygène directement de l'air, car elle n'est pas vascularisée.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18441114/"
+  },
+  {
+    "id": 226,
+    "texte": "Les poumons contiennent environ 300 millions d'alvéoles pour maximiser les échanges gazeux.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/10702675/"
+  },
+  {
+    "id": 227,
+    "texte": "L'émail dentaire est la substance la plus dure et la plus minéralisée du corps humain.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24364492/"
+  },
+  {
+    "id": 228,
+    "texte": "Le cerveau utilise à lui seul environ 20 % de l'oxygène et des calories consommés par le corps.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23760433/"
+  },
+  {
+    "id": 229,
+    "texte": "Les impulsions nerveuses peuvent voyager à des vitesses dépassant les 400 km/h dans les fibres myélinisées.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22452815/"
+  },
+  {
+    "id": 230,
+    "texte": "La peau est l'organe le plus lourd du corps, représentant environ 16 % du poids total.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25297381/"
+  },
+  {
+    "id": 231,
+    "texte": "Les reins filtrent l'intégralité du sang du corps humain environ 60 fois par jour.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25139047/"
+  },
+  {
+    "id": 232,
+    "texte": "L'oreille interne contient les canaux semi-circulaires, essentiels pour notre sens de l'équilibre.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24430493/"
+  },
+  {
+    "id": 233,
+    "texte": "Le Dr Barry Marshall a bu la bactérie H. pylori pour prouver qu'elle cause les ulcères.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11142261/"
+  },
+  {
+    "id": 234,
+    "texte": "Les cellules HeLa, première lignée immortelle, proviennent d'une tumeur d'Henrietta Lacks (1951).",
+    "lien": "https://fr.wikipedia.org/wiki/Cellule_HeLa"
+  },
+  {
+    "id": 235,
+    "texte": "Camillo Golgi et Cajal ont partagé un Nobel tout en s'opposant vivement sur la théorie neuronale.",
+    "lien": "https://fr.wikipedia.org/wiki/M%C3%A9thode_de_Golgi"
+  },
+  {
+    "id": 236,
+    "texte": "Élie Metchnikoff a découvert la phagocytose en enfonçant une épine dans une larve d'étoile de mer.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18821034/"
+  },
+  {
+    "id": 237,
+    "texte": "Avant les antibiotiques, on soignait la neurosyphilis en infectant volontairement le patient avec le paludisme.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24058066/"
+  },
+  {
+    "id": 238,
+    "texte": "Avant l'anesthésie, le chirurgien Robert Liston a réalisé une amputation avec 300 % de mortalité.",
+    "lien": "https://fr.wikipedia.org/wiki/Robert_Liston"
+  },
+  {
+    "id": 239,
+    "texte": "En 1929, l'interne Werner Forssmann s'est auto-inséré un cathéter dans le cœur pour prouver que c'était possible.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/1376840/"
+  },
+  {
+    "id": 240,
+    "texte": "Lydia Fairchild était une chimère génétique : elle avait un ADN différent de celui de ses propres enfants.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15173323/"
+  },
+  {
+    "id": 241,
+    "texte": "Le parasite Toxoplasma gondii supprime la peur des chats chez les souris infectées.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/10954316/"
+  },
+  {
+    "id": 242,
+    "texte": "La bactériothérapie fécale était déjà utilisée au 4e siècle par le médecin chinois Ge Hong.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23114510/"
+  },
+  {
+    "id": 243,
+    "texte": "La fibrodysplasie ossifiante progressive transforme petit à petit les muscles en un deuxième squelette.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/19430064/"
+  },
+  {
+    "id": 244,
+    "texte": "Le corps humain possède des rayures invisibles appelées 'lignes de Blaschko', traçant la migration embryonnaire.",
+    "lien": "https://fr.wikipedia.org/wiki/Lignes_de_Blaschko"
+  },
+  {
+    "id": 245,
+    "texte": "Le Kuru, une maladie à prions, frappait la tribu Fore à cause de rites funéraires cannibales.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18768233/"
+  },
+  {
+    "id": 246,
+    "texte": "Henry Beecher a documenté l'effet placebo en injectant de l'eau salée aux soldats pendant la Seconde Guerre mondiale.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/13271032/"
+  },
+  {
+    "id": 247,
+    "texte": "Dans le syndrome de Cotard, le patient est intimement persuadé d'être mort ou en putréfaction.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/8982312/"
+  },
+  {
+    "id": 248,
+    "texte": "Le syndrome de la main étrangère donne l'impression qu'une des mains du patient possède sa propre volonté.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11181829/"
+  },
+  {
+    "id": 249,
+    "texte": "Le réflexe photo-sternutatoire déclenche des éternuements lors d'un passage soudain à la lumière vive.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/1922652/"
+  },
+  {
+    "id": 250,
+    "texte": "Les tératomes ovariens sont des tumeurs pouvant contenir des cheveux, de la peau ou des dents.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/19125301/"
+  },
+  {
+    "id": 251,
+    "texte": "James Lind a réalisé le premier essai clinique en 1747 en soignant le scorbut avec des agrumes.",
+    "lien": "https://fr.wikipedia.org/wiki/James_Lind"
+  },
+  {
+    "id": 252,
+    "texte": "Le Viagra (sildénafil) était initialement testé pour traiter l'angine de poitrine, sans grand succès cardiaque.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/9534062/"
+  },
+  {
+    "id": 253,
+    "texte": "L'amibe Naegleria fowleri remonte le nerf olfactif et cause une méningo-encéphalite mortelle.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22934444/"
+  },
+  {
+    "id": 254,
+    "texte": "Dans le syndrome d'Anton-Babinski, le patient est aveugle mais reste intimement persuadé de voir.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15535359/"
+  },
+  {
+    "id": 255,
+    "texte": "Le lymphome de Burkitt a fourni la première preuve qu'un virus (EBV) pouvait causer un cancer humain.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15124017/"
+  },
+  {
+    "id": 256,
+    "texte": "Jonas Salk a refusé de breveter son vaccin contre la polio, déclarant : 'Peut-on breveter le soleil ?'.",
+    "lien": "https://fr.wikipedia.org/wiki/Jonas_Salk"
+  },
+  {
+    "id": 257,
+    "texte": "Horace Wells, pionnier de l'anesthésie dentaire, a été hué après l'échec de sa première démonstration publique.",
+    "lien": "https://fr.wikipedia.org/wiki/Horace_Wells"
+  },
+  {
+    "id": 258,
+    "texte": "L'Ève mitochondriale est l'ancêtre commune matrilinéaire de toute l'humanité (vers -150 000 ans).",
+    "lien": "https://fr.wikipedia.org/wiki/%C3%88ve_mitochondriale"
+  },
+  {
+    "id": 259,
+    "texte": "Le patient H.M., amputé des hippocampes en 1953, a prouvé leur rôle clé dans la création de souvenirs.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/19715421/"
+  },
+  {
+    "id": 260,
+    "texte": "L'insomnie fatale familiale est une maladie à prions empêchant irrémédiablement le sommeil profond.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/9850239/"
+  },
+  {
+    "id": 261,
+    "texte": "En voyant la première radiographie de sa main, l'épouse de Röntgen s'est exclamée : 'J'ai vu ma propre mort !'.",
+    "lien": "https://fr.wikipedia.org/wiki/Wilhelm_R%C3%B6ntgen"
+  },
+  {
+    "id": 262,
+    "texte": "L'aphantasie est l'incapacité neurologique totale à générer des images mentales visuelles.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26115582/"
+  },
+  {
+    "id": 263,
+    "texte": "En 1854, John Snow a stoppé le choléra à Londres en retirant la poignée d'une pompe à eau contaminée.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15004183/"
+  },
+  {
+    "id": 264,
+    "texte": "Ignace Semmelweis a réduit la mortalité puerpérale de 90 % en imposant le lavage des mains en 1847.",
+    "lien": "https://fr.wikipedia.org/wiki/Ignace_Philippe_Semmelweis"
+  },
+  {
+    "id": 265,
+    "texte": "Alexander Fleming a découvert la pénicilline en 1928 après la contamination accidentelle d'une boîte de culture.",
+    "lien": "https://fr.wikipedia.org/wiki/Alexander_Fleming"
+  },
+  {
+    "id": 266,
+    "texte": "Phineas Gage a survécu à une barre de fer dans le cerveau, révélant le rôle du lobe frontal dans la personnalité.",
+    "lien": "https://fr.wikipedia.org/wiki/Phineas_Gage"
+  },
+  {
+    "id": 267,
+    "texte": "James Harrison a donné son sang plus de 1000 fois, sauvant deux millions de bébés grâce à un anticorps rare.",
+    "lien": "https://fr.wikipedia.org/wiki/James_Harrison_(donneur_de_sang)"
+  },
+  {
+    "id": 268,
+    "texte": "René Laennec a inventé le stéthoscope avec un rouleau de papier pour préserver la pudeur d'une patiente.",
+    "lien": "https://fr.wikipedia.org/wiki/Ren%C3%A9_Laennec"
+  },
+  {
+    "id": 269,
+    "texte": "La première transplantation cardiaque humaine a été réalisée en 1967 par le chirurgien Christiaan Barnard.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/4873539/"
+  },
+  {
+    "id": 270,
+    "texte": "La protéine p53, gardienne du génome, déclenche l'apoptose des cellules dont l'ADN est trop endommagé.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17923689/"
+  },
+  {
+    "id": 271,
+    "texte": "L'ocytocine, hormone de l'accouchement, renforce aussi l'attachement social et la confiance entre individus.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15934027/"
+  },
+  {
+    "id": 272,
+    "texte": "La progeria est une maladie génétique rarissime provoquant un vieillissement accéléré dès l'enfance.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/12714972/"
+  },
+  {
+    "id": 273,
+    "texte": "Le syndrome de Münchhausen pousse un patient à feindre ou provoquer une maladie pour attirer l'attention médicale.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/2443046/"
+  },
+  {
+    "id": 274,
+    "texte": "L'effet nocebo est l'apparition d'effets secondaires indésirables causée uniquement par des attentes négatives.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22903126/"
+  },
+  {
+    "id": 275,
+    "texte": "Le gène FOXP2 est intimement lié à la capacité humaine de développer et structurer le langage parlé.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11586359/"
+  },
+  {
+    "id": 276,
+    "texte": "Les mitochondries, usines énergétiques de nos cellules, proviendraient de l'incorporation symbiotique d'une bactérie.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23018861/"
+  },
+  {
+    "id": 277,
+    "texte": "Le syndrome de Takotsubo, ou 'syndrome du cœur brisé', mime un infarctus suite à un stress émotionnel intense.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15716533/"
+  },
+  {
+    "id": 278,
+    "texte": "En 1983, Kary Mullis a inventé la PCR, technique permettant de multiplier l'ADN, révolutionnant la biologie moléculaire.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/3034994/"
+  },
+  {
+    "id": 279,
+    "texte": "La cyclopie, malformation congénitale rarissime, résulte de la non-division des hémisphères cérébraux (holoprosencéphalie).",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17581781/"
+  },
+  {
+    "id": 280,
+    "texte": "Le venin du monstre de Gila a permis de développer l'exénatide, un traitement novateur contre le diabète de type 2.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18195861/"
+  },
+  {
+    "id": 281,
+    "texte": "L'aplasie cutanée congénitale se caractérise par l'absence localisée de peau dès la naissance, souvent sur le crâne.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23611116/"
+  },
+  {
+    "id": 282,
+    "texte": "La surdité verbale pure empêche de comprendre le langage parlé, bien que l'audition et la lecture soient intactes.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/9082346/"
+  },
+  {
+    "id": 283,
+    "texte": "Le botulisme est causé par la toxine botulique, le poison naturel le plus puissant connu de l'humanité.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17218694/"
+  },
+  {
+    "id": 284,
+    "texte": "La première greffe de rein réussie a eu lieu en 1954 entre deux vrais jumeaux, évitant ainsi le rejet immunitaire.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/13217430/"
+  },
+  {
+    "id": 285,
+    "texte": "Le syndrome de Wernicke-Korsakoff, souvent dû à l'alcoolisme, provoque des amnésies sévères et des fabulations.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23769134/"
+  },
+  {
+    "id": 286,
+    "texte": "L'hémophilie, maladie royale, a frappé la descendance de la reine Victoria, influençant l'histoire de la Russie tsariste.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21800263/"
+  },
+  {
+    "id": 287,
+    "texte": "Le canal de Müller forme les voies génitales féminines, mais régresse chez le mâle sous l'effet de l'hormone AMH.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17855026/"
+  },
+  {
+    "id": 288,
+    "texte": "La maladie des os de verre (ostéogenèse imparfaite) est due à un défaut génétique de la synthèse du collagène de type I.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25732103/"
+  },
+  {
+    "id": 289,
+    "texte": "Le nerf vague connecte le cerveau au microbiote intestinal, formant une voie de communication bidirectionnelle majeure.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25402818/"
+  },
+  {
+    "id": 290,
+    "texte": "L'électrocardiogramme a été inventé par Willem Einthoven, qui a reçu le prix Nobel de médecine en 1924 pour cette avancée.",
+    "lien": "https://fr.wikipedia.org/wiki/Willem_Einthoven"
+  },
+  {
+    "id": 291,
+    "texte": "Le syndrome des ovaires polykystiques (SOPK) est la première cause d'infertilité anovulatoire chez les femmes.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26662453/"
+  },
+  {
+    "id": 292,
+    "texte": "La warfarine, célèbre anticoagulant, a été initialement synthétisée et utilisée comme poison contre les rats.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/1077759/"
+  },
+  {
+    "id": 293,
+    "texte": "Le hoquet chronique peut parfois être stoppé par un massage digital du rectum, selon des publications scientifiques sérieuses.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/2299306/"
+  },
+  {
+    "id": 294,
+    "texte": "Le scorbut des marins a tué plus d'hommes en mer entre le 15e et le 18e siècle que les tempêtes et les batailles réunies.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26456012/"
+  },
+  {
+    "id": 295,
+    "texte": "La mélatonine, hormone du sommeil, est principalement synthétisée par la glande pinéale en l'absence de lumière.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/9062869/"
+  },
+  {
+    "id": 296,
+    "texte": "Le paludisme, transmis par les moustiques anophèles, reste l'une des maladies infectieuses les plus meurtrières au monde.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24431940/"
+  },
+  {
+    "id": 297,
+    "texte": "La thalidomide, un sédatif des années 50, a causé des milliers de malformations congénitales avant d'être retirée du marché.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21501720/"
+  },
+  {
+    "id": 298,
+    "texte": "Le virus de la rage a un taux de mortalité de presque 100 % une fois les symptômes neurologiques apparus.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24227092/"
+  },
+  {
+    "id": 299,
+    "texte": "Le gène BRCA1, impliqué dans la réparation de l'ADN, augmente considérablement le risque de cancer du sein s'il est muté.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/7545954/"
+  },
+  {
+    "id": 300,
+    "texte": "L'acromégalie est souvent causée par un adénome hypophysaire sécrétant un excès d'hormone de croissance chez l'adulte.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22223049/"
+  },
+  {
+    "id": 301,
+    "texte": "L'aspirine dérive de l'acide salicylique, une substance naturelle présente dans l'écorce de saule, utilisée depuis l'Antiquité.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11721524/"
+  },
+  {
+    "id": 302,
+    "texte": "La drépanocytose est une mutation de l'hémoglobine qui protège paradoxalement les porteurs sains contre le paludisme.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/20485906/"
+  },
+  {
+    "id": 303,
+    "texte": "Le syndrome de Protée, dont souffrait 'Elephant Man', provoque une croissance tissulaire asymétrique et incontrôlée.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21793738/"
+  },
+  {
+    "id": 304,
+    "texte": "Le cristallin de l'œil est l'un des rares tissus humains à être totalement dépourvu de vaisseaux sanguins.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18441113/"
+  },
+  {
+    "id": 305,
+    "texte": "Le thymus, organe clé de la maturation des lymphocytes T, s'atrophie naturellement et devient graisseux à l'âge adulte.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/17584145/"
+  },
+  {
+    "id": 306,
+    "texte": "La maladie de Huntington est une affection neurodégénérative héréditaire autosomique dominante à pénétrance complète.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/8361093/"
+  },
+  {
+    "id": 307,
+    "texte": "L'adrénaline a été la toute première hormone isolée et synthétisée artificiellement au début du 20e siècle.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/20658406/"
+  },
+  {
+    "id": 308,
+    "texte": "Le surfactant pulmonaire réduit la tension superficielle dans les alvéoles, empêchant nos poumons de s'effondrer à chaque expiration.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/10702674/"
+  },
+  {
+    "id": 309,
+    "texte": "L'insuline a été découverte par Banting et Best en 1921, transformant le diabète de type 1 de maladie mortelle en maladie chronique.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21808061/"
+  },
+  {
+    "id": 310,
+    "texte": "L'os hyoïde est le seul os du squelette humain qui ne s'articule directement avec aucun autre os.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25529806/"
+  },
+  {
+    "id": 311,
+    "texte": "L'oxygénothérapie hyperbare est le traitement d'urgence de référence pour l'intoxication sévère au monoxyde de carbone.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21571520/"
+  },
+  {
+    "id": 312,
+    "texte": "Le syndrome de Gilles de la Tourette se caractérise par des tics moteurs et vocaux, parfois accompagnés de coprolalie.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24430489/"
+  },
+  {
+    "id": 313,
+    "texte": "Le muscle grand gluteal (fessier) est le muscle le plus volumineux et l'un des plus puissants du corps humain.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22467332/"
+  },
+  {
+    "id": 314,
+    "texte": "La barrière hémato-encéphalique protège le cerveau des toxines, mais complique grandement l'administration de médicaments neurologiques.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25297380/"
+  },
+  {
+    "id": 315,
+    "texte": "La vitamine B12, indispensable à la synthèse de l'ADN, nécessite le 'facteur intrinsèque' gastrique pour être absorbée.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25139045/"
+  },
+  {
+    "id": 316,
+    "texte": "Le choléra provoque une diarrhée aqueuse si massive qu'elle peut entraîner la mort par déshydratation en quelques heures.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22687153/"
+  },
+  {
+    "id": 317,
+    "texte": "L'anesthésie générale ne plonge pas dans le sommeil, mais induit un état de coma pharmacologique réversible.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21191060/"
+  },
+  {
+    "id": 318,
+    "texte": "La maladie de Parkinson est liée à la perte progressive des neurones dopaminergiques de la substance noire.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26188206/"
+  },
+  {
+    "id": 319,
+    "texte": "La leptine, hormone de la satiété, est sécrétée par les tissus adipeux pour indiquer au cerveau que les réserves sont pleines.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/19875154/"
+  },
+  {
+    "id": 320,
+    "texte": "Les macrophages dérivent des monocytes sanguins et patrouillent dans les tissus pour phagocyter les débris et pathogènes.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24795233/"
+  },
+  {
+    "id": 321,
+    "texte": "L'électroencéphalographie (EEG) a été inventée en 1924 par Hans Berger pour enregistrer l'activité électrique du cerveau.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23760432/"
+  },
+  {
+    "id": 322,
+    "texte": "Le rachitisme est une maladie de la croissance osseuse causée par une carence sévère en vitamine D ou en calcium.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23864453/"
+  },
+  {
+    "id": 323,
+    "texte": "Les groupes sanguins ABO ont été découverts en 1900 par Karl Landsteiner, rendant les transfusions sanguines sûres.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11721528/"
+  },
+  {
+    "id": 324,
+    "texte": "Le syndrome d'Ehlers-Danlos entraîne une hyperlaxité articulaire et une fragilité cutanée dues à un défaut du collagène.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/28306229/"
+  },
+  {
+    "id": 325,
+    "texte": "L'hippocampe, structure clé de la mémoire, est l'une des rares zones du cerveau adulte capable de neurogenèse.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24430492/"
+  },
+  {
+    "id": 326,
+    "texte": "Le tétanos provoque des contractions musculaires intenses et douloureuses en inhibant la libération de neurotransmetteurs relaxants.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24756549/"
+  },
+  {
+    "id": 327,
+    "texte": "La rate est l'organe lymphoïde le plus volumineux ; elle filtre le sang et élimine les vieux globules rouges.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25562725/"
+  },
+  {
+    "id": 328,
+    "texte": "Le syndrome de Guillain-Barré est une maladie auto-immune provoquant une paralysie progressive souvent après une infection.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25139046/"
+  },
+  {
+    "id": 329,
+    "texte": "La bilirubine, issue de la dégradation de l'hémoglobine, est responsable de la coloration jaune dans la jaunisse (ictère).",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24364491/"
+  },
+  {
+    "id": 330,
+    "texte": "La chimiothérapie a des origines militaires : le gaz moutarde de la Première Guerre mondiale a inspiré les premiers cytotoxiques.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18320491/"
+  },
+  {
+    "id": 331,
+    "texte": "Le cortex préfrontal, siège du raisonnement complexe, ne termine son développement et sa myélinisation qu'autour de 25 ans.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22452814/"
+  },
+  {
+    "id": 332,
+    "texte": "Le syndrome de Klinefelter (47, XXY) est la cause génétique la plus fréquente d'hypogonadisme masculin.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26662456/"
+  },
+  {
+    "id": 333,
+    "texte": "La moelle épinière s'arrête physiologiquement au niveau de la vertèbre lombaire L1 ou L2 chez l'adulte.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/26188208/"
+  },
+  {
+    "id": 334,
+    "texte": "Le corps humain fabrique environ 2 millions de globules rouges par seconde.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23769135/"
+  },
+  {
+    "id": 335,
+    "texte": "L'intestin grêle mesure environ 6 à 7 mètres de long s'il est complètement déroulé.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24795234/"
+  },
+  {
+    "id": 336,
+    "texte": "L'acide gastrique est si puissant qu'il pourrait dissoudre une lame de rasoir, mais l'estomac se protège avec du mucus.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22687154/"
+  },
+  {
+    "id": 337,
+    "texte": "Le foie est le seul organe interne humain capable de se régénérer complètement à partir de 25% de son tissu.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21571521/"
+  },
+  {
+    "id": 338,
+    "texte": "L'aorte est l'artère la plus large du corps, avec un diamètre semblable à celui d'un tuyau d'arrosage.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25529807/"
+  },
+  {
+    "id": 339,
+    "texte": "Le réseau sanguin d'un adulte mis bout à bout ferait plus de deux fois le tour de la Terre.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23864454/"
+  },
+  {
+    "id": 340,
+    "texte": "Les os sont environ cinq fois plus solides que l'acier à densité égale.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/21808062/"
+  },
+  {
+    "id": 341,
+    "texte": "La cornée tire son oxygène directement de l'air, car elle n'est pas vascularisée.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18441114/"
+  },
+  {
+    "id": 342,
+    "texte": "Les poumons contiennent environ 300 millions d'alvéoles pour maximiser les échanges gazeux.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/10702675/"
+  },
+  {
+    "id": 343,
+    "texte": "L'émail dentaire est la substance la plus dure et la plus minéralisée du corps humain.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24364492/"
+  },
+  {
+    "id": 344,
+    "texte": "Le cerveau utilise à lui seul environ 20 % de l'oxygène et des calories consommés par le corps.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23760433/"
+  },
+  {
+    "id": 345,
+    "texte": "Les impulsions nerveuses peuvent voyager à des vitesses dépassant les 400 km/h dans les fibres myélinisées.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/22452815/"
+  },
+  {
+    "id": 346,
+    "texte": "La peau est l'organe le plus lourd du corps, représentant environ 16 % du poids total.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25297381/"
+  },
+  {
+    "id": 347,
+    "texte": "Les reins filtrent l'intégralité du sang du corps humain environ 60 fois par jour.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/25139047/"
+  },
+  {
+    "id": 348,
+    "texte": "L'oreille interne contient les canaux semi-circulaires, essentiels pour notre sens de l'équilibre.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24430493/"
+  },
+  {
+    "id": 349,
+    "texte": "Le Dr Barry Marshall a bu la bactérie H. pylori pour prouver qu'elle cause les ulcères.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11142261/"
+  },
+  {
+    "id": 350,
+    "texte": "Les cellules HeLa, première lignée immortelle, proviennent d'une tumeur d'Henrietta Lacks (1951).",
+    "lien": "https://fr.wikipedia.org/wiki/Cellule_HeLa"
+  },
+  {
+    "id": 351,
+    "texte": "Camillo Golgi et Cajal ont partagé un Nobel tout en s'opposant vivement sur la théorie neuronale.",
+    "lien": "https://fr.wikipedia.org/wiki/M%C3%A9thode_de_Golgi"
+  },
+  {
+    "id": 352,
+    "texte": "Élie Metchnikoff a découvert la phagocytose en enfonçant une épine dans une larve d'étoile de mer.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18821034/"
+  },
+  {
+    "id": 353,
+    "texte": "Avant les antibiotiques, on soignait la neurosyphilis en infectant volontairement le patient avec le paludisme.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/24058066/"
+  },
+  {
+    "id": 354,
+    "texte": "Avant l'anesthésie, le chirurgien Robert Liston a réalisé une amputation avec 300 % de mortalité.",
+    "lien": "https://fr.wikipedia.org/wiki/Robert_Liston"
+  },
+  {
+    "id": 355,
+    "texte": "En 1929, l'interne Werner Forssmann s'est auto-inséré un cathéter dans le cœur pour prouver que c'était possible.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/1376840/"
+  },
+  {
+    "id": 356,
+    "texte": "Lydia Fairchild était une chimère génétique : elle avait un ADN différent de celui de ses propres enfants.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/15173323/"
+  },
+  {
+    "id": 357,
+    "texte": "Le parasite Toxoplasma gondii supprime la peur des chats chez les souris infectées.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/10954316/"
+  },
+  {
+    "id": 358,
+    "texte": "La bactériothérapie fécale était déjà utilisée au 4e siècle par le médecin chinois Ge Hong.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/23114510/"
+  },
+  {
+    "id": 359,
+    "texte": "La fibrodysplasie ossifiante progressive transforme petit à petit les muscles en un deuxième squelette.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/19430064/"
+  },
+  {
+    "id": 360,
+    "texte": "Le corps humain possède des rayures invisibles appelées 'lignes de Blaschko', traçant la migration embryonnaire.",
+    "lien": "https://fr.wikipedia.org/wiki/Lignes_de_Blaschko"
+  },
+  {
+    "id": 361,
+    "texte": "Le Kuru, une maladie à prions, frappait la tribu Fore à cause de rites funéraires cannibales.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/18768233/"
+  },
+  {
+    "id": 362,
+    "texte": "Henry Beecher a documenté l'effet placebo en injectant de l'eau salée aux soldats pendant la Seconde Guerre mondiale.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/13271032/"
+  },
+  {
+    "id": 363,
+    "texte": "Dans le syndrome de Cotard, le patient est intimement persuadé d'être mort ou en putréfaction.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/8982312/"
+  },
+  {
+    "id": 364,
+    "texte": "Le syndrome de la main étrangère donne l'impression qu'une des mains du patient possède sa propre volonté.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/11181829/"
+  },
+  {
+    "id": 365,
+    "texte": "Le réflexe photo-sternutatoire déclenche des éternuements lors d'un passage soudain à la lumière vive.",
+    "lien": "https://pubmed.ncbi.nlm.nih.gov/1922652/"
+  }
+]
