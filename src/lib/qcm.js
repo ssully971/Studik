@@ -134,3 +134,26 @@ export function scoreQcm(questions, reponses) {
   })
   return { score: total, scoreMax: questions.length }
 }
+
+export async function getAllQcmRaw() {
+  const { data, error } = await supabase.from('qcm').select('*')
+  if (error) throw error
+  return data
+}
+
+export async function getAllQcmTentativesRaw() {
+  const { data, error } = await supabase.from('qcm_tentatives').select('*')
+  if (error) throw error
+  return data
+}
+
+export async function restaurerTentativesQcm(tentativesArray) {
+  if (!tentativesArray || tentativesArray.length === 0) return
+  const { error } = await supabase.from('qcm_tentatives').upsert(tentativesArray, { onConflict: 'id' })
+  if (error) throw error
+}
+
+export async function deleteAllQcm() {
+  const { error } = await supabase.from('qcm').delete().not('id', 'is', null)
+  if (error) throw error
+}

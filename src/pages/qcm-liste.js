@@ -61,7 +61,7 @@ export async function renderQcmListe(container) {
     listEl.innerHTML = list
       .map(
         (q) => `
-        <div class="fiche-row" data-id="${q.id}" style="grid-template-columns: 4px 1fr auto;">
+        <div class="fiche-row" data-id="${q.id}">
           <div class="tab"></div>
           <div class="fiche-body">
             <div class="fiche-top">

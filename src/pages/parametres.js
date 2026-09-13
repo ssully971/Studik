@@ -1,8 +1,18 @@
 import { getCurrentUser, updatePseudo, updatePassword } from '../lib/auth.js'
-import { getFiches, insertFiches, deleteAllFiches } from '../lib/fiches.js'
+import { getFiches, getAllFichesRaw, insertFiches, deleteAllFiches } from '../lib/fiches.js'
 import { getAllCas, insertCas, deleteAllCas, getStatsTentatives, deleteAllTentatives, restaurerTentatives } from '../lib/cas.js'
 import { getMatieres, insertMatieres, deleteAllMatieres } from '../lib/matieres.js'
 import { getAllCaptures, deleteAllCaptures, deleteCapturesTraitees, restaurerCaptures } from '../lib/captures.js'
+import {
+  getAllQcmRaw,
+  insertQcm,
+  deleteAllQcm,
+  getAllQcmTentativesRaw,
+  restaurerTentativesQcm,
+  deleteAllTentativesQcm,
+} from '../lib/qcm.js'
+import { getCheckins, deleteAllCheckins, restaurerCheckins } from '../lib/checkins.js'
+import { getTags, restaurerTags } from '../lib/tags.js'
 
 function statusHTML(id) {
   return `<span id="${id}" class="import-status"></span>`
@@ -51,7 +61,7 @@ export async function renderParametres(container) {
 
         <div class="settings-card">
           <h3 class="voice">Sauvegarde</h3>
-          <p class="settings-desc">Exporte toutes tes données (fiches, cas, matières, tentatives, captures) dans un fichier, ou restaure une sauvegarde précédente.</p>
+          <p class="settings-desc">Exporte toutes tes données (fiches, cas, QCM, matières, tentatives, captures, streak, tags) dans un fichier, y compris le contenu archivé, ou restaure une sauvegarde précédente.</p>
           <div class="import-actions">
             <button id="export-btn" class="btn" style="width: auto;">Exporter une sauvegarde</button>
             ${statusHTML('export-status')}
@@ -76,7 +86,7 @@ export async function renderParametres(container) {
 
         <div class="settings-card settings-danger">
           <h3 class="voice" style="color: #C46A5C;">Zone dangereuse</h3>
-          <p class="settings-desc">Supprime toutes les fiches, cas cliniques, matières, tentatives et captures. Irréversible — pense à exporter une sauvegarde avant.</p>
+          <p class="settings-desc">Supprime toutes les fiches, cas cliniques, QCM, matières, tentatives et captures, ainsi que ton historique de série (streak). Ta liste de tags de référence et ton pseudo sont conservés. Irréversible — pense à exporter une sauvegarde avant.</p>
           <div class="import-actions">
             <button id="reset-everything-btn" class="btn" style="width: auto; color: #C46A5C; border-color: #C46A5C;">Tout réinitialiser</button>
             ${statusHTML('reset-status')}
@@ -117,21 +127,29 @@ export async function renderParametres(container) {
 
   document.getElementById('export-btn').addEventListener('click', async () => {
     try {
-      const [fiches, cas, matieres, tentatives, captures] = await Promise.all([
-        getFiches({}),
+      const [fiches, cas, qcm, matieres, tentatives, tentativesQcm, captures, checkins, tags] = await Promise.all([
+        getAllFichesRaw(),
         getAllCas(),
+        getAllQcmRaw(),
         getMatieres({}),
         getStatsTentatives(),
+        getAllQcmTentativesRaw(),
         getAllCaptures(),
+        getCheckins(),
+        getTags(),
       ])
 
       const backup = {
         exported_at: new Date().toISOString(),
         fiches,
         cas,
+        qcm,
         matieres,
         tentatives,
+        tentativesQcm,
         captures,
+        checkins,
+        tags,
       }
 
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
@@ -159,8 +177,12 @@ export async function renderParametres(container) {
       if (data.matieres?.length) await insertMatieres(data.matieres)
       if (data.fiches?.length) await insertFiches(data.fiches)
       if (data.cas?.length) await insertCas(data.cas)
+      if (data.qcm?.length) await insertQcm(data.qcm)
       if (data.tentatives?.length) await restaurerTentatives(data.tentatives)
+      if (data.tentativesQcm?.length) await restaurerTentativesQcm(data.tentativesQcm)
       if (data.captures?.length) await restaurerCaptures(data.captures)
+      if (data.checkins?.length) await restaurerCheckins(data.checkins)
+      if (data.tags?.length) await restaurerTags(data.tags)
 
       setStatus('restore-status', 'Sauvegarde restaurée.', 'success')
     } catch (err) {
@@ -181,7 +203,12 @@ export async function renderParametres(container) {
   })
 
   document.getElementById('reset-everything-btn').addEventListener('click', async () => {
-    if (!window.confirm('Ceci va supprimer TOUTES tes données (fiches, cas, matières, tentatives, captures). Continuer ?')) return
+    if (
+      !window.confirm(
+        'Ceci va supprimer TOUTES tes données (fiches, cas, QCM, matières, tentatives, captures, streak). Continuer ?'
+      )
+    )
+      return
     const saisie = window.prompt('Tape SUPPRIMER en majuscules pour confirmer définitivement.')
     if (saisie !== 'SUPPRIMER') {
       setStatus('reset-status', 'Annulé — le mot tapé ne correspond pas.', 'error')
@@ -190,10 +217,13 @@ export async function renderParametres(container) {
 
     try {
       await deleteAllTentatives()
+      await deleteAllTentativesQcm()
       await deleteAllCas()
+      await deleteAllQcm()
       await deleteAllFiches()
       await deleteAllMatieres()
       await deleteAllCaptures()
+      await deleteAllCheckins()
       setStatus('reset-status', 'Toutes les données ont été supprimées.', 'success')
     } catch (err) {
       setStatus('reset-status', 'Erreur : ' + err.message, 'error')

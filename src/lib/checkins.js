@@ -13,3 +13,15 @@ export async function getCheckins() {
   if (error) throw error
   return data.map((d) => d.jour)
 }
+
+export async function deleteAllCheckins() {
+  const { error } = await supabase.from('checkins').delete().not('jour', 'is', null)
+  if (error) throw error
+}
+
+export async function restaurerCheckins(joursArray) {
+  if (!joursArray || joursArray.length === 0) return
+  const lignes = joursArray.map((jour) => ({ jour }))
+  const { error } = await supabase.from('checkins').upsert(lignes, { onConflict: 'jour' })
+  if (error) throw error
+}

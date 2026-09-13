@@ -106,3 +106,9 @@ export async function updateFicheLiens(id, champs) {
   const { error } = await supabase.from('fiches').update(champs).eq('id', id)
   if (error) throw error
 }
+
+export async function getAllFichesRaw() {
+  const { data, error } = await supabase.from('fiches').select('*')
+  if (error) throw error
+  return data
+}

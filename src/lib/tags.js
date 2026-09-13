@@ -15,3 +15,10 @@ export async function supprimerTag(nom) {
   const { error } = await supabase.from('tags_reference').delete().eq('nom', nom)
   if (error) throw error
 }
+
+export async function restaurerTags(nomsArray) {
+  if (!nomsArray || nomsArray.length === 0) return
+  const lignes = nomsArray.map((nom) => ({ nom }))
+  const { error } = await supabase.from('tags_reference').upsert(lignes, { onConflict: 'nom' })
+  if (error) throw error
+}

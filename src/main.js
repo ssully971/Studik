@@ -320,7 +320,7 @@ function setupRaccourcisClavier() {
 }
 
 async function init() {
-  let currentUserId = null
+  let currentUserId = undefined
 
   function handleUser(user) {
     const uid = user?.id ?? null
