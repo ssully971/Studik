@@ -24,6 +24,16 @@ function setStatus(id, message, type) {
   el.className = `import-status ${type}`
 }
 
+const CLE_DERNIERE_SAUVEGARDE = 'studik_derniere_sauvegarde'
+
+function formatDerniereSauvegarde(iso) {
+  if (!iso) return "Aucune sauvegarde effectuée depuis cet appareil."
+  const jours = Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
+  if (jours === 0) return "Dernière sauvegarde : aujourd'hui."
+  if (jours === 1) return 'Dernière sauvegarde : il y a 1 jour.'
+  return `Dernière sauvegarde : il y a ${jours} jours.`
+}
+
 export async function renderParametres(container) {
   const user = await getCurrentUser()
   const pseudoActuel = user?.user_metadata?.pseudo || ''
@@ -62,6 +72,7 @@ export async function renderParametres(container) {
         <div class="settings-card">
           <h3 class="voice">Sauvegarde</h3>
           <p class="settings-desc">Exporte toutes tes données (fiches, cas, QCM, matières, tentatives, captures, streak, tags) dans un fichier, y compris le contenu archivé, ou restaure une sauvegarde précédente.</p>
+          <p class="settings-desc" id="derniere-sauvegarde-txt">${formatDerniereSauvegarde(localStorage.getItem(CLE_DERNIERE_SAUVEGARDE))}</p>
           <div class="import-actions">
             <button id="export-btn" class="btn" style="width: auto;">Exporter une sauvegarde</button>
             ${statusHTML('export-status')}
@@ -159,6 +170,11 @@ export async function renderParametres(container) {
       a.download = `studik-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`
       a.click()
       URL.revokeObjectURL(url)
+
+      localStorage.setItem(CLE_DERNIERE_SAUVEGARDE, new Date().toISOString())
+      document.getElementById('derniere-sauvegarde-txt').textContent = formatDerniereSauvegarde(
+        localStorage.getItem(CLE_DERNIERE_SAUVEGARDE)
+      )
 
       setStatus('export-status', 'Sauvegarde téléchargée.', 'success')
     } catch (err) {

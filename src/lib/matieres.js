@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { upsertPartiel } from './upsert.js'
 
 export async function getMatieres({ annee, semestre } = {}) {
   let query = supabase.from('matieres').select('*').eq('archive', false)
@@ -12,9 +13,7 @@ export async function getMatieres({ annee, semestre } = {}) {
 }
 
 export async function insertMatieres(matieresArray) {
-  const { data, error } = await supabase.from('matieres').upsert(matieresArray, { onConflict: 'id' }).select()
-  if (error) throw error
-  return data
+  return upsertPartiel('matieres', matieresArray)
 }
 
 export async function getAllMatiereIds() {

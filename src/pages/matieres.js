@@ -1,10 +1,20 @@
-import { getMatieres, updateMatiere, deleteMatiere } from '../lib/matieres.js'
+import { getMatieres, updateMatiere, deleteMatiere, insertMatieres, getAllMatiereIds } from '../lib/matieres.js'
 import { getFicheCountByMatiere } from '../lib/fiches.js'
 
 const TYPE_LABELS = {
   clinique: 'clinique',
   mecanisme: 'mécanisme',
   structure: 'structure',
+}
+
+function slugify(str) {
+  return str
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 export async function renderMatieres(container) {
@@ -25,11 +35,80 @@ export async function renderMatieres(container) {
         <span class="count">${matieres.length} matière${matieres.length !== 1 ? 's' : ''}</span>
       </div>
 
-      <p class="import-hint">Pour créer une nouvelle matière, passe par #import. Ici tu ajustes ou supprimes celles qui existent déjà.</p>
+      <div class="settings-card" style="margin-bottom: 24px;">
+        <h3 class="voice">Nouvelle matière</h3>
+        <p class="settings-desc">Pour un import en lot, passe plutôt par #import.</p>
+        <div class="matiere-edit-grid">
+          <label>
+            Nom
+            <input type="text" id="nouvelle-nom" placeholder="Sémiologie cardio" />
+          </label>
+          <label>
+            Type
+            <select id="nouvelle-type" class="periode-select">
+              <option value="clinique">Clinique</option>
+              <option value="mecanisme">Mécanisme</option>
+              <option value="structure">Structure</option>
+            </select>
+          </label>
+          <label>
+            Couleur
+            <input type="text" id="nouvelle-couleur" placeholder="#4EA189" />
+          </label>
+          <label>
+            Ordre
+            <input type="number" id="nouvelle-ordre" value="0" />
+          </label>
+          <label>
+            Année
+            <input type="text" id="nouvelle-annee" placeholder="P2" />
+          </label>
+          <label>
+            Semestre
+            <input type="text" id="nouvelle-semestre" placeholder="S1" />
+          </label>
+        </div>
+        <div class="import-actions">
+          <button id="creer-matiere-btn" class="btn primary" style="width: auto;">Créer la matière</button>
+          <span id="creation-status" class="import-status"></span>
+        </div>
+      </div>
 
       <div id="matieres-list" class="fiches-list"></div>
     </div>
   `
+
+  document.getElementById('creer-matiere-btn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('creation-status')
+    const nom = document.getElementById('nouvelle-nom').value.trim()
+    const type = document.getElementById('nouvelle-type').value
+    const couleur = document.getElementById('nouvelle-couleur').value.trim() || null
+    const ordre_affichage = parseInt(document.getElementById('nouvelle-ordre').value, 10) || 0
+    const annee = document.getElementById('nouvelle-annee').value.trim() || null
+    const semestre = document.getElementById('nouvelle-semestre').value.trim() || null
+
+    if (!nom) {
+      statusEl.textContent = 'Le nom est obligatoire.'
+      statusEl.className = 'import-status error'
+      return
+    }
+
+    const id = slugify(nom)
+
+    try {
+      const idsExistants = await getAllMatiereIds()
+      if (idsExistants.includes(id)) {
+        statusEl.textContent = `Une matière avec l'id "${id}" existe déjà.`
+        statusEl.className = 'import-status error'
+        return
+      }
+      await insertMatieres([{ id, nom, type, couleur, ordre_affichage, annee, semestre }])
+      renderMatieres(container)
+    } catch (err) {
+      statusEl.textContent = 'Erreur : ' + err.message
+      statusEl.className = 'import-status error'
+    }
+  })
 
   const listEl = document.getElementById('matieres-list')
 

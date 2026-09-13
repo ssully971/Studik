@@ -1,4 +1,4 @@
-import { getFiches } from '../lib/fiches.js'
+import { getFiches, texteRechercheFiche } from '../lib/fiches.js'
 import { getMatieres } from '../lib/matieres.js'
 import { getPeriodeActuelle } from '../lib/periode.js'
 import { exporterFichesPDF } from '../lib/pdf.js'
@@ -42,11 +42,7 @@ export async function renderReferentiel(container) {
     const filtered = allFiches.filter((f) => {
       const matchesType = !activeType || f.type === activeType
       const matchesMatiere = !activeMatiere || f.matiere === activeMatiere
-      const matchesSearch =
-        !searchTerm ||
-        f.titre.toLowerCase().includes(searchTerm) ||
-        f.tags.some((t) => t.toLowerCase().includes(searchTerm)) ||
-        (f.synonymes || []).some((s) => s.toLowerCase().includes(searchTerm))
+      const matchesSearch = !searchTerm || texteRechercheFiche(f).includes(searchTerm)
       return matchesType && matchesMatiere && matchesSearch
     })
     currentFiltered = filtered

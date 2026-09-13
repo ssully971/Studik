@@ -1,12 +1,14 @@
 import { supabase } from './supabase.js'
+import { upsertPartiel } from './upsert.js'
 
 // --- Cas cliniques ---
 
-export async function getCasAleatoire({ matiere, niveau } = {}) {
+export async function getCasAleatoire({ matiere, niveau, tags } = {}) {
   let query = supabase.from('cas_cliniques').select('*').neq('statut', 'archive')
 
   if (matiere) query = query.eq('matiere', matiere)
   if (niveau) query = query.eq('niveau', niveau)
+  if (tags && tags.length > 0) query = query.overlaps('tags', tags)
 
   const { data, error } = await query
   if (error) throw error
@@ -23,9 +25,7 @@ export async function getCasById(id) {
 }
 
 export async function insertCas(casArray) {
-  const { data, error } = await supabase.from('cas_cliniques').upsert(casArray, { onConflict: 'id' }).select()
-  if (error) throw error
-  return data
+  return upsertPartiel('cas_cliniques', casArray)
 }
 
 export async function getAllCasIds() {
@@ -42,6 +42,11 @@ export async function getAllCas() {
 
 export async function updateCasStatut(id, statut) {
   const { error } = await supabase.from('cas_cliniques').update({ statut }).eq('id', id)
+  if (error) throw error
+}
+
+export async function updateCasTags(id, tags) {
+  const { error } = await supabase.from('cas_cliniques').update({ tags }).eq('id', id)
   if (error) throw error
 }
 

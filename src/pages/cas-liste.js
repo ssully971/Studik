@@ -1,5 +1,7 @@
-import { getAllCas, deleteCas, updateCasStatut } from '../lib/cas.js'
+import { getAllCas, deleteCas, updateCasStatut, updateCasTags } from '../lib/cas.js'
 import { getMatieres } from '../lib/matieres.js'
+import { getTags } from '../lib/tags.js'
+import { renderTagPicker } from './tag-picker.js'
 
 const TYPE_LABELS = {
   clinique: 'clinique',
@@ -45,6 +47,13 @@ export async function renderCasListe(container) {
     </div>
   `
 
+  let tousLesTags = []
+  try {
+    tousLesTags = await getTags()
+  } catch {
+    tousLesTags = []
+  }
+
   let activeType = ''
   let activeMatiere = ''
   let activeNiveau = ''
@@ -81,6 +90,7 @@ export async function renderCasListe(container) {
               <span class="type-label">${TYPE_LABELS[c.type]} · niveau ${c.niveau}</span>
             </div>
             <div class="fiche-meta">${c.matiere}</div>
+            <div style="margin-top: 8px;" id="tags-picker-${c.id}"></div>
           </div>
           <div class="fiche-actions" style="gap: 8px;">
             <select class="periode-select" data-statut="${c.id}">
@@ -120,6 +130,23 @@ export async function renderCasListe(container) {
         } catch (err) {
           alert('Erreur : ' + err.message)
         }
+      })
+    })
+
+    list.forEach((c) => {
+      const pickerEl = document.getElementById(`tags-picker-${c.id}`)
+      if (!pickerEl) return
+      renderTagPicker(pickerEl, {
+        selected: c.tags || [],
+        tousLesTags,
+        onChange: async (nouveauxTags) => {
+          try {
+            await updateCasTags(c.id, nouveauxTags)
+            c.tags = nouveauxTags
+          } catch (err) {
+            alert('Erreur : ' + err.message)
+          }
+        },
       })
     })
   }

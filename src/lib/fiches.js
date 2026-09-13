@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { getMatieres } from './matieres.js'
+import { upsertPartiel } from './upsert.js'
 
 export async function getFiches({ matiere, type, annee, semestre } = {}) {
   let query = supabase.from('fiches').select('*').neq('statut', 'archive')
@@ -26,9 +27,7 @@ export async function getFicheById(id) {
 }
 
 export async function insertFiches(fichesArray) {
-  const { data, error } = await supabase.from('fiches').upsert(fichesArray, { onConflict: 'id' }).select()
-  if (error) throw error
-  return data
+  return upsertPartiel('fiches', fichesArray)
 }
 
 export async function updateNotesPerso(id, notesPerso) {
@@ -105,6 +104,18 @@ export async function enregistrerRevision(id, resultat) {
 export async function updateFicheLiens(id, champs) {
   const { error } = await supabase.from('fiches').update(champs).eq('id', id)
   if (error) throw error
+}
+
+export async function updateFiche(id, champs) {
+  const { error } = await supabase.from('fiches').update(champs).eq('id', id)
+  if (error) throw error
+}
+
+export function texteRechercheFiche(fiche) {
+  const valeursContenu = Object.values(fiche.contenu_structure || {}).flat()
+  return [fiche.titre, ...(fiche.tags || []), ...(fiche.synonymes || []), ...(fiche.pathologies_associees || []), ...valeursContenu]
+    .join(' ')
+    .toLowerCase()
 }
 
 export async function getAllFichesRaw() {

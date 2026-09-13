@@ -5,11 +5,13 @@ import {
   updateFicheTags,
   updateStatut,
   updateFicheLiens,
+  updateFiche,
   deleteFiche,
   enregistrerRevision,
 } from '../lib/fiches.js'
 import { exporterFichePDF } from '../lib/pdf.js'
 import { richText } from '../lib/richtext.js'
+import { renderTagPicker } from './tag-picker.js'
 
 export function renderChamp(label, value) {
   if (!value) return ''
@@ -124,6 +126,7 @@ export async function renderFicheDetail(container, id) {
         <div class="fiche-sidebar">
           <div class="sidebar-tabs">
             <button class="sidebar-tab active" data-tab="liens">Liens</button>
+            <button class="sidebar-tab" data-tab="contenu">Contenu</button>
             <button class="sidebar-tab" data-tab="notes">Notes perso</button>
             <button class="sidebar-tab" data-tab="gestion">Gestion</button>
           </div>
@@ -132,6 +135,34 @@ export async function renderFicheDetail(container, id) {
             <h3 class="voice">Liens vers d'autres fiches</h3>
             ${renderLienSection('pre_requis', 'Prérequis', preRequis, titresParId)}
             ${renderLienSection('consequences', 'Conséquences', consequences, titresParId)}
+          </div>
+
+          <div class="sidebar-panel settings-card hidden" data-panel="contenu">
+            <h3 class="voice">Contenu</h3>
+            <div style="margin-bottom: 14px;">
+              <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Synonymes (séparés par des virgules)</label>
+              <input type="text" id="synonymes-input" class="search-input" style="margin-bottom: 0;" value="${(fiche.synonymes || []).join(', ')}" />
+            </div>
+            ${Object.entries(contenu)
+              .map(
+                ([key, value]) => `
+              <div style="margin-bottom: 14px;">
+                <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">
+                  ${key.replace(/_/g, ' ')}${Array.isArray(value) ? ' (une ligne = un élément)' : ''}
+                </label>
+                <textarea class="notes-textarea" data-champ-contenu="${key}" style="min-height: ${Array.isArray(value) ? '110px' : '70px'};">${
+                  Array.isArray(value) ? value.join('\n') : value || ''
+                }</textarea>
+              </div>
+            `
+              )
+              .join('')}
+            <div style="margin-bottom: 14px;">
+              <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Pathologies associées (une ligne = un élément)</label>
+              <textarea id="pathologies-input" class="notes-textarea" style="min-height: 110px;">${(fiche.pathologies_associees || []).join('\n')}</textarea>
+            </div>
+            <button id="save-contenu-btn" class="btn primary" style="width: auto;">Enregistrer le contenu</button>
+            <span id="contenu-status" class="import-status"></span>
           </div>
 
           <div class="sidebar-panel settings-card hidden" data-panel="notes">
@@ -155,8 +186,8 @@ export async function renderFicheDetail(container, id) {
             </div>
 
             <div style="margin-bottom: 14px;">
-              <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Tags (séparés par des virgules)</label>
-              <input type="text" id="tags-input" class="search-input" style="margin-bottom: 0;" value="${fiche.tags.join(', ')}" />
+              <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Tags</label>
+              <div id="tags-picker"></div>
             </div>
 
             <div class="import-actions">
@@ -272,6 +303,15 @@ export async function renderFicheDetail(container, id) {
   setupRechercheLien('pre_requis')
   setupRechercheLien('consequences')
 
+  // --- Tags ---
+  let tagsActuels = [...fiche.tags]
+  renderTagPicker(document.getElementById('tags-picker'), {
+    selected: tagsActuels,
+    onChange: (nouveauxTags) => {
+      tagsActuels = nouveauxTags
+    },
+  })
+
   // --- Révision rapide ---
   async function marquerRevision(resultat) {
     try {
@@ -294,11 +334,34 @@ export async function renderFicheDetail(container, id) {
     exporterFichePDF(fiche)
   })
 
-  document.getElementById('save-notes').addEventListener('click', async () => {
+  async function sauvegarderNotes(messageSucces) {
     const statusEl = document.getElementById('notes-status')
     const value = document.getElementById('notes-perso').value
     try {
       await updateNotesPerso(fiche.id, value)
+      statusEl.textContent = messageSucces
+      statusEl.className = 'import-status success'
+    } catch (err) {
+      statusEl.textContent = 'Erreur : ' + err.message
+      statusEl.className = 'import-status error'
+    }
+  }
+
+  document.getElementById('save-notes').addEventListener('click', () => sauvegarderNotes('Enregistré.'))
+
+  let notesDebounceTimer = null
+  document.getElementById('notes-perso').addEventListener('input', () => {
+    clearTimeout(notesDebounceTimer)
+    notesDebounceTimer = setTimeout(() => sauvegarderNotes('Enregistré automatiquement.'), 1800)
+  })
+
+  document.getElementById('save-gestion-btn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('gestion-status')
+    const statut = document.getElementById('statut-select').value
+
+    try {
+      await updateStatut(fiche.id, statut)
+      await updateFicheTags(fiche.id, tagsActuels)
       statusEl.textContent = 'Enregistré.'
       statusEl.className = 'import-status success'
     } catch (err) {
@@ -307,20 +370,36 @@ export async function renderFicheDetail(container, id) {
     }
   })
 
-  document.getElementById('save-gestion-btn').addEventListener('click', async () => {
-    const statusEl = document.getElementById('gestion-status')
-    const statut = document.getElementById('statut-select').value
-    const tags = document
-      .getElementById('tags-input')
+  document.getElementById('save-contenu-btn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('contenu-status')
+    const synonymes = document
+      .getElementById('synonymes-input')
       .value.split(',')
-      .map((t) => t.trim())
+      .map((s) => s.trim())
+      .filter(Boolean)
+
+    const nouveauContenu = {}
+    document.querySelectorAll('[data-champ-contenu]').forEach((textarea) => {
+      const key = textarea.dataset.champContenu
+      if (Array.isArray(contenu[key])) {
+        nouveauContenu[key] = textarea.value
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(Boolean)
+      } else {
+        nouveauContenu[key] = textarea.value
+      }
+    })
+
+    const pathologiesAssociees = document
+      .getElementById('pathologies-input')
+      .value.split('\n')
+      .map((l) => l.trim())
       .filter(Boolean)
 
     try {
-      await updateStatut(fiche.id, statut)
-      await updateFicheTags(fiche.id, tags)
-      statusEl.textContent = 'Enregistré.'
-      statusEl.className = 'import-status success'
+      await updateFiche(fiche.id, { synonymes, contenu_structure: nouveauContenu, pathologies_associees: pathologiesAssociees })
+      renderFicheDetail(container, fiche.id)
     } catch (err) {
       statusEl.textContent = 'Erreur : ' + err.message
       statusEl.className = 'import-status error'

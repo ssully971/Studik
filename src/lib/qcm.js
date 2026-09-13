@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { upsertPartiel } from './upsert.js'
 
 export async function getAllQcm({ matiere, statut } = {}) {
   let query = supabase.from('qcm').select('*')
@@ -22,13 +23,16 @@ export async function getQcmById(id) {
 }
 
 export async function insertQcm(qcmArray) {
-  const { data, error } = await supabase.from('qcm').upsert(qcmArray, { onConflict: 'id' }).select()
-  if (error) throw error
-  return data
+  return upsertPartiel('qcm', qcmArray)
 }
 
 export async function updateQcmStatut(id, statut) {
   const { error } = await supabase.from('qcm').update({ statut }).eq('id', id)
+  if (error) throw error
+}
+
+export async function updateQcmTags(id, tags) {
+  const { error } = await supabase.from('qcm').update({ tags }).eq('id', id)
   if (error) throw error
 }
 

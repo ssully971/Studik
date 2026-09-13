@@ -2,6 +2,7 @@ import { insertFiches, getAllFicheIds } from '../lib/fiches.js'
 import { insertCas, getAllCasIds } from '../lib/cas.js'
 import { insertMatieres, getAllMatiereIds, getAllMatiereNoms } from '../lib/matieres.js'
 import { insertQcm, getAllQcmIds } from '../lib/qcm.js'
+import { getTags } from '../lib/tags.js'
 
 function findDuplicateIds(items) {
   const seen = new Set()
@@ -18,6 +19,15 @@ const REQUIRED_FIELDS = {
   cas: ['id', 'matiere', 'type', 'niveau', 'question'],
   matieres: ['id', 'nom', 'type'],
   qcm: ['id', 'titre', 'questions'],
+}
+
+function detecterTypeImport(item) {
+  if (!item || typeof item !== 'object') return null
+  if (Array.isArray(item.questions)) return 'qcm'
+  if (item.niveau !== undefined && item.question !== undefined) return 'cas'
+  if (item.nom !== undefined && item.type !== undefined && item.titre === undefined && item.matiere === undefined) return 'matieres'
+  if (item.matiere !== undefined && item.titre !== undefined) return 'fiches'
+  return null
 }
 
 const TARGET_LABELS = {
@@ -67,6 +77,28 @@ export function renderImport(container) {
     document.getElementById('import-result').innerHTML = ''
   })
 
+  document.getElementById('json-input').addEventListener('input', () => {
+    const raw = document.getElementById('json-input').value.trim()
+    if (!raw) return
+
+    let parsed
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      return
+    }
+
+    const items = Array.isArray(parsed) ? parsed : [parsed]
+    if (items.length === 0) return
+
+    const detected = detecterTypeImport(items[0])
+    if (!detected || detected === target) return
+
+    target = detected
+    document.querySelectorAll('#target-filters .filter-btn').forEach((b) => b.classList.toggle('active', b.dataset.target === detected))
+    document.getElementById('import-result').innerHTML = ''
+  })
+
   document.getElementById('import-btn').addEventListener('click', async () => {
     const resultEl = document.getElementById('import-result')
     resultEl.innerHTML = ''
@@ -92,21 +124,10 @@ export function renderImport(container) {
       return
     }
 
-    const requiredFields = REQUIRED_FIELDS[target]
-    const incompleteIndex = items.findIndex((item) =>
-      requiredFields.some((f) => item[f] === undefined || item[f] === null || item[f] === '')
-    )
-    if (incompleteIndex !== -1) {
-      resultEl.innerHTML = `<p class="import-status error">Élément n°${incompleteIndex + 1} incomplet — champs obligatoires : ${requiredFields.join(', ')}.</p>`
+    const idManquantIndex = items.findIndex((item) => item.id === undefined || item.id === null || item.id === '')
+    if (idManquantIndex !== -1) {
+      resultEl.innerHTML = `<p class="import-status error">Élément n°${idManquantIndex + 1} incomplet — le champ "id" est obligatoire.</p>`
       return
-    }
-
-    if (target === 'qcm') {
-      const sansQuestions = items.findIndex((q) => !Array.isArray(q.questions) || q.questions.length === 0)
-      if (sansQuestions !== -1) {
-        resultEl.innerHTML = `<p class="import-status error">QCM n°${sansQuestions + 1} : le tableau "questions" doit contenir au moins une question.</p>`
-        return
-      }
     }
 
     const doublons = findDuplicateIds(items)
@@ -130,7 +151,45 @@ export function renderImport(container) {
     const nouveaux = items.filter((i) => !existingSet.has(i.id)).length
     const misesAJour = items.length - nouveaux
 
+    // Un id déjà existant est une mise à jour partielle (upsert) : seuls les champs présents
+    // sont écrasés, donc seuls les NOUVEAUX éléments doivent respecter tous les champs obligatoires.
+    const requiredFields = REQUIRED_FIELDS[target]
+    const incompleteIndex = items.findIndex(
+      (item) => !existingSet.has(item.id) && requiredFields.some((f) => item[f] === undefined || item[f] === null || item[f] === '')
+    )
+    if (incompleteIndex !== -1) {
+      resultEl.innerHTML = `<p class="import-status error">Élément n°${incompleteIndex + 1} incomplet — champs obligatoires pour un nouvel élément : ${requiredFields.join(', ')}.</p>`
+      return
+    }
+
+    if (target === 'qcm') {
+      const sansQuestions = items.findIndex(
+        (q) => !existingSet.has(q.id) && (!Array.isArray(q.questions) || q.questions.length === 0)
+      )
+      if (sansQuestions !== -1) {
+        resultEl.innerHTML = `<p class="import-status error">QCM n°${sansQuestions + 1} : le tableau "questions" doit contenir au moins une question.</p>`
+        return
+      }
+    }
+
     const avertissements = []
+
+    let tagsConnus
+    try {
+      tagsConnus = new Set(await getTags())
+    } catch {
+      tagsConnus = new Set()
+    }
+    if (target === 'fiches' || target === 'cas' || target === 'qcm') {
+      items.forEach((item) => {
+        ;(item.tags || []).forEach((t) => {
+          if (!tagsConnus.has(t)) {
+            avertissements.push(`Tag "${t}" inconnu (${target === 'fiches' ? 'fiche' : target === 'cas' ? 'cas' : 'QCM'} "${item.id}") — crée-le via #prompts.`)
+          }
+        })
+      })
+    }
+
     if (target === 'fiches') {
       const idsConnus = new Set([...existingIds, ...items.map((i) => i.id)])
       items.forEach((f) => {

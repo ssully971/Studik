@@ -1,7 +1,7 @@
 import './styles/main.css'
 import { login, logout, getCurrentUser, onAuthChange } from './lib/auth.js'
 import { getPeriodeActuelle, setPeriodeActuelle, getPeriodesDisponibles } from './lib/periode.js'
-import { getFiches } from './lib/fiches.js'
+import { getFiches, texteRechercheFiche } from './lib/fiches.js'
 import { getMatieres } from './lib/matieres.js'
 import { renderAccueil } from './pages/accueil.js'
 import { renderReferentiel } from './pages/referentiel.js'
@@ -182,15 +182,7 @@ function setupGlobalSearch() {
     }
 
     const { fiches, periodeParMatiere } = await ensureSearchCache()
-    const matched = fiches
-      .filter(
-        (f) =>
-          f.titre.toLowerCase().includes(term) ||
-          f.matiere.toLowerCase().includes(term) ||
-          f.tags.some((t) => t.toLowerCase().includes(term)) ||
-          (f.synonymes || []).some((s) => s.toLowerCase().includes(term))
-      )
-      .slice(0, 8)
+    const matched = fiches.filter((f) => texteRechercheFiche(f).includes(term)).slice(0, 8)
 
     results.innerHTML = matched.length
       ? matched
