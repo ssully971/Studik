@@ -9,6 +9,7 @@ import {
   enregistrerRevision,
 } from '../lib/fiches.js'
 import { exporterFichePDF } from '../lib/pdf.js'
+import { richText } from '../lib/richtext.js'
 
 function renderChamp(label, value) {
   if (!value) return ''
@@ -18,7 +19,7 @@ function renderChamp(label, value) {
       <div class="detail-section">
         <h3 class="voice">${label}</h3>
         <ul class="detail-list">
-          ${value.map((v) => `<li>${v}</li>`).join('')}
+          ${value.map((v) => `<li>${richText(v)}</li>`).join('')}
         </ul>
       </div>
     `
@@ -26,7 +27,7 @@ function renderChamp(label, value) {
   return `
     <div class="detail-section">
       <h3 class="voice">${label}</h3>
-      <p>${value}</p>
+      <p>${richText(value)}</p>
     </div>
   `
 }
@@ -95,69 +96,91 @@ export async function renderFicheDetail(container, id) {
         ${fiche.tags.length ? `<div class="tags">${fiche.tags.map((t) => `<span class="tag">${t}</span>`).join('')}</div>` : ''}
       </div>
 
-      <div class="detail-section settings-card" id="revision-rapide">
-        <h3 class="voice">Révision rapide</h3>
-        <p class="settings-desc" id="derniere-revision-txt">
-          ${formatRelatif(fiche.date_derniere_revision)}${fiche.dernier_resultat ? ' · ' + (fiche.dernier_resultat === 'bien' ? "c'était bien" : 'pas top') : ''}
-        </p>
-        <div class="import-actions">
-          <button id="revu-bien-btn" class="btn primary" style="width: auto;">C'était bien</button>
-          <button id="revu-pas-bien-btn" class="btn" style="width: auto; color: #C46A5C;">Pas top, à revoir</button>
-        </div>
-      </div>
+      <div class="fiche-layout">
+        <div class="fiche-main">
+          <div class="detail-section settings-card" id="revision-rapide">
+            <h3 class="voice">Révision rapide</h3>
+            <p class="settings-desc" id="derniere-revision-txt">
+              ${formatRelatif(fiche.date_derniere_revision)}${fiche.dernier_resultat ? ' · ' + (fiche.dernier_resultat === 'bien' ? "c'était bien" : 'pas top') : ''}
+            </p>
+            <div class="import-actions">
+              <button id="revu-bien-btn" class="btn primary" style="width: auto;">C'était bien</button>
+              <button id="revu-pas-bien-btn" class="btn" style="width: auto; color: #C46A5C;">Pas top, à revoir</button>
+            </div>
+          </div>
 
-      ${Object.entries(contenu)
-        .map(([key, value]) => renderChamp(key.replace(/_/g, ' '), value))
-        .join('')}
+          ${Object.entries(contenu)
+            .map(([key, value]) => renderChamp(key.replace(/_/g, ' '), value))
+            .join('')}
 
-      ${renderChamp('Pathologies associées', fiche.pathologies_associees)}
+          ${renderChamp('Pathologies associées', fiche.pathologies_associees)}
 
-      <div class="detail-section settings-card">
-        <h3 class="voice">Liens vers d'autres fiches</h3>
-        <div id="liens-container">
-          ${renderLienSection('pre_requis', 'Prérequis', preRequis, titresParId)}
-          ${renderLienSection('consequences', 'Conséquences', consequences, titresParId)}
-        </div>
-      </div>
-
-      <div class="detail-section">
-        <h3 class="voice">Notes perso</h3>
-        <textarea id="notes-perso" class="notes-textarea" placeholder="Tes commentaires libres sur cette fiche…">${fiche.notes_perso || ''}</textarea>
-        <button id="save-notes" class="btn" style="width: auto;">Enregistrer les notes</button>
-        <span id="notes-status" class="import-status"></span>
-      </div>
-
-      <div class="detail-section settings-card">
-        <h3 class="voice">Gestion de la fiche</h3>
-
-        <div style="margin-bottom: 14px;">
-          <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Statut</label>
-          <select id="statut-select" class="periode-select">
-            <option value="brouillon" ${fiche.statut === 'brouillon' ? 'selected' : ''}>Brouillon</option>
-            <option value="valide" ${fiche.statut === 'valide' ? 'selected' : ''}>Validé</option>
-            <option value="a_revoir" ${fiche.statut === 'a_revoir' ? 'selected' : ''}>À revoir</option>
-            <option value="archive" ${fiche.statut === 'archive' ? 'selected' : ''}>Archivé</option>
-          </select>
+          <div class="actions-bar" style="margin-top: 20px;">
+            <a href="#entrainement" class="btn primary" style="width: auto;">Lancer un cas</a>
+            <button id="export-pdf-btn" class="btn" style="width: auto;">Exporter en PDF</button>
+          </div>
         </div>
 
-        <div style="margin-bottom: 14px;">
-          <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Tags (séparés par des virgules)</label>
-          <input type="text" id="tags-input" class="search-input" style="margin-bottom: 0;" value="${fiche.tags.join(', ')}" />
-        </div>
+        <div class="fiche-sidebar">
+          <div class="sidebar-tabs">
+            <button class="sidebar-tab active" data-tab="liens">Liens</button>
+            <button class="sidebar-tab" data-tab="notes">Notes perso</button>
+            <button class="sidebar-tab" data-tab="gestion">Gestion</button>
+          </div>
 
-        <div class="import-actions">
-          <button id="save-gestion-btn" class="btn primary" style="width: auto;">Enregistrer</button>
-          <button id="delete-fiche-btn" class="btn" style="width: auto; color: #C46A5C;">Supprimer la fiche</button>
-          <span id="gestion-status" class="import-status"></span>
-        </div>
-      </div>
+          <div class="sidebar-panel settings-card" data-panel="liens">
+            <h3 class="voice">Liens vers d'autres fiches</h3>
+            ${renderLienSection('pre_requis', 'Prérequis', preRequis, titresParId)}
+            ${renderLienSection('consequences', 'Conséquences', consequences, titresParId)}
+          </div>
 
-      <div class="actions-bar" style="margin-top: 20px;">
-        <a href="#entrainement" class="btn primary" style="width: auto;">Lancer un cas</a>
-        <button id="export-pdf-btn" class="btn" style="width: auto;">Exporter en PDF</button>
+          <div class="sidebar-panel settings-card hidden" data-panel="notes">
+            <h3 class="voice">Notes perso</h3>
+            <textarea id="notes-perso" class="notes-textarea" placeholder="Tes commentaires libres sur cette fiche…">${fiche.notes_perso || ''}</textarea>
+            <button id="save-notes" class="btn" style="width: auto;">Enregistrer les notes</button>
+            <span id="notes-status" class="import-status"></span>
+          </div>
+
+          <div class="sidebar-panel settings-card hidden" data-panel="gestion">
+            <h3 class="voice">Gestion de la fiche</h3>
+
+            <div style="margin-bottom: 14px;">
+              <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Statut</label>
+              <select id="statut-select" class="periode-select">
+                <option value="brouillon" ${fiche.statut === 'brouillon' ? 'selected' : ''}>Brouillon</option>
+                <option value="valide" ${fiche.statut === 'valide' ? 'selected' : ''}>Validé</option>
+                <option value="a_revoir" ${fiche.statut === 'a_revoir' ? 'selected' : ''}>À revoir</option>
+                <option value="archive" ${fiche.statut === 'archive' ? 'selected' : ''}>Archivé</option>
+              </select>
+            </div>
+
+            <div style="margin-bottom: 14px;">
+              <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Tags (séparés par des virgules)</label>
+              <input type="text" id="tags-input" class="search-input" style="margin-bottom: 0;" value="${fiche.tags.join(', ')}" />
+            </div>
+
+            <div class="import-actions">
+              <button id="save-gestion-btn" class="btn primary" style="width: auto;">Enregistrer</button>
+              <button id="delete-fiche-btn" class="btn" style="width: auto; color: #C46A5C;">Supprimer la fiche</button>
+              <span id="gestion-status" class="import-status"></span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `
+
+  // --- Onglets de la barre latérale ---
+  document.querySelectorAll('.sidebar-tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.sidebar-tab').forEach((t) => t.classList.remove('active'))
+      tab.classList.add('active')
+      const cible = tab.dataset.tab
+      document.querySelectorAll('.sidebar-panel').forEach((panel) => {
+        panel.classList.toggle('hidden', panel.dataset.panel !== cible)
+      })
+    })
+  })
 
   // --- Liens ---
   async function sauvegarderLiens() {

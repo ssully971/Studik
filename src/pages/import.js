@@ -1,6 +1,7 @@
 import { insertFiches, getAllFicheIds } from '../lib/fiches.js'
 import { insertCas, getAllCasIds } from '../lib/cas.js'
 import { insertMatieres, getAllMatiereIds, getAllMatiereNoms } from '../lib/matieres.js'
+import { insertQcm, getAllQcmIds } from '../lib/qcm.js'
 
 function findDuplicateIds(items) {
   const seen = new Set()
@@ -16,6 +17,14 @@ const REQUIRED_FIELDS = {
   fiches: ['id', 'matiere', 'type', 'titre'],
   cas: ['id', 'matiere', 'type', 'niveau', 'question'],
   matieres: ['id', 'nom', 'type'],
+  qcm: ['id', 'titre', 'questions'],
+}
+
+const TARGET_LABELS = {
+  fiches: { singulier: 'fiche', pluriel: 'fiches', ajoutees: 'ajoutées' },
+  cas: { singulier: 'cas', pluriel: 'cas', ajoutees: 'ajoutés' },
+  matieres: { singulier: 'matière', pluriel: 'matières', ajoutees: 'ajoutées' },
+  qcm: { singulier: 'QCM', pluriel: 'QCM', ajoutees: 'ajoutés' },
 }
 
 export function renderImport(container) {
@@ -28,6 +37,7 @@ export function renderImport(container) {
       <div class="filters" id="target-filters">
         <button class="filter-btn active" data-target="fiches">Fiches</button>
         <button class="filter-btn" data-target="cas">Cas cliniques</button>
+        <button class="filter-btn" data-target="qcm">QCM</button>
         <button class="filter-btn" data-target="matieres">Matières</button>
       </div>
 
@@ -83,10 +93,20 @@ export function renderImport(container) {
     }
 
     const requiredFields = REQUIRED_FIELDS[target]
-    const incompleteIndex = items.findIndex((item) => requiredFields.some((f) => item[f] === undefined || item[f] === null || item[f] === ''))
+    const incompleteIndex = items.findIndex((item) =>
+      requiredFields.some((f) => item[f] === undefined || item[f] === null || item[f] === '')
+    )
     if (incompleteIndex !== -1) {
       resultEl.innerHTML = `<p class="import-status error">Élément n°${incompleteIndex + 1} incomplet — champs obligatoires : ${requiredFields.join(', ')}.</p>`
       return
+    }
+
+    if (target === 'qcm') {
+      const sansQuestions = items.findIndex((q) => !Array.isArray(q.questions) || q.questions.length === 0)
+      if (sansQuestions !== -1) {
+        resultEl.innerHTML = `<p class="import-status error">QCM n°${sansQuestions + 1} : le tableau "questions" doit contenir au moins une question.</p>`
+        return
+      }
     }
 
     const doublons = findDuplicateIds(items)
@@ -99,6 +119,7 @@ export function renderImport(container) {
     try {
       if (target === 'fiches') existingIds = await getAllFicheIds()
       else if (target === 'cas') existingIds = await getAllCasIds()
+      else if (target === 'qcm') existingIds = await getAllQcmIds()
       else existingIds = await getAllMatiereIds()
     } catch (err) {
       resultEl.innerHTML = `<p class="import-status error">Erreur lors de la vérification des ids existants : ${err.message}</p>`
@@ -145,19 +166,42 @@ export function renderImport(container) {
           }
         })
       })
+    } else if (target === 'qcm') {
+      let ficheIds, matiereNoms
+      try {
+        ficheIds = new Set(await getAllFicheIds())
+      } catch {
+        ficheIds = new Set()
+      }
+      try {
+        matiereNoms = new Set(await getAllMatiereNoms())
+      } catch {
+        matiereNoms = new Set()
+      }
+      items.forEach((q) => {
+        ;(q.fiches_liees || []).forEach((refId) => {
+          if (!ficheIds.has(refId)) {
+            avertissements.push(`Fiche liée "${refId}" non résolue (dans le QCM "${q.id}") — la fiche n'existe pas encore.`)
+          }
+        })
+        ;(q.matieres || []).forEach((m) => {
+          if (!matiereNoms.has(m)) {
+            avertissements.push(`Matière "${m}" inconnue (QCM "${q.id}") — crée-la via l'import de matières.`)
+          }
+        })
+      })
     }
 
     try {
       let inserted
       if (target === 'fiches') inserted = await insertFiches(items)
       else if (target === 'cas') inserted = await insertCas(items)
+      else if (target === 'qcm') inserted = await insertQcm(items)
       else inserted = await insertMatieres(items)
 
-      const labelsPluriels = { fiches: 'fiches', cas: 'cas', matieres: 'matières' }
-      const labelSingulier = { fiches: 'fiche', cas: 'cas', matieres: 'matière' }
-      const motAjoutees = target === 'matieres' ? 'ajoutées' : 'ajoutés'
-      const nomsAjoutes = nouveaux === 1 ? labelSingulier[target] : labelsPluriels[target]
-      let html = `<p class="import-status success">${nouveaux} ${nomsAjoutes} ${motAjoutees}, ${misesAJour} mis à jour (${inserted.length} au total).</p>`
+      const labels = TARGET_LABELS[target]
+      const nomsAjoutes = nouveaux === 1 ? labels.singulier : labels.pluriel
+      let html = `<p class="import-status success">${nouveaux} ${nomsAjoutes} ${labels.ajoutees}, ${misesAJour} mis à jour (${inserted.length} au total).</p>`
 
       if (avertissements.length > 0) {
         html += `<div class="import-warnings"><p style="margin-bottom: 6px; font-size: 13px; color: var(--mecanisme);">${avertissements.length} avertissement${avertissements.length !== 1 ? 's' : ''} (import non bloqué) :</p><ul class="detail-list">${avertissements.map((a) => `<li>${a}</li>`).join('')}</ul></div>`

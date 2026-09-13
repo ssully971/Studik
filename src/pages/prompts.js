@@ -3,7 +3,9 @@ import promptClinique from '../data/prompts/prompt-fiche-clinique.md?raw'
 import promptMecanisme from '../data/prompts/prompt-fiche-mecanisme.md?raw'
 import promptStructure from '../data/prompts/prompt-fiche-structure.md?raw'
 import promptCas from '../data/prompts/prompt-cas.md?raw'
+import promptQcm from '../data/prompts/prompt-qcm.md?raw'
 import readme from '../data/prompts/README-prompts.md?raw'
+import { getTags, ajouterTag, supprimerTag } from '../lib/tags.js'
 
 const PROMPTS = [
   { id: 'matieres', titre: 'Matières', contenu: promptMatieres },
@@ -11,6 +13,7 @@ const PROMPTS = [
   { id: 'fiche-mecanisme', titre: 'Fiche — Mécanisme', contenu: promptMecanisme },
   { id: 'fiche-structure', titre: 'Fiche — Structure', contenu: promptStructure },
   { id: 'cas', titre: "Cas d'entraînement", contenu: promptCas },
+  { id: 'qcm', titre: 'QCM', contenu: promptQcm },
 ]
 
 function escapeHtml(str) {
@@ -19,11 +22,23 @@ function escapeHtml(str) {
   return div.innerHTML
 }
 
-export function renderPrompts(container) {
+export async function renderPrompts(container) {
   container.innerHTML = `
     <div class="wrap">
       <div class="section-head">
         <h2 class="voice">Prompts d'import</h2>
+      </div>
+
+      <div class="settings-card" style="margin-bottom: 24px;">
+        <h3 class="voice">Tags de référence</h3>
+        <p class="settings-desc">Ta liste fermée de tags, à copier dans le champ "Tags autorisés" des prompts.</p>
+        <div id="tags-chips" class="tags" style="margin-bottom: 12px;"></div>
+        <div class="import-actions">
+          <input type="text" id="nouveau-tag-input" class="search-input" placeholder="Nouveau tag…" style="max-width: 200px; margin-bottom: 0;" />
+          <button id="ajouter-tag-btn" class="btn" style="width: auto;">Ajouter</button>
+          <button id="copier-tags-btn" class="btn primary" style="width: auto;">Copier la liste</button>
+          <span id="tags-status" class="import-status"></span>
+        </div>
       </div>
 
       <div class="settings-card" style="margin-bottom: 24px;">
@@ -93,5 +108,72 @@ export function renderPrompts(container) {
   document.getElementById('modal-close').addEventListener('click', () => overlay.classList.add('hidden'))
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) overlay.classList.add('hidden')
+  })
+
+  // --- Tags de référence ---
+  let tags = []
+  try {
+    tags = await getTags()
+  } catch (err) {
+    document.getElementById('tags-chips').innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+  }
+
+  function renderTags() {
+    const chipsEl = document.getElementById('tags-chips')
+    chipsEl.innerHTML = tags.length
+      ? tags.map((t) => `<span class="tag" data-tag="${t}" style="cursor: pointer;">${t} ×</span>`).join('')
+      : `<p class="empty-note" style="padding: 0;">Aucun tag pour l'instant.</p>`
+
+    chipsEl.querySelectorAll('[data-tag]').forEach((chip) => {
+      chip.addEventListener('click', async () => {
+        const nom = chip.dataset.tag
+        try {
+          await supprimerTag(nom)
+          tags = tags.filter((t) => t !== nom)
+          renderTags()
+        } catch (err) {
+          alert('Erreur : ' + err.message)
+        }
+      })
+    })
+  }
+
+  renderTags()
+
+  document.getElementById('ajouter-tag-btn').addEventListener('click', async () => {
+    const input = document.getElementById('nouveau-tag-input')
+    const statusEl = document.getElementById('tags-status')
+    const nom = input.value.trim()
+
+    if (!nom) return
+    if (tags.includes(nom)) {
+      statusEl.textContent = 'Ce tag existe déjà.'
+      statusEl.className = 'import-status error'
+      return
+    }
+
+    try {
+      await ajouterTag(nom)
+      tags.push(nom)
+      tags.sort()
+      renderTags()
+      input.value = ''
+      statusEl.textContent = ''
+    } catch (err) {
+      statusEl.textContent = 'Erreur : ' + err.message
+      statusEl.className = 'import-status error'
+    }
+  })
+
+  document.getElementById('copier-tags-btn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('tags-status')
+    try {
+      await navigator.clipboard.writeText(tags.join(', '))
+      statusEl.textContent = 'Copié !'
+      statusEl.className = 'import-status success'
+    } catch (err) {
+      statusEl.textContent = 'Erreur : ' + err.message
+      statusEl.className = 'import-status error'
+    }
   })
 }

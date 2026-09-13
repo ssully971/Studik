@@ -18,6 +18,13 @@ RÈGLES DE FOND
 - Laisse les champs "pre_requis" et "consequences" vides (`[]`) — ils seront remplis manuellement plus tard.
 - Ne remplis PAS "date_creation", "date_maj", "date_derniere_revision", "dernier_resultat" — ces champs sont gérés automatiquement par le site.
 
+MISE EN FORME (facultative mais recommandée)
+Le site affiche une mise en forme simple à partir de ces symboles dans les champs texte :
+- `**texte**` -> gras (pour les termes clés)
+- `==texte==` -> surligné (pour un point à retenir)
+- `!!texte!!` -> couleur d'alerte (pour un point important, un piège, un danger)
+Utilise-les avec parcimonie, uniquement quand ça aide vraiment à repérer l'essentiel.
+
 IDENTIFIANT
 Construis "id" selon ce format : `prefixe-matiere_sous-categorie_nom-court`
 - minuscules uniquement, sans accents

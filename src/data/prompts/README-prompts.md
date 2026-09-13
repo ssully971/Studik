@@ -6,6 +6,7 @@
 - `prompt-fiche-mecanisme.md` — pour une fiche de type Mécanisme
 - `prompt-fiche-structure.md` — pour une fiche de type Structure
 - `prompt-cas.md` — pour un cas d'entraînement (les 3 types sont dans le même fichier)
+- `prompt-qcm.md` — pour un QCM complet (plusieurs questions, mode entraînement ou concours)
 
 ## Workflow
 1. Ouvre le fichier correspondant à ce que tu veux créer.

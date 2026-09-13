@@ -3,6 +3,8 @@ import { getCurrentUser } from '../lib/auth.js'
 import { getPeriodeActuelle } from '../lib/periode.js'
 import { checkinAujourdhui, getCheckins } from '../lib/checkins.js'
 import { computeStreak } from '../lib/streak.js'
+import { getAllTentativesQcmStats } from '../lib/qcm.js'
+import { getMatieres } from '../lib/matieres.js'
 import anecdotes from '../data/anecdotes.json'
 
 const TYPE_LABELS = {
@@ -71,7 +73,7 @@ export async function renderAccueil(container) {
       <div class="section-head" style="margin-top: 40px;">
         <h2 class="voice">En ce moment</h2>
       </div>
-      <div class="now-grid" id="now-grid"></div>
+      <div class="now-grid now-grid-3" id="now-grid"></div>
     </div>
   `
 
@@ -109,18 +111,32 @@ export async function renderAccueil(container) {
 
   try {
     const periode = getPeriodeActuelle()
-    const fiches = await getFiches(periode ? { annee: periode.annee, semestre: periode.semestre } : {})
-    const groups = groupByMatiere(fiches)
+    const [fiches, tentativesQcm, matieres] = await Promise.all([
+      getFiches(periode ? { annee: periode.annee, semestre: periode.semestre } : {}),
+      getAllTentativesQcmStats(),
+      getMatieres({}),
+    ])
+    const ordreParMatiere = {}
+    matieres.forEach((m) => {
+      ordreParMatiere[m.nom] = m.ordre_affichage ?? 0
+    })
+    const groupsTries = groupByMatiere(fiches).sort(
+      (a, b) => (ordreParMatiere[a.matiere] ?? 0) - (ordreParMatiere[b.matiere] ?? 0)
+    )
+    const LIMITE_MATIERES = 6
+    const groups = groupsTries.slice(0, LIMITE_MATIERES)
+    const nbMatieresRestantes = groupsTries.length - groups.length
 
-    document.getElementById('matiere-count').textContent = `${groups.length} matière${groups.length !== 1 ? 's' : ''}`
+    document.getElementById('matiere-count').textContent = `${groupsTries.length} matière${groupsTries.length !== 1 ? 's' : ''}`
 
     const list = document.getElementById('matieres-list')
     if (groups.length === 0) {
       list.innerHTML = `<p class="empty-note">Aucune matière pour l'instant. Importe des fiches via #import.</p>`
     } else {
-      list.innerHTML = groups
-        .map(
-          (g) => `
+      list.innerHTML =
+        groups
+          .map(
+            (g) => `
         <div class="fiche-row type-${g.type}" data-matiere="${g.matiere}">
           <div class="tab"></div>
           <div class="fiche-body">
@@ -132,8 +148,11 @@ export async function renderAccueil(container) {
           </div>
         </div>
       `
-        )
-        .join('')
+          )
+          .join('') +
+        (nbMatieresRestantes > 0
+          ? `<a href="#referentiel" class="btn" style="width: auto; margin-top: 4px;">Voir toutes les matières (+${nbMatieresRestantes})</a>`
+          : '')
 
       list.querySelectorAll('.fiche-row').forEach((row) => {
         row.addEventListener('click', () => {
@@ -146,6 +165,11 @@ export async function renderAccueil(container) {
     const validees = fiches.filter((f) => f.statut === 'valide').length
     const aRevoir = fiches.filter((f) => f.statut === 'a_revoir').length
 
+    const totalQcm = tentativesQcm.length
+    const scoreTotalQcm = tentativesQcm.reduce((s, t) => s + Number(t.score), 0)
+    const scoreMaxTotalQcm = tentativesQcm.reduce((s, t) => s + Number(t.score_max), 0)
+    const tauxQcm = scoreMaxTotalQcm > 0 ? Math.round((scoreTotalQcm / scoreMaxTotalQcm) * 100) : 0
+
     document.getElementById('now-grid').innerHTML = `
       <div class="now-cell">
         <div class="label">progression</div>
@@ -156,6 +180,11 @@ export async function renderAccueil(container) {
         <div class="label">à revoir</div>
         <div class="value voice">${aRevoir} fiche${aRevoir !== 1 ? 's' : ''}</div>
         <div class="desc">Marquées comme à revoir dans le référentiel.</div>
+      </div>
+      <div class="now-cell">
+        <div class="label">QCM</div>
+        <div class="value voice">${totalQcm > 0 ? `${tauxQcm}% de réussite` : 'Aucun QCM fait'}</div>
+        <div class="desc">${totalQcm} QCM traité${totalQcm !== 1 ? 's' : ''} au total.</div>
       </div>
     `
   } catch (err) {

@@ -1,5 +1,7 @@
 import { supabase } from './supabase.js'
 
+// --- Cas cliniques ---
+
 export async function getCasAleatoire({ matiere, niveau } = {}) {
   let query = supabase.from('cas_cliniques').select('*').neq('statut', 'archive')
 
@@ -26,6 +28,35 @@ export async function insertCas(casArray) {
   return data
 }
 
+export async function getAllCasIds() {
+  const { data, error } = await supabase.from('cas_cliniques').select('id')
+  if (error) throw error
+  return data.map((c) => c.id)
+}
+
+export async function getAllCas() {
+  const { data, error } = await supabase.from('cas_cliniques').select('*')
+  if (error) throw error
+  return data
+}
+
+export async function updateCasStatut(id, statut) {
+  const { error } = await supabase.from('cas_cliniques').update({ statut }).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteCas(id) {
+  const { error } = await supabase.from('cas_cliniques').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteAllCas() {
+  const { error } = await supabase.from('cas_cliniques').delete().not('id', 'is', null)
+  if (error) throw error
+}
+
+// --- Tentatives ---
+
 export async function enregistrerTentative(casId, reussi, reponseDonnee) {
   const { error } = await supabase.from('tentatives').insert({
     cas_id: casId,
@@ -39,7 +70,7 @@ export async function enregistrerTentative(casId, reussi, reponseDonnee) {
 export async function getTentativesRatees() {
   const { data, error } = await supabase
     .from('tentatives')
-    .select('*, cas_cliniques(id, matiere, type, question, fiches_liees)')
+    .select('*, cas_cliniques(id, matiere, type, question, fiches_liees, reponse_attendue)')
     .eq('a_revoir', true)
     .order('date_tentative', { ascending: false })
 
@@ -50,21 +81,6 @@ export async function getTentativesRatees() {
 export async function marquerCommeRevu(tentativeId) {
   const { error } = await supabase.from('tentatives').update({ a_revoir: false }).eq('id', tentativeId)
   if (error) throw error
-}
-
-export async function getAllCasIds() {
-  const { data, error } = await supabase.from('cas_cliniques').select('id')
-  if (error) throw error
-  return data.map((c) => c.id)
-}
-
-export async function getStatsTentatives() {
-  const { data, error } = await supabase
-    .from('tentatives')
-    .select('id, reussi, date_tentative, cas_cliniques(matiere, type, question)')
-    .order('date_tentative', { ascending: false })
-  if (error) throw error
-  return data
 }
 
 export async function deleteTentative(id) {
@@ -88,13 +104,11 @@ export async function deleteAllTentatives() {
   if (error) throw error
 }
 
-export async function deleteAllCas() {
-  const { error } = await supabase.from('cas_cliniques').delete().not('id', 'is', null)
-  if (error) throw error
-}
-
-export async function getAllCas() {
-  const { data, error } = await supabase.from('cas_cliniques').select('*')
+export async function getStatsTentatives() {
+  const { data, error } = await supabase
+    .from('tentatives')
+    .select('id, reussi, date_tentative, cas_cliniques(matiere, type, question)')
+    .order('date_tentative', { ascending: false })
   if (error) throw error
   return data
 }
@@ -110,15 +124,5 @@ export async function restaurerTentatives(tentativesArray) {
     date_tentative: t.date_tentative,
   }))
   const { error } = await supabase.from('tentatives').upsert(clean, { onConflict: 'id' })
-  if (error) throw error
-}
-
-export async function deleteCas(id) {
-  const { error } = await supabase.from('cas_cliniques').delete().eq('id', id)
-  if (error) throw error
-}
-
-export async function updateCasStatut(id, statut) {
-  const { error } = await supabase.from('cas_cliniques').update({ statut }).eq('id', id)
   if (error) throw error
 }

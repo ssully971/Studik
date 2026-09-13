@@ -15,6 +15,8 @@ import { renderCapture } from './pages/capture.js'
 import { renderMatieres } from './pages/matieres.js'
 import { renderStats } from './pages/stats.js'
 import { renderCasListe } from './pages/cas-liste.js'
+import { renderQcmListe } from './pages/qcm-liste.js'
+import { renderQcmJouer } from './pages/qcm-jouer.js'
 import { renderPrompts } from './pages/prompts.js'
 
 const app = document.getElementById('app')
@@ -64,6 +66,7 @@ function renderShell(user) {
           <a href="#accueil" data-route="accueil">Accueil</a>
           <a href="#referentiel" data-route="referentiel">Référentiel</a>
           <a href="#entrainement" data-route="entrainement">Entraînement</a>
+          <a href="#qcm" data-route="qcm">QCM</a>
           <a href="#revision" data-route="revision">Révision</a>
           <a href="#erreurs" data-route="erreurs">Erreurs</a>
         </nav>
@@ -105,7 +108,12 @@ function renderShell(user) {
     dropdown.classList.toggle('hidden')
   })
 
-  dropdown.addEventListener('click', () => {
+  dropdown.addEventListener('click', (e) => {
+    e.stopPropagation()
+    dropdown.classList.add('hidden')
+  })
+
+  document.addEventListener('click', () => {
     dropdown.classList.add('hidden')
   })
 
@@ -239,6 +247,10 @@ function router() {
     renderEntrainement(content, parts[1])
   } else if (route === 'cas') {
     renderCasListe(content)
+  } else if (route === 'qcm') {
+    renderQcmListe(content)
+  } else if (route === 'qcm-jouer') {
+    renderQcmJouer(content, parts[1])
   } else if (route === 'prompts') {
     renderPrompts(content)
   } else if (route === 'revision') {
@@ -308,7 +320,7 @@ function setupRaccourcisClavier() {
 }
 
 async function init() {
-  let currentUserId = undefined
+  let currentUserId = null
 
   function handleUser(user) {
     const uid = user?.id ?? null
