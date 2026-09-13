@@ -11,7 +11,7 @@ import {
 import { exporterFichePDF } from '../lib/pdf.js'
 import { richText } from '../lib/richtext.js'
 
-function renderChamp(label, value) {
+export function renderChamp(label, value) {
   if (!value) return ''
   if (Array.isArray(value)) {
     if (value.length === 0) return ''

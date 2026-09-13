@@ -60,7 +60,10 @@ export async function renderAccueil(container) {
             <div class="streak-value voice" id="streak-actuelle">…</div>
             <div class="settings-desc" id="streak-meilleure" style="margin-bottom: 0;"></div>
           </div>
-          <button id="checkin-btn" class="btn primary" style="width: auto;">Je révise aujourd'hui</button>
+          <div class="import-actions" style="margin: 0;">
+            <button id="checkin-btn" class="btn primary" style="width: auto;">Je révise aujourd'hui</button>
+            <a href="#session" class="btn primary" style="width: auto;">Réviser maintenant</a>
+          </div>
         </div>
       </div>
 

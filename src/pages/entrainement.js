@@ -100,7 +100,7 @@ export async function renderEntrainement(container, casId) {
   }
 }
 
-function renderCas(container, cas) {
+export function renderCas(container, cas, { onAutreCas, onValide } = {}) {
   const gabarit = GABARITS[cas.type] || GABARITS.clinique
   const items = (cas.reponse_attendue && cas.reponse_attendue[gabarit.itemsKey]) || []
   const resultats = (cas.reponse_attendue && cas.reponse_attendue[gabarit.resultKey]) || []
@@ -168,7 +168,8 @@ function renderCas(container, cas) {
     document.getElementById('valider-btn').disabled = true
 
     document.getElementById('autre-cas-btn').addEventListener('click', () => {
-      document.getElementById('nouveau-cas-btn').click()
+      if (onAutreCas) onAutreCas()
+      else document.getElementById('nouveau-cas-btn')?.click()
     })
 
     try {
@@ -176,5 +177,7 @@ function renderCas(container, cas) {
     } catch (err) {
       console.error('Erreur enregistrement tentative', err)
     }
+
+    if (onValide) onValide(tousCorrects)
   })
 }

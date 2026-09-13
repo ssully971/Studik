@@ -18,6 +18,7 @@ import { renderCasListe } from './pages/cas-liste.js'
 import { renderQcmListe } from './pages/qcm-liste.js'
 import { renderQcmJouer } from './pages/qcm-jouer.js'
 import { renderPrompts } from './pages/prompts.js'
+import { renderSession } from './pages/session.js'
 
 const app = document.getElementById('app')
 const SECONDARY_ROUTES = ['capture', 'import', 'matieres', 'parametres', 'stats', 'cas', 'prompts']
@@ -255,6 +256,8 @@ function router() {
     renderPrompts(content)
   } else if (route === 'revision') {
     renderRevision(content)
+  } else if (route === 'session') {
+    renderSession(content)
   } else if (route === 'erreurs') {
     renderCarnetErreurs(content)
   } else if (route === 'import') {
