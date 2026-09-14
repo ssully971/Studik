@@ -51,6 +51,8 @@ export async function updateCasTags(id, tags) {
 }
 
 export async function deleteCas(id) {
+  const { error: err1 } = await supabase.from('tentatives').delete().eq('cas_id', id)
+  if (err1) throw err1
   const { error } = await supabase.from('cas_cliniques').delete().eq('id', id)
   if (error) throw error
 }
@@ -75,7 +77,7 @@ export async function enregistrerTentative(casId, reussi, reponseDonnee) {
 export async function getTentativesRatees() {
   const { data, error } = await supabase
     .from('tentatives')
-    .select('*, cas_cliniques(id, matiere, type, question, fiches_liees, reponse_attendue)')
+    .select('*, cas_cliniques(id, matiere, type, question, fiches_liees, reponse_attendue, tags)')
     .eq('a_revoir', true)
     .order('date_tentative', { ascending: false })
 

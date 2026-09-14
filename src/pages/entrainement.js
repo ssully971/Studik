@@ -1,6 +1,6 @@
 import { getCasAleatoire, getCasById, enregistrerTentative } from '../lib/cas.js'
 import { getMatieres } from '../lib/matieres.js'
-import { getTags } from '../lib/tags.js'
+import { renderTagFilters } from './tag-filter.js'
 
 let filtreMatiere = ''
 let filtreNiveau = ''
@@ -72,28 +72,12 @@ export async function renderEntrainement(container, casId) {
     filtreNiveau = e.target.value
   })
 
-  try {
-    const tags = await getTags()
-    const tagFiltersEl = document.getElementById('entrainement-tag-filters')
-    tagFiltersEl.innerHTML = tags
-      .map((t) => `<button class="filter-btn ${filtreTags.includes(t) ? 'active' : ''}" data-tag="${t}">${t}</button>`)
-      .join('')
-
-    tagFiltersEl.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-tag]')
-      if (!btn) return
-      const tag = btn.dataset.tag
-      if (filtreTags.includes(tag)) {
-        filtreTags = filtreTags.filter((t) => t !== tag)
-        btn.classList.remove('active')
-      } else {
-        filtreTags.push(tag)
-        btn.classList.add('active')
-      }
-    })
-  } catch {
-    // silencieux : le filtre tags reste optionnel
-  }
+  await renderTagFilters(document.getElementById('entrainement-tag-filters'), {
+    selected: filtreTags,
+    onChange: (tags) => {
+      filtreTags = tags
+    },
+  })
 
   document.getElementById('nouveau-cas-btn').addEventListener('click', () => {
     chargerCas()

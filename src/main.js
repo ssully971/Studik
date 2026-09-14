@@ -169,6 +169,29 @@ async function ensureSearchCache() {
   return searchCache
 }
 
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function extraireApercu(fiche, terme) {
+  if (fiche.titre.toLowerCase().includes(terme)) return ''
+
+  const texte = texteRechercheFiche(fiche)
+  const index = texte.indexOf(terme)
+  if (index === -1) return ''
+
+  const rayon = 40
+  const debut = Math.max(0, index - rayon)
+  const fin = Math.min(texte.length, index + terme.length + rayon)
+
+  let extrait = escapeHtml(texte.slice(debut, fin))
+  if (debut > 0) extrait = '…' + extrait
+  if (fin < texte.length) extrait = extrait + '…'
+
+  const regexTerme = new RegExp(`(${terme.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+  return extrait.replace(regexTerme, '<strong>$1</strong>')
+}
+
 function setupGlobalSearch() {
   const input = document.getElementById('global-search-input')
   const results = document.getElementById('global-search-results')
@@ -188,10 +211,12 @@ function setupGlobalSearch() {
       ? matched
           .map((f) => {
             const periode = periodeParMatiere[f.matiere]
+            const apercu = extraireApercu(f, term)
             return `
           <a href="#fiche/${f.id}" class="search-result-item type-${f.type}">
             <span class="search-result-title">${f.titre}</span>
             <span class="search-result-meta">${f.matiere}${periode ? ' · ' + periode : ''}</span>
+            ${apercu ? `<span class="search-result-apercu">${apercu}</span>` : ''}
           </a>
         `
           })

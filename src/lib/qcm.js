@@ -84,7 +84,7 @@ export async function getAllTentativesQcmStats() {
 export async function getQcmTentativesARevoir() {
   const { data, error } = await supabase
     .from('qcm_tentatives')
-    .select('id, mode, score, score_max, reponses, date_tentative, qcm(id, titre, matieres, questions)')
+    .select('id, mode, score, score_max, reponses, date_tentative, qcm(id, titre, matieres, questions, tags)')
     .eq('a_revoir', true)
     .order('date_tentative', { ascending: false })
   if (error) throw error

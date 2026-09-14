@@ -1,5 +1,6 @@
 import { getTentativesRatees, marquerCommeRevu } from '../lib/cas.js'
 import { getQcmTentativesARevoir, marquerTentativeQcmRevue } from '../lib/qcm.js'
+import { renderTagFilters } from './tag-filter.js'
 
 const TYPE_LABELS = {
   clinique: 'clinique',
@@ -47,6 +48,8 @@ export async function renderCarnetErreurs(container) {
 
       <input type="text" id="search-input" class="search-input" placeholder="Rechercher dans les erreurs (matière, question, titre)…" />
 
+      <div class="filters" id="tag-filters"></div>
+
       <div class="section-head" style="margin-top: 8px; border-bottom: none; padding-bottom: 0;">
         <h3 class="voice" style="font-size: 15px;">Cas cliniques</h3>
       </div>
@@ -80,6 +83,7 @@ export async function renderCarnetErreurs(container) {
 
   let limiteCas = PAGE_SIZE
   let limiteQcm = PAGE_SIZE
+  let activeTags = []
 
   function applyFiltre() {
     const terme = document.getElementById('search-input').value.toLowerCase()
@@ -87,17 +91,20 @@ export async function renderCarnetErreurs(container) {
     const casFiltres = tentatives.filter((t) => {
       const cas = t.cas_cliniques
       if (!cas) return false
-      return !terme || cas.question.toLowerCase().includes(terme) || cas.matiere.toLowerCase().includes(terme)
+      const matchesTerme = !terme || cas.question.toLowerCase().includes(terme) || cas.matiere.toLowerCase().includes(terme)
+      const matchesTags = activeTags.length === 0 || activeTags.some((tag) => (cas.tags || []).includes(tag))
+      return matchesTerme && matchesTags
     })
 
     const qcmFiltres = tentativesQcm.filter((t) => {
       const qcm = t.qcm
       if (!qcm) return false
-      return (
+      const matchesTerme =
         !terme ||
         qcm.titre.toLowerCase().includes(terme) ||
         (qcm.matieres || []).some((m) => m.toLowerCase().includes(terme))
-      )
+      const matchesTags = activeTags.length === 0 || activeTags.some((tag) => (qcm.tags || []).includes(tag))
+      return matchesTerme && matchesTags
     })
 
     updateCount(casFiltres.length + qcmFiltres.length)
@@ -113,6 +120,16 @@ export async function renderCarnetErreurs(container) {
     limiteCas = PAGE_SIZE
     limiteQcm = PAGE_SIZE
     applyFiltre()
+  })
+
+  await renderTagFilters(document.getElementById('tag-filters'), {
+    selected: activeTags,
+    onChange: (tags) => {
+      activeTags = tags
+      limiteCas = PAGE_SIZE
+      limiteQcm = PAGE_SIZE
+      applyFiltre()
+    },
   })
 
   function renderListCas(list) {

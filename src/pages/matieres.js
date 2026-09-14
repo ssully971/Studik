@@ -1,20 +1,11 @@
 import { getMatieres, updateMatiere, deleteMatiere, insertMatieres, getAllMatiereIds } from '../lib/matieres.js'
 import { getFicheCountByMatiere } from '../lib/fiches.js'
+import { slugify } from '../lib/slug.js'
 
 const TYPE_LABELS = {
   clinique: 'clinique',
   mecanisme: 'mécanisme',
   structure: 'structure',
-}
-
-function slugify(str) {
-  return str
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
 }
 
 export async function renderMatieres(container) {

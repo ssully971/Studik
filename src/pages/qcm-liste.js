@@ -2,16 +2,8 @@ import { getAllQcm, updateQcmStatut, deleteQcm, updateQcmTags, insertQcm, getAll
 import { getMatieres } from '../lib/matieres.js'
 import { getTags } from '../lib/tags.js'
 import { renderTagPicker } from './tag-picker.js'
-
-function slugify(str) {
-  return str
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
+import { renderTagFilters } from './tag-filter.js'
+import { slugify } from '../lib/slug.js'
 
 export async function renderQcmListe(container) {
   container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
@@ -67,6 +59,8 @@ export async function renderQcmListe(container) {
           <option value="archive">Archivé</option>
         </select>
       </div>
+
+      <div class="filters" id="qcm-tag-filters"></div>
 
       <div id="qcm-list" class="fiches-list"></div>
     </div>
@@ -136,6 +130,7 @@ export async function renderQcmListe(container) {
 
   let activeMatiere = ''
   let activeStatut = ''
+  let activeTags = []
 
   function applyFilters() {
     const term = document.getElementById('search-input').value.toLowerCase()
@@ -143,7 +138,8 @@ export async function renderQcmListe(container) {
       const matchesMatiere = !activeMatiere || (q.matieres || []).includes(activeMatiere)
       const matchesStatut = !activeStatut || q.statut === activeStatut
       const matchesSearch = !term || q.titre.toLowerCase().includes(term)
-      return matchesMatiere && matchesStatut && matchesSearch
+      const matchesTags = activeTags.length === 0 || activeTags.some((t) => (q.tags || []).includes(t))
+      return matchesMatiere && matchesStatut && matchesSearch && matchesTags
     })
     renderList(filtered)
   }
@@ -242,6 +238,15 @@ export async function renderQcmListe(container) {
   matiereSelect.addEventListener('change', (e) => {
     activeMatiere = e.target.value
     applyFilters()
+  })
+
+  await renderTagFilters(document.getElementById('qcm-tag-filters'), {
+    selected: activeTags,
+    tousLesTags,
+    onChange: (tags) => {
+      activeTags = tags
+      applyFilters()
+    },
   })
 
   applyFilters()

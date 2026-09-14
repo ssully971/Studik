@@ -1,5 +1,6 @@
 import { getFichesARevoir, updateStatut } from '../lib/fiches.js'
 import { getPeriodeActuelle } from '../lib/periode.js'
+import { renderTagFilters } from './tag-filter.js'
 
 const TYPE_LABELS = {
   clinique: 'clinique',
@@ -33,15 +34,22 @@ export async function renderRevision(container) {
         <button class="filter-btn" data-type="structure">Structure</button>
       </div>
 
+      <div class="filters" id="tag-filters"></div>
+
       <div id="revision-list" class="fiches-list"></div>
     </div>
   `
 
   let fiches = [...allFiches]
   let activeType = ''
+  let activeTags = []
 
   function applyFilter() {
-    const filtered = activeType ? fiches.filter((f) => f.type === activeType) : fiches
+    const filtered = fiches.filter((f) => {
+      const matchesType = !activeType || f.type === activeType
+      const matchesTags = activeTags.length === 0 || activeTags.some((t) => (f.tags || []).includes(t))
+      return matchesType && matchesTags
+    })
     renderList(filtered)
   }
 
@@ -104,6 +112,14 @@ export async function renderRevision(container) {
     btn.classList.add('active')
     activeType = btn.dataset.type
     applyFilter()
+  })
+
+  await renderTagFilters(document.getElementById('tag-filters'), {
+    selected: activeTags,
+    onChange: (tags) => {
+      activeTags = tags
+      applyFilter()
+    },
   })
 
   applyFilter()

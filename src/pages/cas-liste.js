@@ -122,7 +122,7 @@ export async function renderCasListe(container) {
     listEl.querySelectorAll('[data-delete]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.delete
-        if (!window.confirm('Supprimer ce cas clinique ? Les tentatives associées resteront dans ton historique.')) return
+        if (!window.confirm('Supprimer ce cas clinique ? Les tentatives associées seront supprimées aussi.')) return
         try {
           await deleteCas(id)
           allCas = allCas.filter((c) => c.id !== id)

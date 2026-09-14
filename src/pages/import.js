@@ -3,6 +3,7 @@ import { insertCas, getAllCasIds } from '../lib/cas.js'
 import { insertMatieres, getAllMatiereIds, getAllMatiereNoms } from '../lib/matieres.js'
 import { insertQcm, getAllQcmIds } from '../lib/qcm.js'
 import { getTags } from '../lib/tags.js'
+import { slugify } from '../lib/slug.js'
 
 function findDuplicateIds(items) {
   const seen = new Set()
@@ -173,6 +174,7 @@ export function renderImport(container) {
     }
 
     const avertissements = []
+    const infos = []
 
     let tagsConnus
     try {
@@ -206,11 +208,30 @@ export function renderImport(container) {
       } catch {
         matiereNoms = new Set()
       }
+
+      const matieresACreer = new Map()
       items.forEach((f) => {
-        if (!matiereNoms.has(f.matiere)) {
-          avertissements.push(`Matière "${f.matiere}" inconnue (fiche "${f.id}") — crée-la via l'import de matières.`)
+        if (!matiereNoms.has(f.matiere) && !matieresACreer.has(f.matiere)) {
+          matieresACreer.set(f.matiere, {
+            id: slugify(f.matiere),
+            nom: f.matiere,
+            type: f.type,
+            couleur: null,
+            ordre_affichage: 0,
+            annee: null,
+            semestre: null,
+          })
         }
       })
+
+      if (matieresACreer.size > 0) {
+        try {
+          await insertMatieres(Array.from(matieresACreer.values()))
+          matieresACreer.forEach((m) => infos.push(`Nouvelle matière créée : ${m.nom}`))
+        } catch (err) {
+          avertissements.push(`Impossible de créer automatiquement la/les matière(s) manquante(s) : ${err.message}`)
+        }
+      }
     } else if (target === 'cas') {
       let ficheIds
       try {
@@ -261,6 +282,10 @@ export function renderImport(container) {
       const labels = TARGET_LABELS[target]
       const nomsAjoutes = nouveaux === 1 ? labels.singulier : labels.pluriel
       let html = `<p class="import-status success">${nouveaux} ${nomsAjoutes} ${labels.ajoutees}, ${misesAJour} mis à jour (${inserted.length} au total).</p>`
+
+      if (infos.length > 0) {
+        html += `<div class="import-warnings"><p style="margin-bottom: 6px; font-size: 13px; color: var(--text-dim);">${infos.length} information${infos.length !== 1 ? 's' : ''} :</p><ul class="detail-list">${infos.map((i) => `<li>${i}</li>`).join('')}</ul></div>`
+      }
 
       if (avertissements.length > 0) {
         html += `<div class="import-warnings"><p style="margin-bottom: 6px; font-size: 13px; color: var(--mecanisme);">${avertissements.length} avertissement${avertissements.length !== 1 ? 's' : ''} (import non bloqué) :</p><ul class="detail-list">${avertissements.map((a) => `<li>${a}</li>`).join('')}</ul></div>`

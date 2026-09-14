@@ -1,3 +1,4 @@
+import promptContexteMaitre from '../data/prompts/prompt-contexte-maitre.md?raw'
 import promptMatieres from '../data/prompts/prompt-matieres.md?raw'
 import promptClinique from '../data/prompts/prompt-fiche-clinique.md?raw'
 import promptMecanisme from '../data/prompts/prompt-fiche-mecanisme.md?raw'
@@ -8,6 +9,7 @@ import readme from '../data/prompts/README-prompts.md?raw'
 import { getTags, ajouterTag, supprimerTag } from '../lib/tags.js'
 
 const PROMPTS = [
+  { id: 'contexte-maitre', titre: 'Contexte maître (à coller avant les autres)', contenu: promptContexteMaitre },
   { id: 'matieres', titre: 'Matières', contenu: promptMatieres },
   { id: 'fiche-clinique', titre: 'Fiche — Clinique', contenu: promptClinique },
   { id: 'fiche-mecanisme', titre: 'Fiche — Mécanisme', contenu: promptMecanisme },

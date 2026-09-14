@@ -951,6 +951,17 @@ nav a.active {
   color: var(--text-dim);
 }
 
+.search-result-apercu {
+  font-size: 11px;
+  color: var(--text-faint);
+  line-height: 1.4;
+}
+
+.search-result-apercu strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .search-result-empty {
   font-size: 13px;
   color: var(--text-dim);
