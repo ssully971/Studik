@@ -14,6 +14,11 @@ function melanger(array) {
 
 export async function renderSession(container) {
   container.innerHTML = `<div class="wrap"><div id="session-content"></div></div>`
+  container.addEventListener('click', (e) => {
+    const btn = e.target.closest('.img-toggle-btn')
+    if (!btn) return
+    btn.nextElementSibling?.classList.toggle('hidden')
+  })
   renderChoixTaille(document.getElementById('session-content'))
 }
 

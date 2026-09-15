@@ -9,6 +9,7 @@ const COULEUR_IMPORTANT = [232, 136, 122]
 // corrompre au passage des caractères accentués pourtant valides (ex. "è" -> "h").
 function normaliserPourPdf(texte) {
   return texte
+    .replace(/\[\[img:[^\]]+\]\]/g, '')
     .replace(/[–—]/g, '-')
     .replace(/[‘’]/g, "'")
     .replace(/[“”]/g, '"')

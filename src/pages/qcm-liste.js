@@ -160,7 +160,7 @@ export async function renderQcmListe(container) {
           <div class="tab"></div>
           <div class="fiche-body">
             <div class="fiche-top">
-              <span class="fiche-title voice">${q.titre}</span>
+              <a href="#qcm-detail/${q.id}" class="fiche-title voice">${q.titre}</a>
               <span class="type-label">${q.questions.length} question${q.questions.length !== 1 ? 's' : ''}</span>
             </div>
             <div class="fiche-meta">${(q.matieres || []).join(', ') || 'Aucune matière'} · ${q.duree_minutes} min en concours</div>
@@ -172,6 +172,7 @@ export async function renderQcmListe(container) {
               <option value="valide" ${q.statut === 'valide' ? 'selected' : ''}>Validé</option>
               <option value="archive" ${q.statut === 'archive' ? 'selected' : ''}>Archivé</option>
             </select>
+            <a href="#qcm-detail/${q.id}" class="btn" style="width: auto;">Détail</a>
             <a href="#qcm-jouer/${q.id}" class="btn primary" style="width: auto;">Lancer</a>
             <button class="btn" data-delete="${q.id}" style="width: auto; color: #C46A5C;">Supprimer</button>
           </div>

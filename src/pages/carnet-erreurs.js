@@ -1,17 +1,13 @@
-import { getTentativesRatees, marquerCommeRevu } from '../lib/cas.js'
-import { getQcmTentativesARevoir, marquerTentativeQcmRevue } from '../lib/qcm.js'
+import { getTentativesRatees, marquerCommeRevu, GABARITS_CAS } from '../lib/cas.js'
+import { getQcmTentativesARevoir, marquerTentativeQcmRevue, questionsRateesDeLaTentative } from '../lib/qcm.js'
 import { renderTagFilters } from './tag-filter.js'
+import { renderTagPicker } from './tag-picker.js'
+import { definirScopeRetry } from './qcm-retry-session.js'
 
 const TYPE_LABELS = {
   clinique: 'clinique',
   mecanisme: 'mécanisme',
   structure: 'structure',
-}
-
-const GABARITS_CAS = {
-  clinique: { itemsKey: 'signes', resultKey: 'pathologies', itemsLabel: 'Signes', resultLabel: 'Pathologies compatibles' },
-  mecanisme: { itemsKey: 'evenements', resultKey: 'consequences', itemsLabel: 'Événements', resultLabel: 'Conséquences attendues' },
-  structure: { itemsKey: 'elements', resultKey: 'identification', itemsLabel: 'Éléments', resultLabel: 'À identifier' },
 }
 
 const PAGE_SIZE = 5
@@ -47,6 +43,14 @@ export async function renderCarnetErreurs(container) {
       </div>
 
       <input type="text" id="search-input" class="search-input" placeholder="Rechercher dans les erreurs (matière, question, titre)…" />
+
+      <div class="filters" id="filters-row">
+        <select id="tri-select" class="periode-select">
+          <option value="recent">Plus récent</option>
+          <option value="ancien">Plus ancien</option>
+          <option value="matiere">Matière (A→Z)</option>
+        </select>
+      </div>
 
       <div class="filters" id="tag-filters"></div>
 
@@ -84,28 +88,43 @@ export async function renderCarnetErreurs(container) {
   let limiteCas = PAGE_SIZE
   let limiteQcm = PAGE_SIZE
   let activeTags = []
+  let tri = 'recent'
+
+  function trier(list, matiereDe) {
+    const copie = [...list]
+    if (tri === 'recent') copie.sort((a, b) => new Date(b.date_tentative) - new Date(a.date_tentative))
+    else if (tri === 'ancien') copie.sort((a, b) => new Date(a.date_tentative) - new Date(b.date_tentative))
+    else if (tri === 'matiere') copie.sort((a, b) => matiereDe(a).localeCompare(matiereDe(b)))
+    return copie
+  }
 
   function applyFiltre() {
     const terme = document.getElementById('search-input').value.toLowerCase()
 
-    const casFiltres = tentatives.filter((t) => {
-      const cas = t.cas_cliniques
-      if (!cas) return false
-      const matchesTerme = !terme || cas.question.toLowerCase().includes(terme) || cas.matiere.toLowerCase().includes(terme)
-      const matchesTags = activeTags.length === 0 || activeTags.some((tag) => (cas.tags || []).includes(tag))
-      return matchesTerme && matchesTags
-    })
+    const casFiltres = trier(
+      tentatives.filter((t) => {
+        const cas = t.cas_cliniques
+        if (!cas) return false
+        const matchesTerme = !terme || cas.question.toLowerCase().includes(terme) || cas.matiere.toLowerCase().includes(terme)
+        const matchesTags = activeTags.length === 0 || activeTags.some((tag) => (cas.tags || []).includes(tag))
+        return matchesTerme && matchesTags
+      }),
+      (t) => t.cas_cliniques.matiere
+    )
 
-    const qcmFiltres = tentativesQcm.filter((t) => {
-      const qcm = t.qcm
-      if (!qcm) return false
-      const matchesTerme =
-        !terme ||
-        qcm.titre.toLowerCase().includes(terme) ||
-        (qcm.matieres || []).some((m) => m.toLowerCase().includes(terme))
-      const matchesTags = activeTags.length === 0 || activeTags.some((tag) => (qcm.tags || []).includes(tag))
-      return matchesTerme && matchesTags
-    })
+    const qcmFiltres = trier(
+      tentativesQcm.filter((t) => {
+        const qcm = t.qcm
+        if (!qcm) return false
+        const matchesTerme =
+          !terme ||
+          qcm.titre.toLowerCase().includes(terme) ||
+          (qcm.matieres || []).some((m) => m.toLowerCase().includes(terme))
+        const matchesTags = activeTags.length === 0 || activeTags.some((tag) => (qcm.tags || []).includes(tag))
+        return matchesTerme && matchesTags
+      }),
+      (t) => (t.qcm.matieres || []).join(', ')
+    )
 
     updateCount(casFiltres.length + qcmFiltres.length)
     renderListCas(casFiltres)
@@ -119,6 +138,11 @@ export async function renderCarnetErreurs(container) {
   document.getElementById('search-input').addEventListener('input', () => {
     limiteCas = PAGE_SIZE
     limiteQcm = PAGE_SIZE
+    applyFiltre()
+  })
+
+  document.getElementById('tri-select').addEventListener('change', (e) => {
+    tri = e.target.value
     applyFiltre()
   })
 
@@ -251,6 +275,7 @@ export async function renderCarnetErreurs(container) {
       .map((t) => {
         const qcm = t.qcm
         const taux = t.score_max > 0 ? Math.round((t.score / t.score_max) * 100) : 0
+        const nbRatees = questionsRateesDeLaTentative(qcm, t).length
 
         return `
           <div class="fiche-row">
@@ -260,10 +285,9 @@ export async function renderCarnetErreurs(container) {
                 <span class="fiche-title voice">${qcm.titre}</span>
                 <span class="type-label">${taux}%</span>
               </div>
-              <div class="fiche-meta">${(qcm.matieres || []).join(', ')} · fait le ${formatDate(t.date_tentative)} · ${t.score}/${t.score_max} (${t.mode})</div>
+              <div class="fiche-meta">${(qcm.matieres || []).join(', ')} · fait le ${formatDate(t.date_tentative)} · ${t.score}/${t.score_max} (${t.mode}) · ${nbRatees} question${nbRatees !== 1 ? 's' : ''} ratée${nbRatees !== 1 ? 's' : ''}</div>
               <div class="import-actions" style="margin-top: 10px;">
-                <a href="#qcm-jouer/${qcm.id}" class="btn primary" style="width: auto;">Refaire le QCM</a>
-                <button class="btn" data-detail-qcm="${t.id}" style="width: auto;">Voir le détail</button>
+                <button class="btn primary" data-detail-qcm="${t.id}" style="width: auto;">Voir le détail</button>
                 <button class="btn" data-revu-qcm="${t.id}" style="width: auto;">Marquer comme revu</button>
               </div>
             </div>
@@ -311,8 +335,9 @@ export async function renderCarnetErreurs(container) {
   function afficherDetailQcm(t) {
     const qcm = t.qcm
     const reponses = t.reponses || []
+    const indicesRates = questionsRateesDeLaTentative(qcm, t)
 
-    const html = qcm.questions
+    const detailQuestions = qcm.questions
       .map((q, i) => {
         const reponsesQuestion = reponses[i] || []
         const itemsAExpliquer = q.items
@@ -350,7 +375,59 @@ export async function renderCarnetErreurs(container) {
       })
       .join('')
 
+    const matieres = qcm.matieres || []
+
+    const html = `
+      <div class="settings-card" style="margin-bottom: 18px;">
+        <h3 class="voice">Refaire les questions ratées</h3>
+        <p class="settings-desc">${indicesRates.length} question${indicesRates.length !== 1 ? 's' : ''} ratée${indicesRates.length !== 1 ? 's' : ''} sur cette dernière tentative.</p>
+        <div class="import-actions" style="flex-wrap: wrap;">
+          <button class="btn primary" id="retry-ce-qcm-btn" style="width: auto;">Uniquement ce QCM</button>
+          ${
+            matieres.length > 0
+              ? `<button class="btn" id="retry-matiere-btn" style="width: auto;">Toute la matière${matieres.length > 1 ? ' :' : ` (${matieres[0]})`}</button>`
+              : ''
+          }
+          ${matieres.length > 1 ? `<select id="retry-matiere-select" class="periode-select">${matieres.map((m) => `<option value="${m}">${m}</option>`).join('')}</select>` : ''}
+        </div>
+        <div style="margin-top: 12px;">
+          <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Ou par tag(s)</label>
+          <div id="retry-tags-picker"></div>
+          <button class="btn" id="retry-tags-btn" style="width: auto; margin-top: 8px;">Refaire ces tags</button>
+        </div>
+      </div>
+      ${detailQuestions}
+    `
     ouvrirModal(qcm.titre, html)
+
+    let tagsChoisis = []
+    renderTagPicker(document.getElementById('retry-tags-picker'), {
+      selected: tagsChoisis,
+      onChange: (tags) => {
+        tagsChoisis = tags
+      },
+    })
+
+    document.getElementById('retry-ce-qcm-btn').addEventListener('click', () => {
+      definirScopeRetry({ criteres: { qcmId: qcm.id }, label: qcm.titre })
+      window.location.hash = '#qcm-retry-session'
+    })
+
+    const retryMatiereBtn = document.getElementById('retry-matiere-btn')
+    if (retryMatiereBtn) {
+      retryMatiereBtn.addEventListener('click', () => {
+        const select = document.getElementById('retry-matiere-select')
+        const matiere = select ? select.value : matieres[0]
+        definirScopeRetry({ criteres: { matiere }, label: matiere })
+        window.location.hash = '#qcm-retry-session'
+      })
+    }
+
+    document.getElementById('retry-tags-btn').addEventListener('click', () => {
+      if (tagsChoisis.length === 0) return
+      definirScopeRetry({ criteres: { tags: tagsChoisis }, label: tagsChoisis.join(', ') })
+      window.location.hash = '#qcm-retry-session'
+    })
   }
 
   applyFiltre()

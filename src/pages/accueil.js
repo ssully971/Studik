@@ -5,6 +5,8 @@ import { checkinAujourdhui, getCheckins } from '../lib/checkins.js'
 import { computeStreak } from '../lib/streak.js'
 import { getAllTentativesQcmStats } from '../lib/qcm.js'
 import { getMatieres } from '../lib/matieres.js'
+import { getActiviteParJour } from '../lib/activite.js'
+import { renderHeatmap } from './heatmap.js'
 import anecdotes from '../data/anecdotes.json'
 
 const TYPE_LABELS = {
@@ -65,6 +67,7 @@ export async function renderAccueil(container) {
             <a href="#session" class="btn primary" style="width: auto;">Réviser maintenant</a>
           </div>
         </div>
+        <div class="heatmap-popup" id="heatmap-popup"></div>
       </div>
 
       <div class="section-head">
@@ -81,6 +84,16 @@ export async function renderAccueil(container) {
   `
 
   await chargerStreak()
+  chargerHeatmap()
+
+  async function chargerHeatmap() {
+    try {
+      const compte = await getActiviteParJour()
+      renderHeatmap(document.getElementById('heatmap-popup'), compte)
+    } catch {
+      // silencieux : la heatmap est un bonus visuel, pas une fonctionnalité critique
+    }
+  }
 
   async function chargerStreak() {
     try {

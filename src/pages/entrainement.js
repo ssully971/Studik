@@ -1,6 +1,7 @@
 import { getCasAleatoire, getCasById, enregistrerTentative } from '../lib/cas.js'
 import { getMatieres } from '../lib/matieres.js'
 import { renderTagFilters } from './tag-filter.js'
+import { appliquerSurlignageEnAttente } from '../lib/highlight.js'
 
 let filtreMatiere = ''
 let filtreNiveau = ''
@@ -109,6 +110,7 @@ export async function renderEntrainement(container, casId) {
     }
 
     renderCas(casContainer, cas)
+    appliquerSurlignageEnAttente(casContainer)
   }
 }
 

@@ -12,6 +12,8 @@ import {
 import { exporterFichePDF } from '../lib/pdf.js'
 import { richText } from '../lib/richtext.js'
 import { renderTagPicker } from './tag-picker.js'
+import { appliquerSurlignageEnAttente } from '../lib/highlight.js'
+import { televerserImage } from '../lib/images.js'
 
 export function renderChamp(label, value) {
   if (!value) return ''
@@ -95,7 +97,7 @@ export async function renderFicheDetail(container, id) {
         <div class="fiche-meta">
           ${fiche.matiere} · <span class="type-label">${fiche.type}</span>
         </div>
-        ${fiche.tags.length ? `<div class="tags">${fiche.tags.map((t) => `<span class="tag">${t}</span>`).join('')}</div>` : ''}
+        ${fiche.tags.length ? `<div class="tags">${fiche.tags.map((t) => `<a href="#tag/${encodeURIComponent(t)}" class="tag">${t}</a>`).join('')}</div>` : ''}
       </div>
 
       <div class="fiche-layout">
@@ -153,6 +155,13 @@ export async function renderFicheDetail(container, id) {
                 <textarea class="notes-textarea" data-champ-contenu="${key}" style="min-height: ${Array.isArray(value) ? '110px' : '70px'};">${
                   Array.isArray(value) ? value.join('\n') : value || ''
                 }</textarea>
+                <div class="import-actions" style="margin-top: 6px;">
+                  <label class="btn" style="width: auto; cursor: pointer;">
+                    Insérer une image
+                    <input type="file" accept="image/*" data-image-pour="${key}" style="display: none;" />
+                  </label>
+                  <span class="import-status" data-image-status="${key}"></span>
+                </div>
               </div>
             `
               )
@@ -200,6 +209,14 @@ export async function renderFicheDetail(container, id) {
       </div>
     </div>
   `
+
+  appliquerSurlignageEnAttente(container)
+
+  container.addEventListener('click', (e) => {
+    const btn = e.target.closest('.img-toggle-btn')
+    if (!btn) return
+    btn.nextElementSibling?.classList.toggle('hidden')
+  })
 
   // --- Onglets de la barre latérale ---
   document.querySelectorAll('.sidebar-tab').forEach((tab) => {
@@ -368,6 +385,33 @@ export async function renderFicheDetail(container, id) {
       statusEl.textContent = 'Erreur : ' + err.message
       statusEl.className = 'import-status error'
     }
+  })
+
+  document.querySelectorAll('[data-image-pour]').forEach((input) => {
+    input.addEventListener('change', async () => {
+      const key = input.dataset.imagePour
+      const file = input.files[0]
+      if (!file) return
+
+      const statusEl = document.querySelector(`[data-image-status="${key}"]`)
+      const textarea = document.querySelector(`[data-champ-contenu="${key}"]`)
+      statusEl.textContent = 'Compression et envoi…'
+      statusEl.className = 'import-status'
+
+      try {
+        const url = await televerserImage(file)
+        const marqueur = `[[img:${url}]]`
+        const debut = textarea.selectionStart ?? textarea.value.length
+        const fin = textarea.selectionEnd ?? textarea.value.length
+        textarea.value = textarea.value.slice(0, debut) + marqueur + textarea.value.slice(fin)
+        statusEl.textContent = 'Image ajoutée — pense à "Enregistrer le contenu".'
+        statusEl.className = 'import-status success'
+      } catch (err) {
+        statusEl.textContent = 'Erreur : ' + err.message
+        statusEl.className = 'import-status error'
+      }
+      input.value = ''
+    })
   })
 
   document.getElementById('save-contenu-btn').addEventListener('click', async () => {

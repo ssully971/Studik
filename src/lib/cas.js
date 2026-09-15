@@ -3,6 +3,12 @@ import { upsertPartiel } from './upsert.js'
 
 // --- Cas cliniques ---
 
+export const GABARITS_CAS = {
+  clinique: { itemsKey: 'signes', resultKey: 'pathologies', itemsLabel: 'Signes', resultLabel: 'Pathologies compatibles' },
+  mecanisme: { itemsKey: 'evenements', resultKey: 'consequences', itemsLabel: 'Événements', resultLabel: 'Conséquences attendues' },
+  structure: { itemsKey: 'elements', resultKey: 'identification', itemsLabel: 'Éléments', resultLabel: 'À identifier' },
+}
+
 export async function getCasAleatoire({ matiere, niveau, tags } = {}) {
   let query = supabase.from('cas_cliniques').select('*').neq('statut', 'archive')
 
@@ -40,6 +46,24 @@ export async function getAllCas() {
   return data
 }
 
+export function texteRechercheCas(cas) {
+  const enonce = cas.enonce || {}
+  const reponse = cas.reponse_attendue || {}
+  const valeursReponse = Object.values(reponse).flatMap((v) => {
+    if (!Array.isArray(v)) return []
+    return v.map((item) => (item && typeof item === 'object' ? item.label : item))
+  })
+  return [cas.question, enonce.situation, ...(enonce.elements || []), ...(cas.tags || []), cas.matiere, ...valeursReponse]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+}
+
+export async function updateCas(id, champs) {
+  const { error } = await supabase.from('cas_cliniques').update(champs).eq('id', id)
+  if (error) throw error
+}
+
 export async function updateCasStatut(id, statut) {
   const { error } = await supabase.from('cas_cliniques').update({ statut }).eq('id', id)
   if (error) throw error
@@ -74,15 +98,24 @@ export async function enregistrerTentative(casId, reussi, reponseDonnee) {
   if (error) throw error
 }
 
+// Une seule ligne par cas : sa tentative la plus récente, uniquement si elle est encore
+// marquée à revoir (une tentative plus récente réussie fait disparaître le cas de la liste).
 export async function getTentativesRatees() {
   const { data, error } = await supabase
     .from('tentatives')
     .select('*, cas_cliniques(id, matiere, type, question, fiches_liees, reponse_attendue, tags)')
-    .eq('a_revoir', true)
     .order('date_tentative', { ascending: false })
 
   if (error) throw error
-  return data
+
+  const vus = new Set()
+  const dernieres = []
+  data.forEach((t) => {
+    if (vus.has(t.cas_id)) return
+    vus.add(t.cas_id)
+    if (t.a_revoir) dernieres.push(t)
+  })
+  return dernieres
 }
 
 export async function marquerCommeRevu(tentativeId) {

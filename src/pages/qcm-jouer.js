@@ -122,6 +122,7 @@ function renderQuestion(container, qcm, mode, state) {
 
       <div class="cas-card">
         <p class="cas-situation">${q.enonce}</p>
+        ${q.image ? `<div class="qcm-question-image"><img src="${q.image}" alt="" /></div>` : ''}
 
         <div class="checkbox-group" id="items-group">
           ${q.items

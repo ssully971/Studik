@@ -16,6 +16,18 @@ export async function getAllQcm({ matiere, statut } = {}) {
   return data
 }
 
+export function texteRechercheQcm(qcm) {
+  const valeursQuestions = (qcm.questions || []).flatMap((q) => [
+    q.enonce,
+    q.explication,
+    ...(q.items || []).flatMap((item) => [item.texte, item.explication]),
+  ])
+  return [qcm.titre, ...(qcm.tags || []), ...(qcm.matieres || []), ...valeursQuestions]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+}
+
 export async function getQcmById(id) {
   const { data, error } = await supabase.from('qcm').select('*').eq('id', id).single()
   if (error) throw error
@@ -33,6 +45,11 @@ export async function updateQcmStatut(id, statut) {
 
 export async function updateQcmTags(id, tags) {
   const { error } = await supabase.from('qcm').update({ tags }).eq('id', id)
+  if (error) throw error
+}
+
+export async function updateQcm(id, champs) {
+  const { error } = await supabase.from('qcm').update(champs).eq('id', id)
   if (error) throw error
 }
 
@@ -81,14 +98,53 @@ export async function getAllTentativesQcmStats() {
   return data
 }
 
+// Une seule ligne par QCM : sa tentative la plus récente, uniquement si elle est encore
+// marquée à revoir (une tentative plus récente réussie fait disparaître le QCM de la liste).
 export async function getQcmTentativesARevoir() {
   const { data, error } = await supabase
     .from('qcm_tentatives')
-    .select('id, mode, score, score_max, reponses, date_tentative, qcm(id, titre, matieres, questions, tags)')
-    .eq('a_revoir', true)
+    .select('id, mode, score, score_max, reponses, date_tentative, a_revoir, qcm_id, qcm(id, titre, matieres, questions, tags)')
     .order('date_tentative', { ascending: false })
   if (error) throw error
-  return data
+
+  const vus = new Set()
+  const dernieres = []
+  data.forEach((t) => {
+    if (vus.has(t.qcm_id)) return
+    vus.add(t.qcm_id)
+    if (t.a_revoir) dernieres.push(t)
+  })
+  return dernieres
+}
+
+export function questionsRateesDeLaTentative(qcm, tentative) {
+  const indices = []
+  qcm.questions.forEach((q, i) => {
+    const reponsesQuestion = (tentative.reponses && tentative.reponses[i]) || []
+    const correcte = q.items.every((item, j) => Boolean(reponsesQuestion[j]) === Boolean(item.correct))
+    if (!correcte) indices.push(i)
+  })
+  return indices
+}
+
+// Rassemble les questions ratées (dernière tentative de chaque QCM concerné) selon un
+// périmètre : un QCM précis, une matière, ou un ou plusieurs tags.
+export async function getQuestionsRateesParScope({ qcmId, matiere, tags } = {}) {
+  const dernieres = await getQcmTentativesARevoir()
+  const filtrees = dernieres.filter((t) => {
+    if (qcmId) return t.qcm_id === qcmId
+    if (matiere) return (t.qcm.matieres || []).includes(matiere)
+    if (tags && tags.length > 0) return tags.some((tag) => (t.qcm.tags || []).includes(tag))
+    return false
+  })
+
+  const questions = []
+  filtrees.forEach((t) => {
+    questionsRateesDeLaTentative(t.qcm, t).forEach((i) => {
+      questions.push({ question: t.qcm.questions[i], qcmId: t.qcm.id, qcmTitre: t.qcm.titre })
+    })
+  })
+  return questions
 }
 
 export async function marquerTentativeQcmRevue(id) {

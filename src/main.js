@@ -3,6 +3,9 @@ import { login, logout, getCurrentUser, onAuthChange } from './lib/auth.js'
 import { getPeriodeActuelle, setPeriodeActuelle, getPeriodesDisponibles } from './lib/periode.js'
 import { getFiches, texteRechercheFiche } from './lib/fiches.js'
 import { getMatieres } from './lib/matieres.js'
+import { getAllCas, texteRechercheCas } from './lib/cas.js'
+import { getAllQcm, texteRechercheQcm } from './lib/qcm.js'
+import { definirTermeRecherche } from './lib/highlight.js'
 import { renderAccueil } from './pages/accueil.js'
 import { renderReferentiel } from './pages/referentiel.js'
 import { renderImport } from './pages/import.js'
@@ -17,6 +20,9 @@ import { renderStats } from './pages/stats.js'
 import { renderCasListe } from './pages/cas-liste.js'
 import { renderQcmListe } from './pages/qcm-liste.js'
 import { renderQcmJouer } from './pages/qcm-jouer.js'
+import { renderQcmDetail } from './pages/qcm-detail.js'
+import { renderQcmRetrySession } from './pages/qcm-retry-session.js'
+import { renderTagPage } from './pages/tag-page.js'
 import { renderPrompts } from './pages/prompts.js'
 import { renderSession } from './pages/session.js'
 
@@ -71,13 +77,17 @@ function renderShell(user) {
           <a href="#revision" data-route="revision">Révision</a>
           <a href="#erreurs" data-route="erreurs">Erreurs</a>
         </nav>
-        <div class="search-wrapper">
+        <div class="search-wrapper" id="search-wrapper">
           <input type="text" id="global-search-input" class="global-search-input" placeholder="Rechercher partout…" />
           <div id="global-search-results" class="search-results hidden"></div>
         </div>
         <div class="menu-wrapper">
+          <button id="mobile-search-toggle" class="nav-btn mobile-search-toggle" aria-label="Rechercher">🔍</button>
           <button id="menu-toggle" class="nav-btn">Menu ▾</button>
           <div id="menu-dropdown" class="dropdown-panel hidden">
+            <a href="#qcm" data-route="qcm" class="mobile-only-link">QCM</a>
+            <a href="#erreurs" data-route="erreurs" class="mobile-only-link">Erreurs</a>
+            <div class="dropdown-divider mobile-only-link"></div>
             <a href="#stats" data-route="stats">Statistiques</a>
             <a href="#cas" data-route="cas">Bibliothèque de cas</a>
             <a href="#prompts" data-route="prompts">Prompts d'import</a>
@@ -120,6 +130,21 @@ function renderShell(user) {
 
   document.getElementById('logout-btn').addEventListener('click', () => logout())
 
+  const searchWrapper = document.getElementById('search-wrapper')
+  document.getElementById('mobile-search-toggle').addEventListener('click', (e) => {
+    e.stopPropagation()
+    searchWrapper.classList.toggle('mobile-open')
+    if (searchWrapper.classList.contains('mobile-open')) {
+      document.getElementById('global-search-input').focus()
+    }
+  })
+
+  searchWrapper.addEventListener('click', (e) => e.stopPropagation())
+
+  document.addEventListener('click', () => {
+    searchWrapper.classList.remove('mobile-open')
+  })
+
   setupPeriodeSelector()
   setupGlobalSearch()
   router()
@@ -160,12 +185,12 @@ async function setupPeriodeSelector() {
 
 async function ensureSearchCache() {
   if (searchCache) return searchCache
-  const [fiches, matieres] = await Promise.all([getFiches({}), getMatieres({})])
+  const [fiches, matieres, cas, qcm] = await Promise.all([getFiches({}), getMatieres({}), getAllCas(), getAllQcm({})])
   const periodeParMatiere = {}
   matieres.forEach((m) => {
     periodeParMatiere[m.nom] = m.semestre ? `${m.annee} · ${m.semestre}` : m.annee || ''
   })
-  searchCache = { fiches, periodeParMatiere }
+  searchCache = { fiches, cas, qcm, periodeParMatiere }
   return searchCache
 }
 
@@ -173,20 +198,19 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-function extraireApercu(fiche, terme) {
-  if (fiche.titre.toLowerCase().includes(terme)) return ''
+function extraireApercu(texteRecherche, titre, terme) {
+  if (titre.toLowerCase().includes(terme)) return ''
 
-  const texte = texteRechercheFiche(fiche)
-  const index = texte.indexOf(terme)
+  const index = texteRecherche.indexOf(terme)
   if (index === -1) return ''
 
   const rayon = 40
   const debut = Math.max(0, index - rayon)
-  const fin = Math.min(texte.length, index + terme.length + rayon)
+  const fin = Math.min(texteRecherche.length, index + terme.length + rayon)
 
-  let extrait = escapeHtml(texte.slice(debut, fin))
+  let extrait = escapeHtml(texteRecherche.slice(debut, fin))
   if (debut > 0) extrait = '…' + extrait
-  if (fin < texte.length) extrait = extrait + '…'
+  if (fin < texteRecherche.length) extrait = extrait + '…'
 
   const regexTerme = new RegExp(`(${terme.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
   return extrait.replace(regexTerme, '<strong>$1</strong>')
@@ -195,6 +219,7 @@ function extraireApercu(fiche, terme) {
 function setupGlobalSearch() {
   const input = document.getElementById('global-search-input')
   const results = document.getElementById('global-search-results')
+  const searchWrapper = document.getElementById('search-wrapper')
 
   input.addEventListener('input', async () => {
     const term = input.value.trim().toLowerCase()
@@ -204,22 +229,54 @@ function setupGlobalSearch() {
       return
     }
 
-    const { fiches, periodeParMatiere } = await ensureSearchCache()
-    const matched = fiches.filter((f) => texteRechercheFiche(f).includes(term)).slice(0, 8)
+    const { fiches, cas, qcm, periodeParMatiere } = await ensureSearchCache()
+
+    const resultatsFiches = fiches
+      .filter((f) => texteRechercheFiche(f).includes(term))
+      .map((f) => {
+        const periode = periodeParMatiere[f.matiere]
+        return {
+          href: `#fiche/${f.id}`,
+          typeClass: `type-${f.type}`,
+          titre: f.titre,
+          meta: `Fiche · ${f.matiere}${periode ? ' · ' + periode : ''}`,
+          apercu: extraireApercu(texteRechercheFiche(f), f.titre, term),
+        }
+      })
+
+    const resultatsCas = cas
+      .filter((c) => texteRechercheCas(c).includes(term))
+      .map((c) => ({
+        href: `#entrainement/${c.id}`,
+        typeClass: `type-${c.type}`,
+        titre: c.question,
+        meta: `Cas · ${c.matiere}`,
+        apercu: extraireApercu(texteRechercheCas(c), c.question, term),
+      }))
+
+    const resultatsQcm = qcm
+      .filter((q) => texteRechercheQcm(q).includes(term))
+      .map((q) => ({
+        href: `#qcm-detail/${q.id}`,
+        typeClass: '',
+        titre: q.titre,
+        meta: `QCM · ${(q.matieres || []).join(', ') || 'aucune matière'}`,
+        apercu: extraireApercu(texteRechercheQcm(q), q.titre, term),
+      }))
+
+    const matched = [...resultatsFiches, ...resultatsCas, ...resultatsQcm].slice(0, 8)
 
     results.innerHTML = matched.length
       ? matched
-          .map((f) => {
-            const periode = periodeParMatiere[f.matiere]
-            const apercu = extraireApercu(f, term)
-            return `
-          <a href="#fiche/${f.id}" class="search-result-item type-${f.type}">
-            <span class="search-result-title">${f.titre}</span>
-            <span class="search-result-meta">${f.matiere}${periode ? ' · ' + periode : ''}</span>
-            ${apercu ? `<span class="search-result-apercu">${apercu}</span>` : ''}
+          .map(
+            (r) => `
+          <a href="${r.href}" class="search-result-item ${r.typeClass}" data-terme="${escapeHtml(term)}">
+            <span class="search-result-title">${r.titre}</span>
+            <span class="search-result-meta">${r.meta}</span>
+            ${r.apercu ? `<span class="search-result-apercu">${r.apercu}</span>` : ''}
           </a>
         `
-          })
+          )
           .join('')
       : `<div class="search-result-empty">Aucun résultat</div>`
 
@@ -227,9 +284,13 @@ function setupGlobalSearch() {
   })
 
   results.addEventListener('click', (e) => {
-    if (e.target.closest('a')) {
+    const link = e.target.closest('a')
+    if (link) {
+      const terme = link.dataset.terme
+      if (terme) definirTermeRecherche(terme)
       results.classList.add('hidden')
       input.value = ''
+      if (searchWrapper) searchWrapper.classList.remove('mobile-open')
     }
   })
 
@@ -269,6 +330,12 @@ function router() {
     renderQcmListe(content)
   } else if (route === 'qcm-jouer') {
     renderQcmJouer(content, parts[1])
+  } else if (route === 'qcm-detail') {
+    renderQcmDetail(content, parts[1])
+  } else if (route === 'qcm-retry-session') {
+    renderQcmRetrySession(content)
+  } else if (route === 'tag') {
+    renderTagPage(content, parts[1])
   } else if (route === 'prompts') {
     renderPrompts(content)
   } else if (route === 'revision') {

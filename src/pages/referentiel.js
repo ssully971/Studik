@@ -2,6 +2,7 @@ import { getFiches, texteRechercheFiche } from '../lib/fiches.js'
 import { getMatieres } from '../lib/matieres.js'
 import { getPeriodeActuelle } from '../lib/periode.js'
 import { exporterFichesPDF } from '../lib/pdf.js'
+import { renderTagFilters } from './tag-filter.js'
 
 const TYPE_LABELS = {
   clinique: 'clinique',
@@ -28,6 +29,8 @@ export async function renderReferentiel(container) {
         <button id="export-pdf-btn" class="btn" style="width: auto; margin-left: auto;">Exporter en PDF</button>
       </div>
 
+      <div class="filters" id="tag-filters"></div>
+
       <div id="fiches-list" class="fiches-list"></div>
     </div>
   `
@@ -36,6 +39,7 @@ export async function renderReferentiel(container) {
   let currentFiltered = []
   let activeType = ''
   let activeMatiere = ''
+  let activeTags = []
 
   function applyFilters() {
     const searchTerm = document.getElementById('search-input').value.toLowerCase()
@@ -43,7 +47,8 @@ export async function renderReferentiel(container) {
       const matchesType = !activeType || f.type === activeType
       const matchesMatiere = !activeMatiere || f.matiere === activeMatiere
       const matchesSearch = !searchTerm || texteRechercheFiche(f).includes(searchTerm)
-      return matchesType && matchesMatiere && matchesSearch
+      const matchesTags = activeTags.length === 0 || activeTags.some((t) => (f.tags || []).includes(t))
+      return matchesType && matchesMatiere && matchesSearch && matchesTags
     })
     currentFiltered = filtered
     renderList(filtered)
@@ -112,6 +117,14 @@ export async function renderReferentiel(container) {
   } catch {
     // silencieux : le filtre matière reste optionnel
   }
+
+  await renderTagFilters(document.getElementById('tag-filters'), {
+    selected: activeTags,
+    onChange: (tags) => {
+      activeTags = tags
+      applyFilters()
+    },
+  })
 
   try {
     const periode = getPeriodeActuelle()
