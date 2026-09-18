@@ -2,8 +2,9 @@ import { supabase } from './supabase.js'
 import { getMatieres } from './matieres.js'
 import { upsertPartiel } from './upsert.js'
 
-export async function getFiches({ matiere, type, annee, semestre } = {}) {
-  let query = supabase.from('fiches').select('*').neq('statut', 'archive')
+export async function getFiches({ matiere, type, annee, semestre, inclureArchivees } = {}) {
+  let query = supabase.from('fiches').select('*')
+  if (!inclureArchivees) query = query.neq('statut', 'archive')
 
   if (matiere) query = query.eq('matiere', matiere)
   if (type) query = query.eq('type', type)

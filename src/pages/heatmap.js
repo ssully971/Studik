@@ -21,7 +21,7 @@ function jourSemaineLundi(date) {
   return (date.getDay() + 6) % 7
 }
 
-export function renderHeatmap(container, compte) {
+export function renderHeatmap(container, compte, checkinsParJour = {}) {
   const aujourdhui = new Date()
   aujourdhui.setHours(0, 0, 0, 0)
 
@@ -76,7 +76,8 @@ export function renderHeatmap(container, compte) {
                   if (!jour) return `<div class="heatmap-cell heatmap-cell-vide"></div>`
                   const iso = jour.toISOString().slice(0, 10)
                   const count = compte[iso] || 0
-                  return `<div class="heatmap-cell niveau-${niveauIntensite(count)}" title="${formatDateCourte(jour)} · ${count} action${count !== 1 ? 's' : ''}"></div>`
+                  const checkin = checkinsParJour[iso] ? ' · check-in fait' : ''
+                  return `<div class="heatmap-cell niveau-${niveauIntensite(count)}" title="${formatDateCourte(jour)} · ${count} action${count !== 1 ? 's' : ''}${checkin}"></div>`
                 })
                 .join('')}
             </div>

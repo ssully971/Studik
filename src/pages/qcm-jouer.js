@@ -1,4 +1,5 @@
 import { getQcmById, enregistrerTentativeQcm, scoreQuestion, scoreQcm } from '../lib/qcm.js'
+import { getProgressionByQcmId, sauvegarderProgression, supprimerProgression } from '../lib/qcm-progression.js'
 
 let timerInterval = null
 
@@ -27,7 +28,18 @@ export async function renderQcmJouer(container, qcmId) {
     return
   }
 
-  renderChoixMode(container, qcm)
+  let progression = null
+  try {
+    progression = await getProgressionByQcmId(qcmId)
+  } catch {
+    progression = null
+  }
+
+  if (progression) {
+    reprendreQcm(container, qcm, progression)
+  } else {
+    renderChoixMode(container, qcm)
+  }
 }
 
 function renderChoixMode(container, qcm) {
@@ -61,48 +73,113 @@ function renderChoixMode(container, qcm) {
   })
 }
 
-function demarrerQcm(container, qcm, mode) {
-  const state = {
-    index: 0,
-    reponses: qcm.questions.map((q) => q.items.map(() => false)),
-    corrigees: qcm.questions.map(() => false),
-    tempsRestant: qcm.duree_minutes * 60,
-    debut: Date.now(),
+function figerChrono(state) {
+  if (state.mode === 'entrainement') {
+    state.chronoEcouleSecondes += Math.floor((Date.now() - state.debutTick) / 1000)
+    state.debutTick = Date.now()
   }
+}
 
-  if (mode === 'concours') {
-    clearTimerIfAny()
+function sauvegarderProgressionSilencieux(qcm, state) {
+  sauvegarderProgression({
+    qcmId: qcm.id,
+    mode: state.mode,
+    indexCourant: state.index,
+    reponses: state.reponses,
+    dateFinPrevue: state.dateFinPrevue ? new Date(state.dateFinPrevue).toISOString() : null,
+    chronoEcouleSecondes: state.chronoEcouleSecondes,
+  }).catch((err) => console.error('Erreur sauvegarde progression QCM', err))
+}
+
+function demarrerTimer(container, qcm, state) {
+  clearTimerIfAny()
+  if (state.mode === 'concours') {
     timerInterval = setInterval(() => {
       const timerEl = document.getElementById('qcm-timer')
       if (!timerEl) {
         clearTimerIfAny()
         return
       }
-      state.tempsRestant--
-      timerEl.textContent = formatTemps(Math.max(0, state.tempsRestant))
-      if (state.tempsRestant <= 0) {
+      const tempsRestant = Math.max(0, Math.round((state.dateFinPrevue - Date.now()) / 1000))
+      timerEl.textContent = formatTemps(tempsRestant)
+      if (tempsRestant <= 0) {
         clearTimerIfAny()
-        terminerQcm(container, qcm, mode, state)
+        terminerQcm(container, qcm, state.mode, state)
       }
     }, 1000)
+  } else {
+    timerInterval = setInterval(() => {
+      const timerEl = document.getElementById('qcm-timer')
+      if (!timerEl) {
+        clearTimerIfAny()
+        return
+      }
+      const ecoule = state.chronoEcouleSecondes + Math.floor((Date.now() - state.debutTick) / 1000)
+      timerEl.textContent = formatTemps(ecoule)
+    }, 1000)
+  }
+}
+
+function demarrerQcm(container, qcm, mode) {
+  const maintenant = Date.now()
+  const state = {
+    index: 0,
+    reponses: qcm.questions.map((q) => q.items.map(() => false)),
+    corrigees: qcm.questions.map(() => false),
+    mode,
+    dateFinPrevue: mode === 'concours' ? maintenant + qcm.duree_minutes * 60 * 1000 : null,
+    chronoEcouleSecondes: 0,
+    debutTick: maintenant,
   }
 
+  sauvegarderProgressionSilencieux(qcm, state)
+  demarrerTimer(container, qcm, state)
   renderQuestion(container, qcm, mode, state)
 }
 
+function reprendreQcm(container, qcm, progression) {
+  const reponsesValides =
+    Array.isArray(progression.reponses) && progression.reponses.length === qcm.questions.length
+      ? progression.reponses
+      : qcm.questions.map((q) => q.items.map(() => false))
+
+  const state = {
+    index: Math.min(progression.index_courant, qcm.questions.length - 1),
+    reponses: reponsesValides,
+    corrigees: qcm.questions.map(() => false),
+    mode: progression.mode,
+    dateFinPrevue: progression.date_fin_prevue ? new Date(progression.date_fin_prevue).getTime() : null,
+    chronoEcouleSecondes: progression.chrono_ecoule_secondes || 0,
+    debutTick: Date.now(),
+  }
+
+  demarrerTimer(container, qcm, state)
+  renderQuestion(container, qcm, state.mode, state)
+}
+
 function renderCorrectionItems(question, reponsesItem) {
-  const itemsAExpliquer = question.items
-    .map((item, i) => ({ item, i, coche: reponsesItem[i] }))
-    .filter(({ item, coche }) => Boolean(coche) !== Boolean(item.correct))
-
-  if (itemsAExpliquer.length === 0) return ''
-
   return `
     <ul class="detail-list" style="margin-top: 10px;">
-      ${itemsAExpliquer
-        .map(({ item }) => {
-          const texteExplication = item.explication || question.explication
-          return texteExplication ? `<li><strong>${item.texte}</strong> — ${texteExplication}</li>` : ''
+      ${question.items
+        .map((item, i) => {
+          const coche = reponsesItem[i]
+          const correcte = item.correct
+          const explication = item.explication || question.explication
+          let classe = 'item-explication-neutre'
+          let symbole = '—'
+          if (correcte && coche) {
+            classe = 'item-explication-ok'
+            symbole = '✔'
+          } else if (correcte && !coche) {
+            classe = 'item-explication-missed'
+            symbole = '✘ manqué'
+          } else if (!correcte && coche) {
+            classe = 'item-explication-wrong'
+            symbole = '✘ erreur'
+          } else {
+            symbole = correcte ? '✔' : '—'
+          }
+          return `<li class="${classe}"><span class="item-explication-symbole">${symbole}</span> <strong>${item.texte}</strong>${explication ? ` — ${explication}` : ''}</li>`
         })
         .join('')}
     </ul>
@@ -113,11 +190,16 @@ function renderQuestion(container, qcm, mode, state) {
   const q = qcm.questions[state.index]
   const reponsesQuestion = state.reponses[state.index]
 
+  const timerInitial =
+    mode === 'concours'
+      ? formatTemps(Math.max(0, Math.round((state.dateFinPrevue - Date.now()) / 1000)))
+      : formatTemps(state.chronoEcouleSecondes)
+
   container.innerHTML = `
     <div class="wrap">
       <div class="section-head">
         <h2 class="voice">${qcm.titre}</h2>
-        <span class="count">Question ${state.index + 1} / ${qcm.questions.length}${mode === 'concours' ? ` · <span id="qcm-timer">${formatTemps(state.tempsRestant)}</span>` : ''}</span>
+        <span class="count">Question ${state.index + 1} / ${qcm.questions.length} · <span id="qcm-timer">${timerInitial}</span></span>
       </div>
 
       <div class="cas-card">
@@ -178,6 +260,7 @@ function renderQuestion(container, qcm, mode, state) {
       validerBtn.addEventListener('click', () => {
         state.corrigees[state.index] = true
         afficherCorrectionQuestion(q, state.reponses[state.index])
+        sauvegarderProgressionSilencieux(qcm, state)
         renderActions()
       })
     }
@@ -185,7 +268,9 @@ function renderQuestion(container, qcm, mode, state) {
     const suivantBtn = document.getElementById('suivant-btn')
     if (suivantBtn) {
       suivantBtn.addEventListener('click', () => {
+        figerChrono(state)
         state.index++
+        sauvegarderProgressionSilencieux(qcm, state)
         renderQuestion(container, qcm, mode, state)
       })
     }
@@ -194,6 +279,7 @@ function renderQuestion(container, qcm, mode, state) {
     if (precedentBtn) {
       precedentBtn.addEventListener('click', () => {
         state.index--
+        sauvegarderProgressionSilencieux(qcm, state)
         renderQuestion(container, qcm, mode, state)
       })
     }
@@ -235,7 +321,7 @@ function renderQuestion(container, qcm, mode, state) {
 async function terminerQcm(container, qcm, mode, state) {
   clearTimerIfAny()
   const { score, scoreMax } = scoreQcm(qcm.questions, state.reponses)
-  const dureeUtilisee = mode === 'concours' ? qcm.duree_minutes * 60 - Math.max(0, state.tempsRestant) : null
+  const dureeUtilisee = mode === 'concours' ? qcm.duree_minutes * 60 - Math.max(0, Math.round((state.dateFinPrevue - Date.now()) / 1000)) : null
 
   try {
     await enregistrerTentativeQcm({
@@ -248,6 +334,12 @@ async function terminerQcm(container, qcm, mode, state) {
     })
   } catch (err) {
     console.error('Erreur enregistrement tentative QCM', err)
+  }
+
+  try {
+    await supprimerProgression(qcm.id)
+  } catch (err) {
+    console.error('Erreur suppression progression QCM', err)
   }
 
   container.innerHTML = `
@@ -282,19 +374,6 @@ async function terminerQcm(container, qcm, mode, state) {
       <div class="detail-section">
         <h3 class="voice">Question ${i + 1} — ${pts} pt${pts !== 1 ? 's' : ''}</h3>
         <p style="margin-bottom: 10px;">${q.enonce}</p>
-        <ul class="detail-list">
-          ${q.items
-            .map((item, j) => {
-              const coche = reponsesQuestion[j]
-              const correcte = item.correct
-              let symbole = '—'
-              if (correcte && coche) symbole = '✔'
-              else if (correcte && !coche) symbole = '✘ (manqué)'
-              else if (!correcte && coche) symbole = '✘ (erreur)'
-              return `<li>${symbole} ${item.texte}</li>`
-            })
-            .join('')}
-        </ul>
         ${renderCorrectionItems(q, reponsesQuestion)}
       </div>
     `

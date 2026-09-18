@@ -2,7 +2,7 @@ import { insertFiches, getAllFicheIds } from '../lib/fiches.js'
 import { insertCas, getAllCasIds } from '../lib/cas.js'
 import { insertMatieres, getAllMatiereIds, getAllMatiereNoms } from '../lib/matieres.js'
 import { insertQcm, getAllQcmIds } from '../lib/qcm.js'
-import { getTags } from '../lib/tags.js'
+import { getTags, ajouterTag } from '../lib/tags.js'
 import { slugify } from '../lib/slug.js'
 
 function findDuplicateIds(items) {
@@ -183,13 +183,23 @@ export function renderImport(container) {
       tagsConnus = new Set()
     }
     if (target === 'fiches' || target === 'cas' || target === 'qcm') {
+      const nouveauxTags = new Set()
       items.forEach((item) => {
         ;(item.tags || []).forEach((t) => {
-          if (!tagsConnus.has(t)) {
-            avertissements.push(`Tag "${t}" inconnu (${target === 'fiches' ? 'fiche' : target === 'cas' ? 'cas' : 'QCM'} "${item.id}") — crée-le via #prompts.`)
-          }
+          if (!tagsConnus.has(t)) nouveauxTags.add(t)
         })
       })
+      if (nouveauxTags.size > 0) {
+        try {
+          for (const t of nouveauxTags) {
+            await ajouterTag(t)
+            tagsConnus.add(t)
+          }
+          infos.push(`${nouveauxTags.size} nouveau${nouveauxTags.size !== 1 ? 'x' : ''} tag${nouveauxTags.size !== 1 ? 's' : ''} créé${nouveauxTags.size !== 1 ? 's' : ''} : ${Array.from(nouveauxTags).join(', ')}`)
+        } catch (err) {
+          avertissements.push(`Impossible de créer automatiquement certains tags : ${err.message}`)
+        }
+      }
     }
 
     if (target === 'fiches') {

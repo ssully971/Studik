@@ -28,7 +28,12 @@ export async function getActiviteParJour() {
   tentativesQcm.data.forEach((t) => ajouter(t.date_tentative))
   checkins.data.forEach((c) => ajouter(c.jour))
 
-  return compte
+  const checkinsParJour = {}
+  checkins.data.forEach((c) => {
+    checkinsParJour[c.jour] = true
+  })
+
+  return { compte, checkinsParJour }
 }
 
 export { FENETRE_JOURS }

@@ -1,5 +1,6 @@
 import { getTentativesRatees, marquerCommeRevu, GABARITS_CAS } from '../lib/cas.js'
 import { getQcmTentativesARevoir, marquerTentativeQcmRevue, questionsRateesDeLaTentative } from '../lib/qcm.js'
+import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
 import { renderTagFilters } from './tag-filter.js'
 import { renderTagPicker } from './tag-picker.js'
 import { definirScopeRetry } from './qcm-retry-session.js'
@@ -33,6 +34,13 @@ export async function renderCarnetErreurs(container) {
   } catch (err) {
     container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${err.message}</p></div>`
     return
+  }
+
+  let matiereColorMap = {}
+  try {
+    matiereColorMap = buildMatiereColorMap(await getMatieres({}))
+  } catch {
+    matiereColorMap = {}
   }
 
   container.innerHTML = `
@@ -177,7 +185,7 @@ export async function renderCarnetErreurs(container) {
 
         return `
           <div class="fiche-row type-${cas.type}">
-            <div class="tab"></div>
+            <div class="tab" style="background: ${couleurTab(cas.matiere, cas.type, matiereColorMap)};"></div>
             <div class="fiche-body">
               <div class="fiche-top">
                 <span class="fiche-title voice">${cas.question}</span>
@@ -279,7 +287,7 @@ export async function renderCarnetErreurs(container) {
 
         return `
           <div class="fiche-row">
-            <div class="tab"></div>
+            <div class="tab" style="background: ${couleurTab(qcm.matieres, null, matiereColorMap)};"></div>
             <div class="fiche-body">
               <div class="fiche-top">
                 <span class="fiche-title voice">${qcm.titre}</span>

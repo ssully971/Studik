@@ -1,5 +1,5 @@
 import { getAllCas, deleteCas, updateCasStatut, updateCasTags, updateCas, GABARITS_CAS } from '../lib/cas.js'
-import { getMatieres } from '../lib/matieres.js'
+import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
 import { getTags } from '../lib/tags.js'
 import { renderTagPicker } from './tag-picker.js'
 import { renderTagFilters } from './tag-filter.js'
@@ -122,6 +122,12 @@ export async function renderCasListe(container) {
           <option value="2">Niveau 2</option>
           <option value="3">Niveau 3</option>
         </select>
+        <select id="tri-select" class="periode-select">
+          <option value="recent">Plus récent</option>
+          <option value="ancien">Plus ancien</option>
+          <option value="alpha-asc">Alphabétique A→Z</option>
+          <option value="alpha-desc">Alphabétique Z→A</option>
+        </select>
       </div>
 
       <div class="filters" id="tag-filters"></div>
@@ -137,10 +143,27 @@ export async function renderCasListe(container) {
     tousLesTags = []
   }
 
+  let matiereColorMap = {}
+  try {
+    matiereColorMap = buildMatiereColorMap(await getMatieres({}))
+  } catch {
+    matiereColorMap = {}
+  }
+
   let activeType = ''
   let activeMatiere = ''
   let activeNiveau = ''
   let activeTags = []
+  let activeTri = 'recent'
+
+  function trier(list) {
+    const copie = [...list]
+    if (activeTri === 'recent') copie.sort((a, b) => new Date(b.date_creation) - new Date(a.date_creation))
+    else if (activeTri === 'ancien') copie.sort((a, b) => new Date(a.date_creation) - new Date(b.date_creation))
+    else if (activeTri === 'alpha-asc') copie.sort((a, b) => a.question.localeCompare(b.question))
+    else if (activeTri === 'alpha-desc') copie.sort((a, b) => b.question.localeCompare(a.question))
+    return copie
+  }
 
   function applyFilters() {
     const term = document.getElementById('search-input').value.toLowerCase()
@@ -152,7 +175,7 @@ export async function renderCasListe(container) {
       const matchesTags = activeTags.length === 0 || activeTags.some((t) => (c.tags || []).includes(t))
       return matchesType && matchesMatiere && matchesNiveau && matchesSearch && matchesTags
     })
-    renderList(filtered)
+    renderList(trier(filtered))
   }
 
   function renderList(list) {
@@ -168,7 +191,7 @@ export async function renderCasListe(container) {
       .map(
         (c) => `
         <div class="fiche-row type-${c.type}" data-id="${c.id}">
-          <div class="tab"></div>
+          <div class="tab" style="background: ${couleurTab(c.matiere, c.type, matiereColorMap)};"></div>
           <div class="fiche-body">
             <div class="fiche-top">
               <span class="fiche-title voice">${c.question}</span>
@@ -304,6 +327,11 @@ export async function renderCasListe(container) {
 
   document.getElementById('niveau-filter').addEventListener('change', (e) => {
     activeNiveau = e.target.value
+    applyFilters()
+  })
+
+  document.getElementById('tri-select').addEventListener('change', (e) => {
+    activeTri = e.target.value
     applyFilters()
   })
 

@@ -13,6 +13,7 @@ import {
 } from '../lib/qcm.js'
 import { getCheckins, deleteAllCheckins, restaurerCheckins } from '../lib/checkins.js'
 import { getTags, restaurerTags } from '../lib/tags.js'
+import { getTheme, setTheme } from '../lib/theme.js'
 
 function statusHTML(id) {
   return `<span id="${id}" class="import-status"></span>`
@@ -48,6 +49,15 @@ export async function renderParametres(container) {
         <div class="settings-card">
           <h3 class="voice">Compte</h3>
           <p class="settings-desc">Connecté en tant que ${user?.email || ''}</p>
+        </div>
+
+        <div class="settings-card">
+          <h3 class="voice">Thème</h3>
+          <p class="settings-desc">Le thème sombre reste celui par défaut.</p>
+          <div class="import-actions">
+            <button id="theme-dark-btn" class="btn${getTheme() === 'dark' ? ' primary' : ''}" style="width: auto;">Sombre</button>
+            <button id="theme-light-btn" class="btn${getTheme() === 'light' ? ' primary' : ''}" style="width: auto;">Clair</button>
+          </div>
         </div>
 
         <div class="settings-card">
@@ -106,6 +116,16 @@ export async function renderParametres(container) {
       </div>
     </div>
   `
+
+  document.getElementById('theme-dark-btn').addEventListener('click', () => {
+    setTheme('dark')
+    renderParametres(container)
+  })
+
+  document.getElementById('theme-light-btn').addEventListener('click', () => {
+    setTheme('light')
+    renderParametres(container)
+  })
 
   document.getElementById('save-pseudo-btn').addEventListener('click', async () => {
     const value = document.getElementById('pseudo-input').value.trim()

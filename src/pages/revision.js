@@ -1,4 +1,5 @@
 import { getFichesARevoir, updateStatut } from '../lib/fiches.js'
+import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
 import { getPeriodeActuelle } from '../lib/periode.js'
 import { renderTagFilters } from './tag-filter.js'
 
@@ -32,6 +33,12 @@ export async function renderRevision(container) {
         <button class="filter-btn" data-type="clinique">Clinique</button>
         <button class="filter-btn" data-type="mecanisme">Mécanisme</button>
         <button class="filter-btn" data-type="structure">Structure</button>
+        <select id="tri-select" class="periode-select">
+          <option value="recent">Plus récent</option>
+          <option value="ancien">Plus ancien</option>
+          <option value="alpha-asc">Alphabétique A→Z</option>
+          <option value="alpha-desc">Alphabétique Z→A</option>
+        </select>
       </div>
 
       <div class="filters" id="tag-filters"></div>
@@ -40,9 +47,26 @@ export async function renderRevision(container) {
     </div>
   `
 
+  let matiereColorMap = {}
+  try {
+    matiereColorMap = buildMatiereColorMap(await getMatieres({}))
+  } catch {
+    matiereColorMap = {}
+  }
+
   let fiches = [...allFiches]
   let activeType = ''
   let activeTags = []
+  let activeTri = 'recent'
+
+  function trier(list) {
+    const copie = [...list]
+    if (activeTri === 'recent') copie.sort((a, b) => new Date(b.date_creation) - new Date(a.date_creation))
+    else if (activeTri === 'ancien') copie.sort((a, b) => new Date(a.date_creation) - new Date(b.date_creation))
+    else if (activeTri === 'alpha-asc') copie.sort((a, b) => a.titre.localeCompare(b.titre))
+    else if (activeTri === 'alpha-desc') copie.sort((a, b) => b.titre.localeCompare(a.titre))
+    return copie
+  }
 
   function applyFilter() {
     const filtered = fiches.filter((f) => {
@@ -50,7 +74,7 @@ export async function renderRevision(container) {
       const matchesTags = activeTags.length === 0 || activeTags.some((t) => (f.tags || []).includes(t))
       return matchesType && matchesTags
     })
-    renderList(filtered)
+    renderList(trier(filtered))
   }
 
   function renderList(list) {
@@ -66,7 +90,7 @@ export async function renderRevision(container) {
       .map(
         (f) => `
         <div class="fiche-row type-${f.type}" data-id="${f.id}">
-          <div class="tab"></div>
+          <div class="tab" style="background: ${couleurTab(f.matiere, f.type, matiereColorMap)};"></div>
           <div class="fiche-body" data-open="${f.id}">
             <div class="fiche-top">
               <span class="fiche-title voice">${f.titre}</span>
@@ -111,6 +135,11 @@ export async function renderRevision(container) {
     document.querySelectorAll('#type-filters .filter-btn').forEach((b) => b.classList.remove('active'))
     btn.classList.add('active')
     activeType = btn.dataset.type
+    applyFilter()
+  })
+
+  document.getElementById('tri-select').addEventListener('change', (e) => {
+    activeTri = e.target.value
     applyFilter()
   })
 

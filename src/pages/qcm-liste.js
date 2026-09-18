@@ -1,6 +1,7 @@
 import { getAllQcm, updateQcmStatut, deleteQcm, updateQcmTags, insertQcm, getAllQcmIds } from '../lib/qcm.js'
-import { getMatieres } from '../lib/matieres.js'
+import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
 import { getTags } from '../lib/tags.js'
+import { getProgressions, supprimerProgression } from '../lib/qcm-progression.js'
 import { renderTagPicker } from './tag-picker.js'
 import { renderTagFilters } from './tag-filter.js'
 import { slugify } from '../lib/slug.js'
@@ -23,8 +24,40 @@ export async function renderQcmListe(container) {
         <span class="count" id="qcm-count"></span>
       </div>
 
-      <div class="settings-card" style="margin-bottom: 24px;">
-        <h3 class="voice">Nouveau QCM</h3>
+      <div class="import-actions" style="margin-bottom: 20px;">
+        <button id="nouveau-qcm-btn" class="btn primary" style="width: auto;">+ Nouveau QCM</button>
+        <div id="reprendre-zone"></div>
+      </div>
+
+      <input type="text" id="search-input" class="search-input" placeholder="Rechercher un QCM par titre…" />
+
+      <div class="filters" id="qcm-filters">
+        <select id="matiere-filter" class="periode-select"></select>
+        <select id="statut-filter" class="periode-select">
+          <option value="">Tous statuts</option>
+          <option value="brouillon">Brouillon</option>
+          <option value="valide">Validé</option>
+          <option value="archive">Archivé</option>
+        </select>
+        <select id="tri-select" class="periode-select">
+          <option value="recent">Plus récent</option>
+          <option value="ancien">Plus ancien</option>
+          <option value="alpha-asc">Alphabétique A→Z</option>
+          <option value="alpha-desc">Alphabétique Z→A</option>
+        </select>
+      </div>
+
+      <div class="filters" id="qcm-tag-filters"></div>
+
+      <div id="qcm-list" class="fiches-list"></div>
+    </div>
+
+    <div id="nouveau-qcm-overlay" class="modal-overlay hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <span class="voice">Nouveau QCM</span>
+          <button id="nouveau-qcm-close" class="btn" style="width: auto;">Fermer</button>
+        </div>
         <p class="settings-desc">Crée la fiche d'identité du QCM ici, puis ajoute les questions via #import (JSON généré par le prompt QCM).</p>
         <div style="margin-bottom: 14px;">
           <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Titre</label>
@@ -47,22 +80,16 @@ export async function renderQcmListe(container) {
           <span id="creation-status" class="import-status"></span>
         </div>
       </div>
+    </div>
 
-      <input type="text" id="search-input" class="search-input" placeholder="Rechercher un QCM par titre…" />
-
-      <div class="filters" id="qcm-filters">
-        <select id="matiere-filter" class="periode-select"></select>
-        <select id="statut-filter" class="periode-select">
-          <option value="">Tous statuts</option>
-          <option value="brouillon">Brouillon</option>
-          <option value="valide">Validé</option>
-          <option value="archive">Archivé</option>
-        </select>
+    <div id="reprises-overlay" class="modal-overlay hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <span class="voice">QCM en cours</span>
+          <button id="reprises-close" class="btn" style="width: auto;">Fermer</button>
+        </div>
+        <div id="reprises-list"></div>
       </div>
-
-      <div class="filters" id="qcm-tag-filters"></div>
-
-      <div id="qcm-list" class="fiches-list"></div>
     </div>
   `
 
@@ -72,6 +99,8 @@ export async function renderQcmListe(container) {
   } catch {
     tousLesTags = []
   }
+
+  let matiereColorMap = {}
 
   let tagsNouveauQcm = []
   renderTagPicker(document.getElementById('nouveau-tags-picker'), {
@@ -85,10 +114,22 @@ export async function renderQcmListe(container) {
   let toutesMatieres = []
   try {
     toutesMatieres = await getMatieres({})
+    matiereColorMap = buildMatiereColorMap(toutesMatieres)
     document.getElementById('nouveau-matieres').innerHTML = toutesMatieres.map((m) => `<option value="${m.nom}">${m.nom}</option>`).join('')
   } catch {
     // silencieux
   }
+
+  const nouveauOverlay = document.getElementById('nouveau-qcm-overlay')
+  document.getElementById('nouveau-qcm-btn').addEventListener('click', () => {
+    nouveauOverlay.classList.remove('hidden')
+  })
+  document.getElementById('nouveau-qcm-close').addEventListener('click', () => {
+    nouveauOverlay.classList.add('hidden')
+  })
+  nouveauOverlay.addEventListener('click', (e) => {
+    if (e.target === nouveauOverlay) nouveauOverlay.classList.add('hidden')
+  })
 
   document.getElementById('creer-qcm-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('creation-status')
@@ -128,9 +169,115 @@ export async function renderQcmListe(container) {
     }
   })
 
+  // --- Reprise d'un QCM en cours ---
+  const reprisesOverlay = document.getElementById('reprises-overlay')
+  document.getElementById('reprises-close').addEventListener('click', () => {
+    reprisesOverlay.classList.add('hidden')
+  })
+  reprisesOverlay.addEventListener('click', (e) => {
+    if (e.target === reprisesOverlay) reprisesOverlay.classList.add('hidden')
+  })
+
+  async function chargerReprises() {
+    const zone = document.getElementById('reprendre-zone')
+    let progressions = []
+    try {
+      progressions = await getProgressions()
+    } catch {
+      progressions = []
+    }
+
+    if (progressions.length === 0) {
+      zone.innerHTML = ''
+      return
+    }
+
+    if (progressions.length === 1) {
+      const p = progressions[0]
+      const total = p.qcm?.questions?.length || 0
+      zone.innerHTML = `
+        <a href="#qcm-jouer/${p.qcm_id}" class="btn primary" style="width: auto;">Reprendre « ${p.qcm?.titre || p.qcm_id} » — question ${p.index_courant + 1}/${total}</a>
+        <button id="abandonner-seul-btn" class="btn" style="width: auto; color: #C46A5C;">Abandonner ce QCM</button>
+      `
+      document.getElementById('abandonner-seul-btn').addEventListener('click', async () => {
+        if (!window.confirm('Abandonner ce QCM en cours ? Ta progression sera perdue, aucune tentative ne sera enregistrée.')) return
+        try {
+          await supprimerProgression(p.qcm_id)
+          chargerReprises()
+        } catch (err) {
+          alert('Erreur : ' + err.message)
+        }
+      })
+      return
+    }
+
+    zone.innerHTML = `<button id="ouvrir-reprises-btn" class="btn primary" style="width: auto;">Reprendre un QCM en cours (${progressions.length})</button>`
+    document.getElementById('ouvrir-reprises-btn').addEventListener('click', () => {
+      renderReprisesListe(progressions)
+      reprisesOverlay.classList.remove('hidden')
+    })
+  }
+
+  function renderReprisesListe(progressions) {
+    const listEl = document.getElementById('reprises-list')
+    listEl.innerHTML = progressions
+      .map((p) => {
+        const total = p.qcm?.questions?.length || 0
+        return `
+        <div class="fiche-row" data-progression="${p.qcm_id}">
+          <div class="tab"></div>
+          <div class="fiche-body">
+            <div class="fiche-top">
+              <span class="fiche-title voice">${p.qcm?.titre || p.qcm_id}</span>
+              <span class="type-label">${p.mode}</span>
+            </div>
+            <div class="fiche-meta">Question ${p.index_courant + 1} / ${total}</div>
+            <div class="import-actions" style="margin-top: 10px;">
+              <a href="#qcm-jouer/${p.qcm_id}" class="btn primary" style="width: auto;">Reprendre</a>
+              <button class="btn" data-abandonner="${p.qcm_id}" style="width: auto; color: #C46A5C;">Abandonner ce QCM</button>
+            </div>
+          </div>
+        </div>
+      `
+      })
+      .join('')
+
+    listEl.querySelectorAll('[data-abandonner]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const qcmId = btn.dataset.abandonner
+        if (!window.confirm('Abandonner ce QCM en cours ? Ta progression sera perdue, aucune tentative ne sera enregistrée.')) return
+        try {
+          await supprimerProgression(qcmId)
+          const restantes = progressions.filter((p) => p.qcm_id !== qcmId)
+          progressions = restantes
+          if (restantes.length === 0) {
+            document.getElementById('reprises-overlay').classList.add('hidden')
+          } else {
+            renderReprisesListe(restantes)
+          }
+          chargerReprises()
+        } catch (err) {
+          alert('Erreur : ' + err.message)
+        }
+      })
+    })
+  }
+
+  chargerReprises()
+
   let activeMatiere = ''
   let activeStatut = ''
   let activeTags = []
+  let activeTri = 'recent'
+
+  function trier(list) {
+    const copie = [...list]
+    if (activeTri === 'recent') copie.sort((a, b) => new Date(b.date_creation) - new Date(a.date_creation))
+    else if (activeTri === 'ancien') copie.sort((a, b) => new Date(a.date_creation) - new Date(b.date_creation))
+    else if (activeTri === 'alpha-asc') copie.sort((a, b) => a.titre.localeCompare(b.titre))
+    else if (activeTri === 'alpha-desc') copie.sort((a, b) => b.titre.localeCompare(a.titre))
+    return copie
+  }
 
   function applyFilters() {
     const term = document.getElementById('search-input').value.toLowerCase()
@@ -141,7 +288,7 @@ export async function renderQcmListe(container) {
       const matchesTags = activeTags.length === 0 || activeTags.some((t) => (q.tags || []).includes(t))
       return matchesMatiere && matchesStatut && matchesSearch && matchesTags
     })
-    renderList(filtered)
+    renderList(trier(filtered))
   }
 
   function renderList(list) {
@@ -157,7 +304,7 @@ export async function renderQcmListe(container) {
       .map(
         (q) => `
         <div class="fiche-row" data-id="${q.id}">
-          <div class="tab"></div>
+          <div class="tab" style="background: ${couleurTab(q.matieres, null, matiereColorMap)};"></div>
           <div class="fiche-body">
             <div class="fiche-top">
               <a href="#qcm-detail/${q.id}" class="fiche-title voice">${q.titre}</a>
@@ -230,6 +377,11 @@ export async function renderQcmListe(container) {
 
   document.getElementById('statut-filter').addEventListener('change', (e) => {
     activeStatut = e.target.value
+    applyFilters()
+  })
+
+  document.getElementById('tri-select').addEventListener('change', (e) => {
+    activeTri = e.target.value
     applyFilters()
   })
 

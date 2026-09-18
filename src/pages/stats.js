@@ -6,7 +6,7 @@ import {
   deleteTentativesQcmByMatiere,
   deleteAllTentativesQcm,
 } from '../lib/qcm.js'
-import { getMatieres } from '../lib/matieres.js'
+import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
 
 const PAGE_SIZE = 5
 
@@ -46,6 +46,7 @@ export async function renderStats(container) {
   matieres.forEach((m) => {
     typeParMatiere[m.nom] = m.type
   })
+  const matiereColorMap = buildMatiereColorMap(matieres)
 
   let limiteHistorique = PAGE_SIZE
   let limiteHistoriqueQcm = PAGE_SIZE
@@ -173,7 +174,7 @@ export async function renderStats(container) {
           const color = { clinique: 'var(--clinique)', mecanisme: 'var(--mecanisme)', structure: 'var(--structure)' }[m.type]
           return `
           <div class="fiche-row type-${m.type}" style="grid-template-columns: 4px 1fr;">
-            <div class="tab"></div>
+            <div class="tab" style="background: ${couleurTab(nom, m.type, matiereColorMap)};"></div>
             <div class="fiche-body">
               <div class="fiche-top">
                 <span class="fiche-title voice">${nom}</span>
@@ -201,7 +202,7 @@ export async function renderStats(container) {
           const taux = Math.round((t.reussies / t.total) * 100)
           return `
           <div class="fiche-row type-${t.type}">
-            <div class="tab"></div>
+            <div class="tab" style="background: ${couleurTab(nom, t.type, matiereColorMap)};"></div>
             <div class="fiche-body">
               <div class="fiche-top">
                 <span class="fiche-title voice">${nom}</span>
@@ -233,7 +234,7 @@ export async function renderStats(container) {
           const taux = q.scoreMax > 0 ? Math.round((q.score / q.scoreMax) * 100) : 0
           return `
           <div class="fiche-row type-${type}">
-            <div class="tab"></div>
+            <div class="tab" style="background: ${couleurTab(nom, type, matiereColorMap)};"></div>
             <div class="fiche-body">
               <div class="fiche-top">
                 <span class="fiche-title voice">${nom}</span>
@@ -264,7 +265,7 @@ export async function renderStats(container) {
           if (!cas) return ''
           return `
           <div class="fiche-row type-${cas.type}">
-            <div class="tab"></div>
+            <div class="tab" style="background: ${couleurTab(cas.matiere, cas.type, matiereColorMap)};"></div>
             <div class="fiche-body">
               <div class="fiche-top">
                 <span class="fiche-title voice">${cas.question}</span>
@@ -308,7 +309,7 @@ export async function renderStats(container) {
           const taux = t.score_max > 0 ? Math.round((t.score / t.score_max) * 100) : 0
           return `
           <div class="fiche-row">
-            <div class="tab"></div>
+            <div class="tab" style="background: ${couleurTab(qcm.matieres, null, matiereColorMap)};"></div>
             <div class="fiche-body">
               <div class="fiche-top">
                 <span class="fiche-title voice">${qcm.titre}</span>

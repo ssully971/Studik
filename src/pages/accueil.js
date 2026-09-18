@@ -4,7 +4,7 @@ import { getPeriodeActuelle } from '../lib/periode.js'
 import { checkinAujourdhui, getCheckins } from '../lib/checkins.js'
 import { computeStreak } from '../lib/streak.js'
 import { getAllTentativesQcmStats } from '../lib/qcm.js'
-import { getMatieres } from '../lib/matieres.js'
+import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
 import { getActiviteParJour } from '../lib/activite.js'
 import { renderHeatmap } from './heatmap.js'
 import anecdotes from '../data/anecdotes.json'
@@ -88,8 +88,8 @@ export async function renderAccueil(container) {
 
   async function chargerHeatmap() {
     try {
-      const compte = await getActiviteParJour()
-      renderHeatmap(document.getElementById('heatmap-popup'), compte)
+      const { compte, checkinsParJour } = await getActiviteParJour()
+      renderHeatmap(document.getElementById('heatmap-popup'), compte, checkinsParJour)
     } catch {
       // silencieux : la heatmap est un bonus visuel, pas une fonctionnalité critique
     }
@@ -136,6 +136,7 @@ export async function renderAccueil(container) {
     matieres.forEach((m) => {
       ordreParMatiere[m.nom] = m.ordre_affichage ?? 0
     })
+    const matiereColorMap = buildMatiereColorMap(matieres)
     const groupsTries = groupByMatiere(fiches).sort(
       (a, b) => (ordreParMatiere[a.matiere] ?? 0) - (ordreParMatiere[b.matiere] ?? 0)
     )
@@ -154,7 +155,7 @@ export async function renderAccueil(container) {
           .map(
             (g) => `
         <div class="fiche-row type-${g.type}" data-matiere="${g.matiere}">
-          <div class="tab"></div>
+          <div class="tab" style="background: ${couleurTab(g.matiere, g.type, matiereColorMap)};"></div>
           <div class="fiche-body">
             <div class="fiche-top">
               <span class="fiche-title voice">${g.matiere}</span>

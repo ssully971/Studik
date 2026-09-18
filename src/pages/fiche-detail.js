@@ -9,6 +9,7 @@ import {
   deleteFiche,
   enregistrerRevision,
 } from '../lib/fiches.js'
+import { getMatieres } from '../lib/matieres.js'
 import { exporterFichePDF } from '../lib/pdf.js'
 import { richText } from '../lib/richtext.js'
 import { renderTagPicker } from './tag-picker.js'
@@ -122,6 +123,7 @@ export async function renderFicheDetail(container, id) {
           <div class="actions-bar" style="margin-top: 20px;">
             <a href="#entrainement" class="btn primary" style="width: auto;">Lancer un cas</a>
             <button id="export-pdf-btn" class="btn" style="width: auto;">Exporter en PDF</button>
+            <button id="export-json-btn" class="btn" style="width: auto;">Exporter en JSON</button>
           </div>
         </div>
 
@@ -185,6 +187,11 @@ export async function renderFicheDetail(container, id) {
             <h3 class="voice">Gestion de la fiche</h3>
 
             <div style="margin-bottom: 14px;">
+              <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Matière</label>
+              <select id="matiere-select" class="periode-select" style="width: 100%;"></select>
+            </div>
+
+            <div style="margin-bottom: 14px;">
               <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Statut</label>
               <select id="statut-select" class="periode-select">
                 <option value="brouillon" ${fiche.statut === 'brouillon' ? 'selected' : ''}>Brouillon</option>
@@ -201,6 +208,7 @@ export async function renderFicheDetail(container, id) {
 
             <div class="import-actions">
               <button id="save-gestion-btn" class="btn primary" style="width: auto;">Enregistrer</button>
+              <button id="archiver-btn" class="btn" style="width: auto;">Archiver</button>
               <button id="delete-fiche-btn" class="btn" style="width: auto; color: #C46A5C;">Supprimer la fiche</button>
               <span id="gestion-status" class="import-status"></span>
             </div>
@@ -351,6 +359,37 @@ export async function renderFicheDetail(container, id) {
     exporterFichePDF(fiche)
   })
 
+  document.getElementById('export-json-btn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify([fiche], null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${fiche.id}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  })
+
+  try {
+    const matieres = await getMatieres({})
+    const matiereSelect = document.getElementById('matiere-select')
+    matiereSelect.innerHTML = matieres.map((m) => `<option value="${m.nom}" ${m.nom === fiche.matiere ? 'selected' : ''}>${m.nom}</option>`).join('')
+  } catch {
+    // silencieux
+  }
+
+  document.getElementById('archiver-btn').addEventListener('click', async () => {
+    if (!window.confirm(`Archiver la fiche "${fiche.titre}" ?`)) return
+    try {
+      await updateStatut(fiche.id, 'archive')
+      fiche.statut = 'archive'
+      document.getElementById('statut-select').value = 'archive'
+      document.getElementById('gestion-status').textContent = 'Fiche archivée.'
+      document.getElementById('gestion-status').className = 'import-status success'
+    } catch (err) {
+      alert('Erreur : ' + err.message)
+    }
+  })
+
   async function sauvegarderNotes(messageSucces) {
     const statusEl = document.getElementById('notes-status')
     const value = document.getElementById('notes-perso').value
@@ -375,10 +414,15 @@ export async function renderFicheDetail(container, id) {
   document.getElementById('save-gestion-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('gestion-status')
     const statut = document.getElementById('statut-select').value
+    const matiere = document.getElementById('matiere-select').value
 
     try {
       await updateStatut(fiche.id, statut)
       await updateFicheTags(fiche.id, tagsActuels)
+      if (matiere && matiere !== fiche.matiere) {
+        await updateFiche(fiche.id, { matiere })
+        fiche.matiere = matiere
+      }
       statusEl.textContent = 'Enregistré.'
       statusEl.className = 'import-status success'
     } catch (err) {

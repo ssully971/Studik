@@ -41,3 +41,21 @@ export async function deleteAllMatieres() {
   const { error } = await supabase.from('matieres').delete().not('id', 'is', null)
   if (error) throw error
 }
+
+// Construit une table nom de matière -> {couleur, type}, pour afficher la couleur propre
+// à chaque matière (avec repli sur la couleur du type) partout où du contenu est listé.
+export function buildMatiereColorMap(matieres) {
+  const map = {}
+  matieres.forEach((m) => {
+    map[m.nom] = { couleur: m.couleur, type: m.type }
+  })
+  return map
+}
+
+// nomMatiere peut être un nom unique (fiches/cas) ou un tableau de noms (QCM, on prend le premier).
+export function couleurTab(nomMatiere, typeSecours, map) {
+  const nom = Array.isArray(nomMatiere) ? nomMatiere[0] : nomMatiere
+  const info = map[nom]
+  const type = info?.type || typeSecours || 'clinique'
+  return info?.couleur || `var(--${type})`
+}

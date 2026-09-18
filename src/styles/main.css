@@ -16,6 +16,17 @@
   --structure-dim: #2C3A50;
 }
 
+:root[data-theme="light"] {
+  --ink: #FBFAF7;
+  --surface: #FFFFFF;
+  --surface-2: #F1EFE9;
+  --hairline: #DEDACE;
+
+  --text: #17140F;
+  --text-dim: #5B6169;
+  --text-faint: #8A8F94;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -288,12 +299,23 @@ a {
 }
 
 .topbar {
+  /* La barre reste sombre dans les deux thèmes : on fige ici les variables de couleur
+     dont dépendent ses enfants (nav, menu, recherche) pour ne pas hériter du thème clair. */
+  --ink: #000000;
+  --surface: #0D0D0D;
+  --surface-2: #141414;
+  --hairline: #232323;
+  --text: #EDEAE2;
+  --text-dim: #7C8590;
+  --text-faint: #4E565E;
+
   border-bottom: 1px solid var(--hairline);
   position: sticky;
   top: 0;
   background: rgba(0, 0, 0, 0.92);
   backdrop-filter: blur(6px);
   z-index: 10;
+  color: var(--text);
 }
 
 .header-row {
@@ -500,6 +522,27 @@ a.tag:hover {
   font-size: 14px;
   color: var(--text);
   line-height: 1.7;
+}
+
+.item-explication-symbole {
+  display: inline-block;
+  width: 16px;
+}
+
+.item-explication-ok {
+  color: var(--clinique);
+}
+
+.item-explication-missed {
+  color: var(--mecanisme);
+}
+
+.item-explication-wrong {
+  color: #C46A5C;
+}
+
+.item-explication-neutre {
+  color: var(--text-dim);
 }
 
 .detail-list li {
@@ -866,6 +909,15 @@ a.tag:hover {
   }
 
   .mobile-tabbar {
+    /* Même raison que .topbar : cette barre reste sombre dans les deux thèmes. */
+    --ink: #000000;
+    --surface: #0D0D0D;
+    --surface-2: #141414;
+    --hairline: #232323;
+    --text: #EDEAE2;
+    --text-dim: #7C8590;
+    --text-faint: #4E565E;
+
     display: flex;
     position: fixed;
     bottom: 0;

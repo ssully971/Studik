@@ -128,24 +128,31 @@ export async function renderQcmRetrySession(container) {
       const pts = scoreQuestion(q.items, reponses)
       scores.push(pts)
 
-      const itemsAExpliquer = q.items
-        .map((item, i) => ({ item, coche: reponses[i] }))
-        .filter(({ item, coche }) => Boolean(coche) !== Boolean(item.correct))
-
       const correctionEl = document.getElementById('correction-question')
       correctionEl.classList.remove('hidden')
       correctionEl.innerHTML = `
         <p style="font-weight: 600; margin-bottom: 6px;">${pts} point${pts !== 1 ? 's' : ''} sur cette question</p>
-        ${
-          itemsAExpliquer.length > 0
-            ? `<ul class="detail-list">${itemsAExpliquer
-                .map(({ item }) => {
-                  const explication = item.explication || q.explication
-                  return explication ? `<li><strong>${item.texte}</strong> — ${explication}</li>` : ''
-                })
-                .join('')}</ul>`
-            : ''
-        }
+        <ul class="detail-list">
+          ${q.items
+            .map((item, i) => {
+              const coche = reponses[i]
+              const explication = item.explication || q.explication
+              let classe = 'item-explication-neutre'
+              let symbole = '—'
+              if (item.correct && coche) {
+                classe = 'item-explication-ok'
+                symbole = '✔'
+              } else if (item.correct && !coche) {
+                classe = 'item-explication-missed'
+                symbole = '✘ manqué'
+              } else if (!item.correct && coche) {
+                classe = 'item-explication-wrong'
+                symbole = '✘ erreur'
+              }
+              return `<li class="${classe}"><span class="item-explication-symbole">${symbole}</span> <strong>${item.texte}</strong>${explication ? ` — ${explication}` : ''}</li>`
+            })
+            .join('')}
+        </ul>
       `
 
       document.getElementById('question-actions').innerHTML =

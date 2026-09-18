@@ -1,5 +1,5 @@
 import { getFiches, texteRechercheFiche } from '../lib/fiches.js'
-import { getMatieres } from '../lib/matieres.js'
+import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
 import { getPeriodeActuelle } from '../lib/periode.js'
 import { exporterFichesPDF } from '../lib/pdf.js'
 import { renderTagFilters } from './tag-filter.js'
@@ -26,7 +26,18 @@ export async function renderReferentiel(container) {
         <button class="filter-btn" data-type="mecanisme">Mécanisme</button>
         <button class="filter-btn" data-type="structure">Structure</button>
         <select id="matiere-filter" class="periode-select"></select>
+        <select id="tri-select" class="periode-select">
+          <option value="recent">Plus récent</option>
+          <option value="ancien">Plus ancien</option>
+          <option value="alpha-asc">Alphabétique A→Z</option>
+          <option value="alpha-desc">Alphabétique Z→A</option>
+        </select>
+        <label class="checkbox-label" style="width: auto; margin-left: 8px;">
+          <input type="checkbox" id="archivees-checkbox" />
+          <span>Afficher les fiches archivées</span>
+        </label>
         <button id="export-pdf-btn" class="btn" style="width: auto; margin-left: auto;">Exporter en PDF</button>
+        <button id="export-json-btn" class="btn" style="width: auto;">Exporter en JSON</button>
       </div>
 
       <div class="filters" id="tag-filters"></div>
@@ -40,6 +51,18 @@ export async function renderReferentiel(container) {
   let activeType = ''
   let activeMatiere = ''
   let activeTags = []
+  let activeTri = 'recent'
+  let inclureArchivees = false
+  let matiereColorMap = {}
+
+  function trier(list) {
+    const copie = [...list]
+    if (activeTri === 'recent') copie.sort((a, b) => new Date(b.date_creation) - new Date(a.date_creation))
+    else if (activeTri === 'ancien') copie.sort((a, b) => new Date(a.date_creation) - new Date(b.date_creation))
+    else if (activeTri === 'alpha-asc') copie.sort((a, b) => a.titre.localeCompare(b.titre))
+    else if (activeTri === 'alpha-desc') copie.sort((a, b) => b.titre.localeCompare(a.titre))
+    return copie
+  }
 
   function applyFilters() {
     const searchTerm = document.getElementById('search-input').value.toLowerCase()
@@ -50,8 +73,8 @@ export async function renderReferentiel(container) {
       const matchesTags = activeTags.length === 0 || activeTags.some((t) => (f.tags || []).includes(t))
       return matchesType && matchesMatiere && matchesSearch && matchesTags
     })
-    currentFiltered = filtered
-    renderList(filtered)
+    currentFiltered = trier(filtered)
+    renderList(currentFiltered)
   }
 
   function renderList(fiches) {
@@ -67,7 +90,7 @@ export async function renderReferentiel(container) {
       .map(
         (f) => `
         <div class="fiche-row type-${f.type}" data-id="${f.id}">
-          <div class="tab"></div>
+          <div class="tab" style="background: ${couleurTab(f.matiere, f.type, matiereColorMap)};"></div>
           <div class="fiche-body">
             <div class="fiche-top">
               <span class="fiche-title voice">${f.titre}</span>
@@ -105,8 +128,31 @@ export async function renderReferentiel(container) {
     exporterFichesPDF(currentFiltered, nom)
   })
 
+  document.getElementById('export-json-btn').addEventListener('click', () => {
+    if (currentFiltered.length === 0) return
+    const nom = activeMatiere ? `studik-${activeMatiere}` : 'studik-referentiel'
+    const blob = new Blob([JSON.stringify(currentFiltered, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${nom}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  })
+
+  document.getElementById('tri-select').addEventListener('change', (e) => {
+    activeTri = e.target.value
+    applyFilters()
+  })
+
+  document.getElementById('archivees-checkbox').addEventListener('change', async (e) => {
+    inclureArchivees = e.target.checked
+    await chargerFiches()
+  })
+
   try {
     const matieres = await getMatieres({})
+    matiereColorMap = buildMatiereColorMap(matieres)
     const matiereSelect = document.getElementById('matiere-filter')
     matiereSelect.innerHTML =
       `<option value="">Toutes matières</option>` + matieres.map((m) => `<option value="${m.nom}">${m.nom}</option>`).join('')
@@ -126,11 +172,16 @@ export async function renderReferentiel(container) {
     },
   })
 
-  try {
-    const periode = getPeriodeActuelle()
-    allFiches = await getFiches(periode ? { annee: periode.annee, semestre: periode.semestre } : {})
-    applyFilters()
-  } catch (err) {
-    document.getElementById('fiches-list').innerHTML = `<p class="empty-note">Erreur de chargement : ${err.message}</p>`
+  async function chargerFiches() {
+    try {
+      const periode = getPeriodeActuelle()
+      const params = periode ? { annee: periode.annee, semestre: periode.semestre } : {}
+      allFiches = await getFiches({ ...params, inclureArchivees })
+      applyFilters()
+    } catch (err) {
+      document.getElementById('fiches-list').innerHTML = `<p class="empty-note">Erreur de chargement : ${err.message}</p>`
+    }
   }
+
+  await chargerFiches()
 }
