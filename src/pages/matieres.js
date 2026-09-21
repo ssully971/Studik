@@ -1,4 +1,13 @@
-import { getMatieres, updateMatiere, deleteMatiere, insertMatieres, getAllMatiereIds } from '../lib/matieres.js'
+import {
+  getMatieres,
+  getAllMatieresAvecSousMatieres,
+  buildMatiereColorMap,
+  getCouleurEffective,
+  updateMatiere,
+  deleteMatiere,
+  insertMatieres,
+  getAllMatiereIds,
+} from '../lib/matieres.js'
 import { getFicheCountByMatiere } from '../lib/fiches.js'
 import { slugify } from '../lib/slug.js'
 
@@ -8,22 +17,64 @@ const TYPE_LABELS = {
   structure: 'structure',
 }
 
+function renderLigneMatiere(m, { couleur, indentee }) {
+  return `
+    <div class="fiche-row type-${m.type}" style="grid-template-columns: 4px 1fr;${indentee ? ' margin-left: 28px;' : ''}">
+      <div class="tab" style="background: ${couleur};"></div>
+      <div class="fiche-body">
+        <div class="fiche-top">
+          <span class="fiche-title voice">${m.nom}</span>
+          <span class="type-label">${TYPE_LABELS[m.type]}</span>
+        </div>
+
+        <div class="matiere-edit-grid">
+          <label>
+            Couleur${indentee ? ' (ignorée, reprend celle du parent)' : ''}
+            <input type="text" data-field="couleur" data-id="${m.id}" value="${m.couleur || ''}" placeholder="#4EA189" ${indentee ? 'disabled' : ''} />
+          </label>
+          <label>
+            Ordre
+            <input type="number" data-field="ordre_affichage" data-id="${m.id}" value="${m.ordre_affichage ?? 0}" />
+          </label>
+          <label>
+            Année
+            <input type="text" data-field="annee" data-id="${m.id}" value="${m.annee || ''}" placeholder="P2" />
+          </label>
+          <label>
+            Semestre
+            <input type="text" data-field="semestre" data-id="${m.id}" value="${m.semestre || ''}" placeholder="S1" />
+          </label>
+        </div>
+
+        <div class="import-actions">
+          <button class="btn" data-save="${m.id}" style="width: auto;">Enregistrer</button>
+          <button class="btn" data-delete="${m.id}" data-nom="${m.nom}" style="width: auto; color: #C46A5C;">Supprimer</button>
+          <span class="import-status" id="status-${m.id}"></span>
+        </div>
+      </div>
+    </div>
+  `
+}
+
 export async function renderMatieres(container) {
   container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
 
-  let matieres
+  let matieresPremierNiveau, toutesMatieres
   try {
-    matieres = await getMatieres()
+    ;[matieresPremierNiveau, toutesMatieres] = await Promise.all([getMatieres(), getAllMatieresAvecSousMatieres()])
   } catch (err) {
     container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${err.message}</p></div>`
     return
   }
 
+  const matiereColorMap = buildMatiereColorMap(toutesMatieres)
+  const total = toutesMatieres.length
+
   container.innerHTML = `
     <div class="wrap">
       <div class="section-head">
         <h2 class="voice">Gestion des matières</h2>
-        <span class="count">${matieres.length} matière${matieres.length !== 1 ? 's' : ''}</span>
+        <span class="count">${total} matière${total !== 1 ? 's' : ''}</span>
       </div>
 
       <div class="settings-card" style="margin-bottom: 24px;">
@@ -58,6 +109,13 @@ export async function renderMatieres(container) {
             Semestre
             <input type="text" id="nouvelle-semestre" placeholder="S1" />
           </label>
+          <label>
+            Matière parente (optionnel)
+            <select id="nouvelle-parent" class="periode-select">
+              <option value="">Aucune — matière de premier niveau</option>
+              ${matieresPremierNiveau.map((m) => `<option value="${m.id}">${m.nom}</option>`).join('')}
+            </select>
+          </label>
         </div>
         <div class="import-actions">
           <button id="creer-matiere-btn" class="btn primary" style="width: auto;">Créer la matière</button>
@@ -77,6 +135,7 @@ export async function renderMatieres(container) {
     const ordre_affichage = parseInt(document.getElementById('nouvelle-ordre').value, 10) || 0
     const annee = document.getElementById('nouvelle-annee').value.trim() || null
     const semestre = document.getElementById('nouvelle-semestre').value.trim() || null
+    const parent_id = document.getElementById('nouvelle-parent').value || null
 
     if (!nom) {
       statusEl.textContent = 'Le nom est obligatoire.'
@@ -93,7 +152,7 @@ export async function renderMatieres(container) {
         statusEl.className = 'import-status error'
         return
       }
-      await insertMatieres([{ id, nom, type, couleur, ordre_affichage, annee, semestre }])
+      await insertMatieres([{ id, nom, type, couleur, ordre_affichage, annee, semestre, parent_id }])
       renderMatieres(container)
     } catch (err) {
       statusEl.textContent = 'Erreur : ' + err.message
@@ -103,50 +162,27 @@ export async function renderMatieres(container) {
 
   const listEl = document.getElementById('matieres-list')
 
-  if (matieres.length === 0) {
+  if (toutesMatieres.length === 0) {
     listEl.innerHTML = `<p class="empty-note">Aucune matière pour l'instant.</p>`
     return
   }
 
-  listEl.innerHTML = matieres
-    .map(
-      (m) => `
-      <div class="fiche-row type-${m.type}" style="grid-template-columns: 4px 1fr;">
-        <div class="tab"></div>
-        <div class="fiche-body">
-          <div class="fiche-top">
-            <span class="fiche-title voice">${m.nom}</span>
-            <span class="type-label">${TYPE_LABELS[m.type]}</span>
-          </div>
+  const sousMatieresParParent = {}
+  toutesMatieres.forEach((m) => {
+    if (!m.parent_id) return
+    if (!sousMatieresParParent[m.parent_id]) sousMatieresParParent[m.parent_id] = []
+    sousMatieresParParent[m.parent_id].push(m)
+  })
 
-          <div class="matiere-edit-grid">
-            <label>
-              Couleur
-              <input type="text" data-field="couleur" data-id="${m.id}" value="${m.couleur || ''}" placeholder="#4EA189" />
-            </label>
-            <label>
-              Ordre
-              <input type="number" data-field="ordre_affichage" data-id="${m.id}" value="${m.ordre_affichage ?? 0}" />
-            </label>
-            <label>
-              Année
-              <input type="text" data-field="annee" data-id="${m.id}" value="${m.annee || ''}" placeholder="P2" />
-            </label>
-            <label>
-              Semestre
-              <input type="text" data-field="semestre" data-id="${m.id}" value="${m.semestre || ''}" placeholder="S1" />
-            </label>
-          </div>
-
-          <div class="import-actions">
-            <button class="btn" data-save="${m.id}" style="width: auto;">Enregistrer</button>
-            <button class="btn" data-delete="${m.id}" data-nom="${m.nom}" style="width: auto; color: #C46A5C;">Supprimer</button>
-            <span class="import-status" id="status-${m.id}"></span>
-          </div>
-        </div>
-      </div>
-    `
-    )
+  listEl.innerHTML = matieresPremierNiveau
+    .map((m) => {
+      const couleur = getCouleurEffective(m.nom, null, matiereColorMap)
+      const enfants = sousMatieresParParent[m.id] || []
+      return (
+        renderLigneMatiere(m, { couleur, indentee: false }) +
+        enfants.map((s) => renderLigneMatiere(s, { couleur: getCouleurEffective(m.nom, s.nom, matiereColorMap), indentee: true })).join('')
+      )
+    })
     .join('')
 
   listEl.querySelectorAll('[data-save]').forEach((btn) => {
@@ -156,6 +192,7 @@ export async function renderMatieres(container) {
       const champs = {}
       listEl.querySelectorAll(`[data-id="${id}"]`).forEach((input) => {
         const field = input.dataset.field
+        if (input.disabled) return
         let value = input.value.trim()
         if (field === 'ordre_affichage') value = value ? parseInt(value, 10) : 0
         if ((field === 'couleur' || field === 'annee' || field === 'semestre') && value === '') value = null
@@ -188,9 +225,14 @@ export async function renderMatieres(container) {
         return
       }
 
+      const nbEnfants = (sousMatieresParParent[id] || []).length
+      const morceaux = []
+      if (nbFiches > 0) morceaux.push(`${nbFiches} fiche${nbFiches !== 1 ? 's' : ''} encore rattachée${nbFiches !== 1 ? 's' : ''}`)
+      if (nbEnfants > 0) morceaux.push(`${nbEnfants} sous-matière${nbEnfants !== 1 ? 's' : ''}`)
+
       const message =
-        nbFiches > 0
-          ? `${nbFiches} fiche${nbFiches !== 1 ? 's' : ''} ${nbFiches !== 1 ? 'sont' : 'est'} encore rattachée${nbFiches !== 1 ? 's' : ''} à "${nom}". Supprimer quand même la matière (les fiches resteront, mais sans matière valide) ?`
+        morceaux.length > 0
+          ? `${morceaux.join(' et ')} concernée${morceaux.length > 1 ? 's' : nbFiches > 0 && nbFiches !== 1 ? 's' : ''} par "${nom}". Supprimer quand même la matière ?`
           : `Supprimer la matière "${nom}" ? Cette action est définitive.`
 
       if (!window.confirm(message)) return

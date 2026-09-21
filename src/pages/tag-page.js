@@ -1,6 +1,7 @@
 import { getFiches } from '../lib/fiches.js'
 import { getAllCas } from '../lib/cas.js'
 import { getAllQcm } from '../lib/qcm.js'
+import { getMatieres, buildMatiereColorMap, getCouleurEffective } from '../lib/matieres.js'
 
 const TYPE_LABELS = {
   clinique: 'clinique',
@@ -18,6 +19,13 @@ export async function renderTagPage(container, nomEncode) {
   } catch (err) {
     container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${err.message}</p></div>`
     return
+  }
+
+  let matiereColorMap = {}
+  try {
+    matiereColorMap = buildMatiereColorMap(await getMatieres({}))
+  } catch {
+    matiereColorMap = {}
   }
 
   const fichesTag = fiches.filter((f) => (f.tags || []).includes(nom))
@@ -57,13 +65,13 @@ export async function renderTagPage(container, nomEncode) {
         .map(
           (f) => `
       <a href="#fiche/${f.id}" class="fiche-row type-${f.type}">
-        <div class="tab"></div>
+        <div class="tab" style="background: ${getCouleurEffective(f.matiere, f.sous_matiere, matiereColorMap, f.type)};"></div>
         <div class="fiche-body">
           <div class="fiche-top">
             <span class="fiche-title voice">${f.titre}</span>
             <span class="type-label">${TYPE_LABELS[f.type]}</span>
           </div>
-          <div class="fiche-meta">${f.matiere}</div>
+          <div class="fiche-meta">${f.matiere}${f.sous_matiere ? ' · ' + f.sous_matiere : ''}</div>
         </div>
       </a>
     `

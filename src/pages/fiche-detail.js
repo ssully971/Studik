@@ -9,7 +9,7 @@ import {
   deleteFiche,
   enregistrerRevision,
 } from '../lib/fiches.js'
-import { getMatieres } from '../lib/matieres.js'
+import { getMatieres, getSousMatieres } from '../lib/matieres.js'
 import { exporterFichePDF } from '../lib/pdf.js'
 import { richText } from '../lib/richtext.js'
 import { renderTagPicker } from './tag-picker.js'
@@ -96,7 +96,7 @@ export async function renderFicheDetail(container, id) {
       <div class="detail-header type-${fiche.type}">
         <h1 class="voice">${fiche.titre}</h1>
         <div class="fiche-meta">
-          ${fiche.matiere} · <span class="type-label">${fiche.type}</span>
+          ${fiche.matiere}${fiche.sous_matiere ? ' · ' + fiche.sous_matiere : ''} · <span class="type-label">${fiche.type}</span>
         </div>
         ${fiche.tags.length ? `<div class="tags">${fiche.tags.map((t) => `<a href="#tag/${encodeURIComponent(t)}" class="tag">${t}</a>`).join('')}</div>` : ''}
       </div>
@@ -189,6 +189,11 @@ export async function renderFicheDetail(container, id) {
             <div style="margin-bottom: 14px;">
               <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Matière</label>
               <select id="matiere-select" class="periode-select" style="width: 100%;"></select>
+            </div>
+
+            <div style="margin-bottom: 14px;" id="sous-matiere-wrapper">
+              <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Sous-matière (optionnel)</label>
+              <select id="sous-matiere-select" class="periode-select" style="width: 100%;"></select>
             </div>
 
             <div style="margin-bottom: 14px;">
@@ -369,10 +374,40 @@ export async function renderFicheDetail(container, id) {
     URL.revokeObjectURL(url)
   })
 
+  let matieresDisponibles = []
+
+  async function chargerSousMatieres(nomMatiere, sousMatiereSelectionnee) {
+    const wrapper = document.getElementById('sous-matiere-wrapper')
+    const select = document.getElementById('sous-matiere-select')
+    const matiereInfo = matieresDisponibles.find((m) => m.nom === nomMatiere)
+
+    let sousMatieres = []
+    try {
+      sousMatieres = matiereInfo ? await getSousMatieres(matiereInfo.id) : []
+    } catch {
+      sousMatieres = []
+    }
+
+    if (sousMatieres.length === 0) {
+      wrapper.style.display = 'none'
+      select.innerHTML = ''
+      return
+    }
+
+    wrapper.style.display = ''
+    select.innerHTML =
+      `<option value="">Aucune</option>` +
+      sousMatieres.map((s) => `<option value="${s.nom}" ${s.nom === sousMatiereSelectionnee ? 'selected' : ''}>${s.nom}</option>`).join('')
+  }
+
   try {
-    const matieres = await getMatieres({})
+    matieresDisponibles = await getMatieres({})
     const matiereSelect = document.getElementById('matiere-select')
-    matiereSelect.innerHTML = matieres.map((m) => `<option value="${m.nom}" ${m.nom === fiche.matiere ? 'selected' : ''}>${m.nom}</option>`).join('')
+    matiereSelect.innerHTML = matieresDisponibles.map((m) => `<option value="${m.nom}" ${m.nom === fiche.matiere ? 'selected' : ''}>${m.nom}</option>`).join('')
+    await chargerSousMatieres(fiche.matiere, fiche.sous_matiere)
+    matiereSelect.addEventListener('change', () => {
+      chargerSousMatieres(matiereSelect.value, null)
+    })
   } catch {
     // silencieux
   }
@@ -415,13 +450,17 @@ export async function renderFicheDetail(container, id) {
     const statusEl = document.getElementById('gestion-status')
     const statut = document.getElementById('statut-select').value
     const matiere = document.getElementById('matiere-select').value
+    const sous_matiere = document.getElementById('sous-matiere-select').value || null
 
     try {
       await updateStatut(fiche.id, statut)
       await updateFicheTags(fiche.id, tagsActuels)
-      if (matiere && matiere !== fiche.matiere) {
-        await updateFiche(fiche.id, { matiere })
-        fiche.matiere = matiere
+      const champsMatiere = {}
+      if (matiere && matiere !== fiche.matiere) champsMatiere.matiere = matiere
+      if (sous_matiere !== (fiche.sous_matiere || null)) champsMatiere.sous_matiere = sous_matiere
+      if (Object.keys(champsMatiere).length > 0) {
+        await updateFiche(fiche.id, champsMatiere)
+        Object.assign(fiche, champsMatiere)
       }
       statusEl.textContent = 'Enregistré.'
       statusEl.className = 'import-status success'

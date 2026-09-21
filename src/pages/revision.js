@@ -1,6 +1,7 @@
 import { getFichesARevoir, updateStatut } from '../lib/fiches.js'
-import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
-import { getPeriodeActuelle } from '../lib/periode.js'
+import { getMatieres, buildMatiereColorMap, getCouleurEffective } from '../lib/matieres.js'
+import { getPeriodeActuelle, resoudrePeriodesEffectives } from '../lib/periode.js'
+import { getTagsAvecPerimetre } from '../lib/tags.js'
 import { renderTagFilters } from './tag-filter.js'
 
 const TYPE_LABELS = {
@@ -10,17 +11,6 @@ const TYPE_LABELS = {
 }
 
 export async function renderRevision(container) {
-  container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
-
-  let allFiches
-  try {
-    const periode = getPeriodeActuelle()
-    allFiches = await getFichesARevoir(periode ? { annee: periode.annee, semestre: periode.semestre } : {})
-  } catch (err) {
-    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${err.message}</p></div>`
-    return
-  }
-
   container.innerHTML = `
     <div class="wrap">
       <div class="section-head">
@@ -43,7 +33,7 @@ export async function renderRevision(container) {
 
       <div class="filters" id="tag-filters"></div>
 
-      <div id="revision-list" class="fiches-list"></div>
+      <div id="revision-list" class="fiches-list"><p class="voice">Chargement…</p></div>
     </div>
   `
 
@@ -54,7 +44,17 @@ export async function renderRevision(container) {
     matiereColorMap = {}
   }
 
-  let fiches = [...allFiches]
+  let perimetreParTag = {}
+  try {
+    const tagsAvecPerimetre = await getTagsAvecPerimetre()
+    tagsAvecPerimetre.forEach((t) => {
+      perimetreParTag[t.nom] = t.perimetre
+    })
+  } catch {
+    perimetreParTag = {}
+  }
+
+  let fiches = []
   let activeType = ''
   let activeTags = []
   let activeTri = 'recent'
@@ -90,13 +90,13 @@ export async function renderRevision(container) {
       .map(
         (f) => `
         <div class="fiche-row type-${f.type}" data-id="${f.id}">
-          <div class="tab" style="background: ${couleurTab(f.matiere, f.type, matiereColorMap)};"></div>
+          <div class="tab" style="background: ${getCouleurEffective(f.matiere, f.sous_matiere, matiereColorMap, f.type)};"></div>
           <div class="fiche-body" data-open="${f.id}">
             <div class="fiche-top">
               <span class="fiche-title voice">${f.titre}</span>
               <span class="type-label">${TYPE_LABELS[f.type]}</span>
             </div>
-            <div class="fiche-meta">${f.matiere}${f.tags.length ? ' · ' + f.tags.join(', ') : ''}</div>
+            <div class="fiche-meta">${f.matiere}${f.sous_matiere ? ' · ' + f.sous_matiere : ''}${f.tags.length ? ' · ' + f.tags.join(', ') : ''}</div>
           </div>
           <div class="fiche-actions">
             <button class="btn primary" data-maitrise="${f.id}" style="width: auto;">Maîtrisé</button>
@@ -147,9 +147,20 @@ export async function renderRevision(container) {
     selected: activeTags,
     onChange: (tags) => {
       activeTags = tags
-      applyFilter()
+      chargerFiches()
     },
   })
 
-  applyFilter()
+  async function chargerFiches() {
+    try {
+      const periodeNavbar = getPeriodeActuelle()
+      const periodes = resoudrePeriodesEffectives(periodeNavbar, activeTags, perimetreParTag)
+      fiches = periodes.length > 0 ? await getFichesARevoir({ periodes }) : await getFichesARevoir({})
+      applyFilter()
+    } catch (err) {
+      document.getElementById('revision-list').innerHTML = `<p class="empty-note">Erreur de chargement : ${err.message}</p>`
+    }
+  }
+
+  await chargerFiches()
 }

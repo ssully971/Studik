@@ -214,6 +214,83 @@ a {
   font-weight: 600;
 }
 
+.tag-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.tag-dropdown-btn {
+  width: auto;
+}
+
+.tag-dropdown-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  width: 240px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 20;
+}
+
+.tag-dropdown-panel.hidden {
+  display: none;
+}
+
+.tag-dropdown-search {
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 7px 9px;
+  font-size: 13px;
+  font-family: "IBM Plex Sans", sans-serif;
+  outline: none;
+}
+
+.tag-dropdown-search:focus {
+  border-color: var(--text-dim);
+}
+
+.tag-dropdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  max-height: 240px;
+}
+
+.tag-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.tag-dropdown-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.tag-dropdown-item input[type="checkbox"] {
+  accent-color: var(--text-dim);
+}
+
+.tag-dropdown-empty {
+  font-size: 13px;
+  color: var(--text-faint);
+  padding: 6px 4px;
+}
+
 .fiches-list {
   display: flex;
   flex-direction: column;
@@ -490,10 +567,25 @@ nav a.active {
   color: var(--text-dim);
 }
 
-a.tag:hover {
+a.tag:hover,
+.tag[data-edit]:hover {
   color: var(--text);
   border-color: var(--text-dim);
   background: var(--surface-2);
+}
+
+.tag-remove-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0 0 0 4px;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.tag-remove-btn:hover {
+  color: #C46A5C;
 }
 
 .detail-section {

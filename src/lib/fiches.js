@@ -2,16 +2,32 @@ import { supabase } from './supabase.js'
 import { getMatieres } from './matieres.js'
 import { upsertPartiel } from './upsert.js'
 
-export async function getFiches({ matiere, type, annee, semestre, inclureArchivees } = {}) {
+// `periodes`, si fourni (tableau de {annee, semestre}), prime sur `annee`/`semestre` et est
+// traité comme une UNION de périodes (utilisé quand un tag scopé sur plusieurs périodes est
+// sélectionné dans un filtre). Renvoie null quand aucune restriction de période ne s'applique.
+async function resoudreNomsMatieres({ annee, semestre, periodes }) {
+  if (periodes && periodes.length > 0) {
+    const listes = await Promise.all(periodes.map((p) => getMatieres({ annee: p.annee, semestre: p.semestre })))
+    const noms = new Set()
+    listes.forEach((liste) => liste.forEach((m) => noms.add(m.nom)))
+    return Array.from(noms)
+  }
+  if (annee || semestre) {
+    const matieres = await getMatieres({ annee, semestre })
+    return matieres.map((m) => m.nom)
+  }
+  return null
+}
+
+export async function getFiches({ matiere, type, annee, semestre, periodes, inclureArchivees } = {}) {
   let query = supabase.from('fiches').select('*')
   if (!inclureArchivees) query = query.neq('statut', 'archive')
 
   if (matiere) query = query.eq('matiere', matiere)
   if (type) query = query.eq('type', type)
 
-  if (annee || semestre) {
-    const matieres = await getMatieres({ annee, semestre })
-    const noms = matieres.map((m) => m.nom)
+  const noms = await resoudreNomsMatieres({ annee, semestre, periodes })
+  if (noms) {
     if (noms.length === 0) return []
     query = query.in('matiere', noms)
   }
@@ -36,15 +52,14 @@ export async function updateNotesPerso(id, notesPerso) {
   if (error) throw error
 }
 
-export async function getFichesARevoir({ matiere, type, annee, semestre } = {}) {
+export async function getFichesARevoir({ matiere, type, annee, semestre, periodes } = {}) {
   let query = supabase.from('fiches').select('*').eq('statut', 'a_revoir')
 
   if (matiere) query = query.eq('matiere', matiere)
   if (type) query = query.eq('type', type)
 
-  if (annee || semestre) {
-    const matieres = await getMatieres({ annee, semestre })
-    const noms = matieres.map((m) => m.nom)
+  const noms = await resoudreNomsMatieres({ annee, semestre, periodes })
+  if (noms) {
     if (noms.length === 0) return []
     query = query.in('matiere', noms)
   }

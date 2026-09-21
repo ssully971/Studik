@@ -6,7 +6,8 @@ import promptStructure from '../data/prompts/prompt-fiche-structure.md?raw'
 import promptCas from '../data/prompts/prompt-cas.md?raw'
 import promptQcm from '../data/prompts/prompt-qcm.md?raw'
 import readme from '../data/prompts/README-prompts.md?raw'
-import { getTags, ajouterTag, supprimerTag } from '../lib/tags.js'
+import { getTags, getTagsAvecPerimetre, ajouterTag, supprimerTag, modifierPerimetreTag } from '../lib/tags.js'
+import { getPeriodesDisponibles } from '../lib/periode.js'
 
 const PROMPTS = [
   { id: 'contexte-maitre', titre: 'Contexte maître (à coller avant les autres)', contenu: promptContexteMaitre },
@@ -33,7 +34,7 @@ export async function renderPrompts(container) {
 
       <div class="settings-card" style="margin-bottom: 24px;">
         <h3 class="voice">Tags de référence</h3>
-        <p class="settings-desc">Ta liste fermée de tags, à copier dans le champ "Tags autorisés" des prompts.</p>
+        <p class="settings-desc">Ta liste fermée de tags, à copier dans le champ "Tags autorisés" des prompts. Clique un tag pour lui associer une ou plusieurs périodes (📍 = tag scopé) ; laisse-le sans période pour qu'il s'applique partout.</p>
         <div id="tags-chips" class="tags" style="margin-bottom: 12px;"></div>
         <div class="import-actions">
           <input type="text" id="nouveau-tag-input" class="search-input" placeholder="Nouveau tag…" style="max-width: 200px; margin-bottom: 0;" />
@@ -58,6 +59,21 @@ export async function renderPrompts(container) {
           <button id="modal-close" class="btn" style="width: auto;">Fermer</button>
         </div>
         <pre id="modal-content" class="prompt-readme"></pre>
+      </div>
+    </div>
+
+    <div id="perimetre-modal-overlay" class="modal-overlay hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <span id="perimetre-modal-title" class="voice"></span>
+          <button id="perimetre-modal-close" class="btn" style="width: auto;">Fermer</button>
+        </div>
+        <p class="settings-desc">Ne coche rien pour que ce tag s'applique à toutes les périodes.</p>
+        <div id="perimetre-checkboxes"></div>
+        <div class="import-actions">
+          <button id="perimetre-save-btn" class="btn primary" style="width: auto;">Enregistrer</button>
+          <span id="perimetre-status" class="import-status"></span>
+        </div>
       </div>
     </div>
   `
@@ -115,32 +131,116 @@ export async function renderPrompts(container) {
   // --- Tags de référence ---
   let tags = []
   try {
-    tags = await getTags()
-  } catch (err) {
-    document.getElementById('tags-chips').innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+    tags = await getTagsAvecPerimetre()
+  } catch {
+    // La colonne "perimetre" n'existe peut-être pas encore (migration pas encore appliquée) :
+    // on retombe sur la liste simple pour que la gestion de base des tags reste utilisable.
+    try {
+      tags = (await getTags()).map((nom) => ({ nom, perimetre: null }))
+    } catch (err) {
+      document.getElementById('tags-chips').innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+    }
+  }
+
+  let periodesDisponibles = []
+  try {
+    periodesDisponibles = await getPeriodesDisponibles()
+  } catch {
+    periodesDisponibles = []
+  }
+
+  function labelPeriode(p) {
+    return p.semestre ? `${p.annee} · ${p.semestre}` : p.annee
   }
 
   function renderTags() {
     const chipsEl = document.getElementById('tags-chips')
     chipsEl.innerHTML = tags.length
-      ? tags.map((t) => `<span class="tag" data-tag="${t}" style="cursor: pointer;">${t} ×</span>`).join('')
+      ? tags
+          .map(
+            (t) => `
+        <span class="tag" data-edit="${t.nom}" style="cursor: pointer;">
+          ${t.nom}${t.perimetre && t.perimetre.length ? ' 📍' : ''}
+          <button class="tag-remove-btn" data-remove="${t.nom}" title="Supprimer ce tag">×</button>
+        </span>
+      `
+          )
+          .join('')
       : `<p class="empty-note" style="padding: 0;">Aucun tag pour l'instant.</p>`
 
-    chipsEl.querySelectorAll('[data-tag]').forEach((chip) => {
-      chip.addEventListener('click', async () => {
-        const nom = chip.dataset.tag
+    chipsEl.querySelectorAll('[data-remove]').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation()
+        const nom = btn.dataset.remove
         try {
           await supprimerTag(nom)
-          tags = tags.filter((t) => t !== nom)
+          tags = tags.filter((t) => t.nom !== nom)
           renderTags()
         } catch (err) {
           alert('Erreur : ' + err.message)
         }
       })
     })
+
+    chipsEl.querySelectorAll('[data-edit]').forEach((chip) => {
+      chip.addEventListener('click', () => ouvrirEditeurPerimetre(chip.dataset.edit))
+    })
   }
 
   renderTags()
+
+  const perimetreOverlay = document.getElementById('perimetre-modal-overlay')
+  document.getElementById('perimetre-modal-close').addEventListener('click', () => perimetreOverlay.classList.add('hidden'))
+  perimetreOverlay.addEventListener('click', (e) => {
+    if (e.target === perimetreOverlay) perimetreOverlay.classList.add('hidden')
+  })
+
+  function ouvrirEditeurPerimetre(nom) {
+    const tag = tags.find((t) => t.nom === nom)
+    if (!tag) return
+
+    document.getElementById('perimetre-modal-title').textContent = `Périodes — ${nom}`
+    document.getElementById('perimetre-status').textContent = ''
+
+    const checkboxesEl = document.getElementById('perimetre-checkboxes')
+    if (periodesDisponibles.length === 0) {
+      checkboxesEl.innerHTML = `<p class="empty-note" style="padding: 0;">Aucune période disponible pour l'instant (renseigne l'année d'une matière pour en créer).</p>`
+    } else {
+      const perimetreActuel = tag.perimetre || []
+      checkboxesEl.innerHTML = periodesDisponibles
+        .map((p, i) => {
+          const coche = perimetreActuel.some((sp) => sp.annee === p.annee && (sp.semestre || null) === (p.semestre || null))
+          return `
+          <label class="tag-dropdown-item" style="cursor: pointer;">
+            <input type="checkbox" data-periode-index="${i}" ${coche ? 'checked' : ''} />
+            <span>${labelPeriode(p)}</span>
+          </label>
+        `
+        })
+        .join('')
+    }
+
+    perimetreOverlay.classList.remove('hidden')
+
+    document.getElementById('perimetre-save-btn').onclick = async () => {
+      const statusEl = document.getElementById('perimetre-status')
+      const cochees = Array.from(checkboxesEl.querySelectorAll('[data-periode-index]:checked')).map(
+        (cb) => periodesDisponibles[parseInt(cb.dataset.periodeIndex, 10)]
+      )
+      const perimetre = cochees.length > 0 ? cochees.map((p) => ({ annee: p.annee, semestre: p.semestre || null })) : null
+
+      try {
+        await modifierPerimetreTag(nom, perimetre)
+        tag.perimetre = perimetre
+        renderTags()
+        statusEl.textContent = 'Enregistré.'
+        statusEl.className = 'import-status success'
+      } catch (err) {
+        statusEl.textContent = 'Erreur : ' + err.message
+        statusEl.className = 'import-status error'
+      }
+    }
+  }
 
   document.getElementById('ajouter-tag-btn').addEventListener('click', async () => {
     const input = document.getElementById('nouveau-tag-input')
@@ -148,7 +248,7 @@ export async function renderPrompts(container) {
     const nom = input.value.trim()
 
     if (!nom) return
-    if (tags.includes(nom)) {
+    if (tags.some((t) => t.nom === nom)) {
       statusEl.textContent = 'Ce tag existe déjà.'
       statusEl.className = 'import-status error'
       return
@@ -156,11 +256,12 @@ export async function renderPrompts(container) {
 
     try {
       await ajouterTag(nom)
-      tags.push(nom)
-      tags.sort()
+      tags.push({ nom, perimetre: null })
+      tags.sort((a, b) => a.nom.localeCompare(b.nom))
       renderTags()
       input.value = ''
       statusEl.textContent = ''
+      ouvrirEditeurPerimetre(nom)
     } catch (err) {
       statusEl.textContent = 'Erreur : ' + err.message
       statusEl.className = 'import-status error'
@@ -170,7 +271,7 @@ export async function renderPrompts(container) {
   document.getElementById('copier-tags-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('tags-status')
     try {
-      await navigator.clipboard.writeText(tags.join(', '))
+      await navigator.clipboard.writeText(tags.map((t) => t.nom).join(', '))
       statusEl.textContent = 'Copié !'
       statusEl.className = 'import-status success'
     } catch (err) {

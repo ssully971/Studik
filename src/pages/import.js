@@ -1,6 +1,6 @@
 import { insertFiches, getAllFicheIds } from '../lib/fiches.js'
 import { insertCas, getAllCasIds } from '../lib/cas.js'
-import { insertMatieres, getAllMatiereIds, getAllMatiereNoms } from '../lib/matieres.js'
+import { insertMatieres, getAllMatiereIds, getAllMatiereNoms, getAllMatieresAvecSousMatieres } from '../lib/matieres.js'
 import { insertQcm, getAllQcmIds } from '../lib/qcm.js'
 import { getTags, ajouterTag } from '../lib/tags.js'
 import { slugify } from '../lib/slug.js'
@@ -212,26 +212,33 @@ export function renderImport(container) {
         })
       })
 
-      let matiereNoms
+      let matiereNoms, matiereIds
       try {
-        matiereNoms = new Set(await getAllMatiereNoms())
+        ;[matiereNoms, matiereIds] = await Promise.all([getAllMatiereNoms(), getAllMatiereIds()])
+        matiereNoms = new Set(matiereNoms)
+        matiereIds = new Set(matiereIds)
       } catch {
         matiereNoms = new Set()
+        matiereIds = new Set()
       }
 
+      // Clé par id (slug) : deux noms qui se slugifient à l'identique (accents/casse
+      // différents) désignent la même ligne réelle — les traiter comme "manquants" sur leur
+      // nom exact écraserait le nom déjà en base via l'upsert.
       const matieresACreer = new Map()
       items.forEach((f) => {
-        if (!matiereNoms.has(f.matiere) && !matieresACreer.has(f.matiere)) {
-          matieresACreer.set(f.matiere, {
-            id: slugify(f.matiere),
-            nom: f.matiere,
-            type: f.type,
-            couleur: null,
-            ordre_affichage: 0,
-            annee: null,
-            semestre: null,
-          })
-        }
+        if (matiereNoms.has(f.matiere)) return
+        const id = slugify(f.matiere)
+        if (matiereIds.has(id) || matieresACreer.has(id)) return
+        matieresACreer.set(id, {
+          id,
+          nom: f.matiere,
+          type: f.type,
+          couleur: null,
+          ordre_affichage: 0,
+          annee: null,
+          semestre: null,
+        })
       })
 
       if (matieresACreer.size > 0) {
@@ -240,6 +247,56 @@ export function renderImport(container) {
           matieresACreer.forEach((m) => infos.push(`Nouvelle matière créée : ${m.nom}`))
         } catch (err) {
           avertissements.push(`Impossible de créer automatiquement la/les matière(s) manquante(s) : ${err.message}`)
+        }
+      }
+
+      const itemsAvecSousMatiere = items.filter((f) => f.sous_matiere)
+      if (itemsAvecSousMatiere.length > 0) {
+        let matieresExistantes
+        try {
+          matieresExistantes = await getAllMatieresAvecSousMatieres()
+        } catch {
+          matieresExistantes = []
+        }
+
+        const nomsExistants = new Set(matieresExistantes.map((m) => m.nom))
+        const idsExistants = new Set(matieresExistantes.map((m) => m.id))
+        const idParNomParent = {}
+        matieresExistantes.forEach((m) => {
+          if (!m.parent_id) idParNomParent[m.nom] = m.id
+        })
+        matieresACreer.forEach((m) => {
+          idParNomParent[m.nom] = m.id
+        })
+
+        const sousMatieresACreer = new Map()
+        const matiereParSousNom = {}
+        itemsAvecSousMatiere.forEach((f) => {
+          if (nomsExistants.has(f.sous_matiere)) return
+          const id = slugify(f.sous_matiere)
+          if (idsExistants.has(id) || sousMatieresACreer.has(id)) return
+          const parentId = idParNomParent[f.matiere]
+          if (!parentId) return
+          matiereParSousNom[f.sous_matiere] = f.matiere
+          sousMatieresACreer.set(id, {
+            id,
+            nom: f.sous_matiere,
+            type: f.type,
+            couleur: null,
+            ordre_affichage: 0,
+            annee: null,
+            semestre: null,
+            parent_id: parentId,
+          })
+        })
+
+        if (sousMatieresACreer.size > 0) {
+          try {
+            await insertMatieres(Array.from(sousMatieresACreer.values()))
+            sousMatieresACreer.forEach((s) => infos.push(`Nouvelle sous-matière créée : ${s.nom} (sous ${matiereParSousNom[s.nom]})`))
+          } catch (err) {
+            avertissements.push(`Impossible de créer automatiquement la/les sous-matière(s) manquante(s) : ${err.message}`)
+          }
         }
       }
     } else if (target === 'cas') {

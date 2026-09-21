@@ -288,11 +288,66 @@ export async function renderQcmListe(container) {
       const matchesTags = activeTags.length === 0 || activeTags.some((t) => (q.tags || []).includes(t))
       return matchesMatiere && matchesStatut && matchesSearch && matchesTags
     })
-    renderList(trier(filtered))
+    document.getElementById('qcm-count').textContent = `${filtered.length} QCM`
+    renderList(filtered)
+  }
+
+  function ligneQcm(q) {
+    return `
+      <div class="fiche-row" data-id="${q.id}">
+        <div class="tab" style="background: ${couleurTab(q.matieres, null, matiereColorMap)};"></div>
+        <div class="fiche-body">
+          <div class="fiche-top">
+            <a href="#qcm-detail/${q.id}" class="fiche-title voice">${q.titre}</a>
+            <span class="type-label">${q.questions.length} question${q.questions.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="fiche-meta">${(q.matieres || []).join(', ') || 'Aucune matière'} · ${q.duree_minutes} min en concours</div>
+          <div style="margin-top: 8px;" id="tags-picker-${q.id}"></div>
+        </div>
+        <div class="fiche-actions" style="gap: 8px;">
+          <select class="periode-select" data-statut="${q.id}">
+            <option value="brouillon" ${q.statut === 'brouillon' ? 'selected' : ''}>Brouillon</option>
+            <option value="valide" ${q.statut === 'valide' ? 'selected' : ''}>Validé</option>
+            <option value="archive" ${q.statut === 'archive' ? 'selected' : ''}>Archivé</option>
+          </select>
+          <a href="#qcm-detail/${q.id}" class="btn" style="width: auto;">Détail</a>
+          <a href="#qcm-jouer/${q.id}" class="btn primary" style="width: auto;">Lancer</a>
+          <button class="btn" data-delete="${q.id}" style="width: auto; color: #C46A5C;">Supprimer</button>
+        </div>
+      </div>
+    `
+  }
+
+  function lignesQcm(list) {
+    return trier(list).map(ligneQcm).join('')
+  }
+
+  function grouperParMatiere(list) {
+    const ordreParMatiere = {}
+    toutesMatieres.forEach((m, i) => {
+      ordreParMatiere[m.nom] = m.ordre_affichage ?? i
+    })
+
+    const groupes = {}
+    list.forEach((q) => {
+      const nom = (q.matieres && q.matieres[0]) || 'Sans matière'
+      if (!groupes[nom]) groupes[nom] = []
+      groupes[nom].push(q)
+    })
+
+    return Object.keys(groupes)
+      .sort((a, b) => {
+        const oa = ordreParMatiere[a]
+        const ob = ordreParMatiere[b]
+        if (oa === undefined && ob === undefined) return a.localeCompare(b)
+        if (oa === undefined) return 1
+        if (ob === undefined) return -1
+        return oa - ob
+      })
+      .map((nom) => ({ nom, list: groupes[nom] }))
   }
 
   function renderList(list) {
-    document.getElementById('qcm-count').textContent = `${list.length} QCM`
     const listEl = document.getElementById('qcm-list')
 
     if (list.length === 0) {
@@ -300,33 +355,21 @@ export async function renderQcmListe(container) {
       return
     }
 
-    listEl.innerHTML = list
-      .map(
-        (q) => `
-        <div class="fiche-row" data-id="${q.id}">
-          <div class="tab" style="background: ${couleurTab(q.matieres, null, matiereColorMap)};"></div>
-          <div class="fiche-body">
-            <div class="fiche-top">
-              <a href="#qcm-detail/${q.id}" class="fiche-title voice">${q.titre}</a>
-              <span class="type-label">${q.questions.length} question${q.questions.length !== 1 ? 's' : ''}</span>
-            </div>
-            <div class="fiche-meta">${(q.matieres || []).join(', ') || 'Aucune matière'} · ${q.duree_minutes} min en concours</div>
-            <div style="margin-top: 8px;" id="tags-picker-${q.id}"></div>
-          </div>
-          <div class="fiche-actions" style="gap: 8px;">
-            <select class="periode-select" data-statut="${q.id}">
-              <option value="brouillon" ${q.statut === 'brouillon' ? 'selected' : ''}>Brouillon</option>
-              <option value="valide" ${q.statut === 'valide' ? 'selected' : ''}>Validé</option>
-              <option value="archive" ${q.statut === 'archive' ? 'selected' : ''}>Archivé</option>
-            </select>
-            <a href="#qcm-detail/${q.id}" class="btn" style="width: auto;">Détail</a>
-            <a href="#qcm-jouer/${q.id}" class="btn primary" style="width: auto;">Lancer</a>
-            <button class="btn" data-delete="${q.id}" style="width: auto; color: #C46A5C;">Supprimer</button>
-          </div>
+    if (activeMatiere) {
+      listEl.innerHTML = lignesQcm(list)
+    } else {
+      listEl.innerHTML = grouperParMatiere(list)
+        .map(
+          ({ nom, list: listMatiere }) => `
+        <div class="section-head" style="margin-top: 24px; padding-bottom: 8px;">
+          <h3 class="voice" style="font-size: 16px;">${nom}</h3>
+          <span class="count">${listMatiere.length}</span>
         </div>
+        ${lignesQcm(listMatiere)}
       `
-      )
-      .join('')
+        )
+        .join('')
+    }
 
     listEl.querySelectorAll('[data-statut]').forEach((select) => {
       select.addEventListener('change', async (e) => {

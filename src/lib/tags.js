@@ -6,8 +6,21 @@ export async function getTags() {
   return data.map((t) => t.nom)
 }
 
-export async function ajouterTag(nom) {
-  const { error } = await supabase.from('tags_reference').upsert({ nom }, { onConflict: 'nom' })
+// Comme getTags(), mais renvoie aussi le périmètre (année/semestre) de chaque tag —
+// null si le tag s'applique à toutes les périodes.
+export async function getTagsAvecPerimetre() {
+  const { data, error } = await supabase.from('tags_reference').select('nom, perimetre').order('nom')
+  if (error) throw error
+  return data
+}
+
+export async function ajouterTag(nom, perimetre = null) {
+  const { error } = await supabase.from('tags_reference').upsert({ nom, perimetre }, { onConflict: 'nom' })
+  if (error) throw error
+}
+
+export async function modifierPerimetreTag(nom, perimetre) {
+  const { error } = await supabase.from('tags_reference').update({ perimetre }).eq('nom', nom)
   if (error) throw error
 }
 

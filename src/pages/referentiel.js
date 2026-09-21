@@ -1,6 +1,7 @@
 import { getFiches, texteRechercheFiche } from '../lib/fiches.js'
-import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
-import { getPeriodeActuelle } from '../lib/periode.js'
+import { getMatieres, buildMatiereColorMap, getCouleurEffective } from '../lib/matieres.js'
+import { getPeriodeActuelle, resoudrePeriodesEffectives } from '../lib/periode.js'
+import { getTagsAvecPerimetre } from '../lib/tags.js'
 import { exporterFichesPDF } from '../lib/pdf.js'
 import { renderTagFilters } from './tag-filter.js'
 
@@ -54,6 +55,8 @@ export async function renderReferentiel(container) {
   let activeTri = 'recent'
   let inclureArchivees = false
   let matiereColorMap = {}
+  let matieresTop = []
+  let perimetreParTag = {}
 
   function trier(list) {
     const copie = [...list]
@@ -73,12 +76,70 @@ export async function renderReferentiel(container) {
       const matchesTags = activeTags.length === 0 || activeTags.some((t) => (f.tags || []).includes(t))
       return matchesType && matchesMatiere && matchesSearch && matchesTags
     })
-    currentFiltered = trier(filtered)
-    renderList(currentFiltered)
+    currentFiltered = filtered
+    document.getElementById('fiche-count').textContent = `${filtered.length} fiche${filtered.length !== 1 ? 's' : ''}`
+    renderList(filtered)
+  }
+
+  function ligneFiche(f) {
+    return `
+      <div class="fiche-row type-${f.type}" data-id="${f.id}">
+        <div class="tab" style="background: ${getCouleurEffective(f.matiere, f.sous_matiere, matiereColorMap, f.type)};"></div>
+        <div class="fiche-body">
+          <div class="fiche-top">
+            <span class="fiche-title voice">${f.titre}</span>
+            ${f.dernier_resultat === 'pas_bien' ? '<span class="pas-top-dot" title="Marquée pas top à la dernière révision"></span>' : ''}
+            <span class="type-label">${TYPE_LABELS[f.type]}</span>
+          </div>
+          <div class="fiche-meta">${f.matiere}${f.sous_matiere ? ' · ' + f.sous_matiere : ''}${f.tags.length ? ' · ' + f.tags.join(', ') : ''}</div>
+        </div>
+      </div>
+    `
+  }
+
+  function lignesFiches(fiches) {
+    return trier(fiches).map(ligneFiche).join('')
+  }
+
+  function grouperParMatiere(fiches) {
+    const ordreParMatiere = {}
+    matieresTop.forEach((m, i) => {
+      ordreParMatiere[m.nom] = m.ordre_affichage ?? i
+    })
+
+    const groupes = {}
+    fiches.forEach((f) => {
+      if (!groupes[f.matiere]) groupes[f.matiere] = []
+      groupes[f.matiere].push(f)
+    })
+
+    return Object.keys(groupes)
+      .sort((a, b) => {
+        const oa = ordreParMatiere[a]
+        const ob = ordreParMatiere[b]
+        if (oa === undefined && ob === undefined) return a.localeCompare(b)
+        if (oa === undefined) return 1
+        if (ob === undefined) return -1
+        return oa - ob
+      })
+      .map((nom) => ({ nom, fiches: groupes[nom] }))
+  }
+
+  function scinderParSousMatiere(fiches) {
+    const sansSousMatiere = fiches.filter((f) => !f.sous_matiere)
+    const parSousMatiere = {}
+    fiches.forEach((f) => {
+      if (!f.sous_matiere) return
+      if (!parSousMatiere[f.sous_matiere]) parSousMatiere[f.sous_matiere] = []
+      parSousMatiere[f.sous_matiere].push(f)
+    })
+    const sousGroupes = Object.keys(parSousMatiere)
+      .sort((a, b) => a.localeCompare(b))
+      .map((nom) => ({ nom, fiches: parSousMatiere[nom] }))
+    return { sansSousMatiere, sousGroupes }
   }
 
   function renderList(fiches) {
-    document.getElementById('fiche-count').textContent = `${fiches.length} fiche${fiches.length !== 1 ? 's' : ''}`
     const list = document.getElementById('fiches-list')
 
     if (fiches.length === 0) {
@@ -86,23 +147,32 @@ export async function renderReferentiel(container) {
       return
     }
 
-    list.innerHTML = fiches
-      .map(
-        (f) => `
-        <div class="fiche-row type-${f.type}" data-id="${f.id}">
-          <div class="tab" style="background: ${couleurTab(f.matiere, f.type, matiereColorMap)};"></div>
-          <div class="fiche-body">
-            <div class="fiche-top">
-              <span class="fiche-title voice">${f.titre}</span>
-              ${f.dernier_resultat === 'pas_bien' ? '<span class="pas-top-dot" title="Marquée pas top à la dernière révision"></span>' : ''}
-              <span class="type-label">${TYPE_LABELS[f.type]}</span>
+    if (activeMatiere) {
+      list.innerHTML = lignesFiches(fiches)
+    } else {
+      list.innerHTML = grouperParMatiere(fiches)
+        .map(({ nom, fiches: fichesMatiere }) => {
+          const { sansSousMatiere, sousGroupes } = scinderParSousMatiere(fichesMatiere)
+          return `
+            <div class="section-head" style="margin-top: 24px; padding-bottom: 8px;">
+              <h3 class="voice" style="font-size: 16px;">${nom}</h3>
+              <span class="count">${fichesMatiere.length}</span>
             </div>
-            <div class="fiche-meta">${f.matiere}${f.tags.length ? ' · ' + f.tags.join(', ') : ''}</div>
-          </div>
-        </div>
-      `
-      )
-      .join('')
+            ${lignesFiches(sansSousMatiere)}
+            ${sousGroupes
+              .map(
+                (sg) => `
+              <div class="section-head" style="margin-top: 10px; border-bottom: none; padding-bottom: 0; padding-left: 14px;">
+                <h4 class="voice" style="font-size: 13px; color: var(--text-dim);">${sg.nom}</h4>
+              </div>
+              ${lignesFiches(sg.fiches)}
+            `
+              )
+              .join('')}
+          `
+        })
+        .join('')
+    }
 
     list.querySelectorAll('.fiche-row').forEach((row) => {
       row.addEventListener('click', () => {
@@ -125,13 +195,13 @@ export async function renderReferentiel(container) {
   document.getElementById('export-pdf-btn').addEventListener('click', () => {
     if (currentFiltered.length === 0) return
     const nom = activeMatiere ? `studik-${activeMatiere}` : 'studik-referentiel'
-    exporterFichesPDF(currentFiltered, nom)
+    exporterFichesPDF(trier(currentFiltered), nom)
   })
 
   document.getElementById('export-json-btn').addEventListener('click', () => {
     if (currentFiltered.length === 0) return
     const nom = activeMatiere ? `studik-${activeMatiere}` : 'studik-referentiel'
-    const blob = new Blob([JSON.stringify(currentFiltered, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify(trier(currentFiltered), null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -151,11 +221,11 @@ export async function renderReferentiel(container) {
   })
 
   try {
-    const matieres = await getMatieres({})
-    matiereColorMap = buildMatiereColorMap(matieres)
+    matieresTop = await getMatieres({})
+    matiereColorMap = buildMatiereColorMap(matieresTop)
     const matiereSelect = document.getElementById('matiere-filter')
     matiereSelect.innerHTML =
-      `<option value="">Toutes matières</option>` + matieres.map((m) => `<option value="${m.nom}">${m.nom}</option>`).join('')
+      `<option value="">Toutes matières</option>` + matieresTop.map((m) => `<option value="${m.nom}">${m.nom}</option>`).join('')
     matiereSelect.addEventListener('change', (e) => {
       activeMatiere = e.target.value
       applyFilters()
@@ -164,19 +234,28 @@ export async function renderReferentiel(container) {
     // silencieux : le filtre matière reste optionnel
   }
 
+  try {
+    const tagsAvecPerimetre = await getTagsAvecPerimetre()
+    tagsAvecPerimetre.forEach((t) => {
+      perimetreParTag[t.nom] = t.perimetre
+    })
+  } catch {
+    perimetreParTag = {}
+  }
+
   await renderTagFilters(document.getElementById('tag-filters'), {
     selected: activeTags,
     onChange: (tags) => {
       activeTags = tags
-      applyFilters()
+      chargerFiches()
     },
   })
 
   async function chargerFiches() {
     try {
-      const periode = getPeriodeActuelle()
-      const params = periode ? { annee: periode.annee, semestre: periode.semestre } : {}
-      allFiches = await getFiches({ ...params, inclureArchivees })
+      const periodeNavbar = getPeriodeActuelle()
+      const periodes = resoudrePeriodesEffectives(periodeNavbar, activeTags, perimetreParTag)
+      allFiches = periodes.length > 0 ? await getFiches({ periodes, inclureArchivees }) : await getFiches({ inclureArchivees })
       applyFilters()
     } catch (err) {
       document.getElementById('fiches-list').innerHTML = `<p class="empty-note">Erreur de chargement : ${err.message}</p>`

@@ -14,6 +14,7 @@ import {
 import { getCheckins, deleteAllCheckins, restaurerCheckins } from '../lib/checkins.js'
 import { getTags, restaurerTags } from '../lib/tags.js'
 import { getTheme, setTheme } from '../lib/theme.js'
+import { synchroniserDonnees } from '../lib/sync.js'
 
 function statusHTML(id) {
   return `<span id="${id}" class="import-status"></span>`
@@ -93,6 +94,15 @@ export async function renderParametres(container) {
               <input type="file" id="restore-input" accept="application/json" style="display: none;" />
             </label>
             ${statusHTML('restore-status')}
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h3 class="voice">Tout synchroniser</h3>
+          <p class="settings-desc">Scanne les fiches, cas et QCM et crée automatiquement les matières, sous-matières et tags qui leur manquent en référence. Action sûre : uniquement des créations, jamais de suppression.</p>
+          <div class="import-actions">
+            <button id="synchroniser-btn" class="btn" style="width: auto;">Tout synchroniser</button>
+            ${statusHTML('synchroniser-status')}
           </div>
         </div>
 
@@ -226,6 +236,28 @@ export async function renderParametres(container) {
     }
 
     e.target.value = ''
+  })
+
+  document.getElementById('synchroniser-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('synchroniser-btn')
+    btn.disabled = true
+    setStatus('synchroniser-status', 'Synchronisation en cours…', '')
+    try {
+      const { matieresCreees, sousMatieresCreees, tagsCrees } = await synchroniserDonnees()
+      const rien = matieresCreees.length === 0 && sousMatieresCreees.length === 0 && tagsCrees.length === 0
+      if (rien) {
+        setStatus('synchroniser-status', 'Tout est déjà synchronisé.', 'success')
+      } else {
+        setStatus(
+          'synchroniser-status',
+          `${matieresCreees.length} matière${matieresCreees.length !== 1 ? 's' : ''} créée${matieresCreees.length !== 1 ? 's' : ''}, ${sousMatieresCreees.length} sous-matière${sousMatieresCreees.length !== 1 ? 's' : ''} créée${sousMatieresCreees.length !== 1 ? 's' : ''}, ${tagsCrees.length} tag${tagsCrees.length !== 1 ? 's' : ''} créé${tagsCrees.length !== 1 ? 's' : ''}.`,
+          'success'
+        )
+      }
+    } catch (err) {
+      setStatus('synchroniser-status', 'Erreur : ' + err.message, 'error')
+    }
+    btn.disabled = false
   })
 
   document.getElementById('clear-captures-btn').addEventListener('click', async () => {
