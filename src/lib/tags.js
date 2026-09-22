@@ -29,9 +29,11 @@ export async function supprimerTag(nom) {
   if (error) throw error
 }
 
-export async function restaurerTags(nomsArray) {
-  if (!nomsArray || nomsArray.length === 0) return
-  const lignes = nomsArray.map((nom) => ({ nom }))
+// Accepte un tableau de noms (anciennes sauvegardes) ou de {nom, perimetre} (sauvegardes
+// actuelles), pour rester compatible avec les deux formats à la restauration.
+export async function restaurerTags(tagsArray) {
+  if (!tagsArray || tagsArray.length === 0) return
+  const lignes = tagsArray.map((t) => (typeof t === 'string' ? { nom: t, perimetre: null } : { nom: t.nom, perimetre: t.perimetre ?? null }))
   const { error } = await supabase.from('tags_reference').upsert(lignes, { onConflict: 'nom' })
   if (error) throw error
 }

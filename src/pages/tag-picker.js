@@ -32,7 +32,7 @@ export async function renderTagPicker(container, { selected = [], onChange, tous
             .map((t) => `<option value="${t}">${t}</option>`)
             .join('')}
         </select>
-        <a href="#prompts" class="btn" style="width: auto;">Nouveau tag</a>
+        <a href="#import/prompts" class="btn" style="width: auto;">Nouveau tag</a>
       </div>
     `
 

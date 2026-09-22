@@ -4,10 +4,27 @@ import { getPeriodeActuelle } from '../lib/periode.js'
 import { checkinAujourdhui, getCheckins } from '../lib/checkins.js'
 import { computeStreak } from '../lib/streak.js'
 import { getAllTentativesQcmStats } from '../lib/qcm.js'
-import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
+import { getMatieres, buildMatiereColorMap, couleurTab, getArbreMatieres, estCoursNoeud } from '../lib/matieres.js'
 import { getActiviteParJour } from '../lib/activite.js'
+import { getTentativesRatees } from '../lib/cas.js'
+import { getQcmTentativesARevoir } from '../lib/qcm.js'
 import { renderHeatmap } from './heatmap.js'
 import anecdotes from '../data/anecdotes.json'
+
+// Compte les cours sous un noeud de l'arbre matières, et combien sont validés (progression
+// 100) — même définition que dans #organisation (lib/matieres.js).
+function compterCours(noeud, profondeur) {
+  if (estCoursNoeud(noeud, profondeur)) {
+    return { total: 1, valides: noeud.progression === 100 ? 1 : 0 }
+  }
+  return noeud.enfants.reduce(
+    (acc, e) => {
+      const r = compterCours(e, profondeur + 1)
+      return { total: acc.total + r.total, valides: acc.valides + r.valides }
+    },
+    { total: 0, valides: 0 }
+  )
+}
 
 const TYPE_LABELS = {
   clinique: 'clinique',
@@ -79,7 +96,7 @@ export async function renderAccueil(container) {
       <div class="section-head" style="margin-top: 40px;">
         <h2 class="voice">En ce moment</h2>
       </div>
-      <div class="now-grid now-grid-3" id="now-grid"></div>
+      <div class="now-grid now-grid-4" id="now-grid"></div>
     </div>
   `
 
@@ -127,16 +144,25 @@ export async function renderAccueil(container) {
 
   try {
     const periode = getPeriodeActuelle()
-    const [fiches, tentativesQcm, matieres] = await Promise.all([
+    const [fiches, tentativesQcm, matieres, arbre, erreursCas, erreursQcm] = await Promise.all([
       getFiches(periode ? { annee: periode.annee, semestre: periode.semestre } : {}),
       getAllTentativesQcmStats(),
       getMatieres({}),
+      getArbreMatieres(periode ? { annee: periode.annee, semestre: periode.semestre } : {}),
+      getTentativesRatees(),
+      getQcmTentativesARevoir(),
     ])
     const ordreParMatiere = {}
     matieres.forEach((m) => {
       ordreParMatiere[m.nom] = m.ordre_affichage ?? 0
     })
     const matiereColorMap = buildMatiereColorMap(matieres)
+
+    const progressionParMatiere = {}
+    arbre.forEach((racine) => {
+      progressionParMatiere[racine.nom] = compterCours(racine, 0)
+    })
+
     const groupsTries = groupByMatiere(fiches).sort(
       (a, b) => (ordreParMatiere[a.matiere] ?? 0) - (ordreParMatiere[b.matiere] ?? 0)
     )
@@ -148,24 +174,31 @@ export async function renderAccueil(container) {
 
     const list = document.getElementById('matieres-list')
     if (groups.length === 0) {
-      list.innerHTML = `<p class="empty-note">Aucune matière pour l'instant. Importe des fiches via #import.</p>`
+      list.innerHTML = `<p class="empty-note">Aucune matière pour l'instant. Importe des fiches via #import, ou crée une matière dans #organisation.</p>`
     } else {
       list.innerHTML =
         groups
-          .map(
-            (g) => `
+          .map((g) => {
+            const couleur = couleurTab(g.matiere, g.type, matiereColorMap)
+            const prog = progressionParMatiere[g.matiere]
+            const barre =
+              prog && prog.total > 0
+                ? `<div class="stat-bar" style="margin-top: 6px;"><div class="stat-bar-fill" style="width: ${Math.round((prog.valides / prog.total) * 100)}%; background: ${couleur};"></div></div>`
+                : ''
+            return `
         <div class="fiche-row type-${g.type}" data-matiere="${g.matiere}">
-          <div class="tab" style="background: ${couleurTab(g.matiere, g.type, matiereColorMap)};"></div>
+          <div class="tab" style="background: ${couleur};"></div>
           <div class="fiche-body">
             <div class="fiche-top">
               <span class="fiche-title voice">${g.matiere}</span>
               <span class="type-label">${TYPE_LABELS[g.type]}</span>
             </div>
-            <div class="fiche-meta">${g.total} fiche${g.total !== 1 ? 's' : ''} · ${g.validees} validée${g.validees !== 1 ? 's' : ''}</div>
+            <div class="fiche-meta">${g.total} fiche${g.total !== 1 ? 's' : ''} · ${g.validees} validée${g.validees !== 1 ? 's' : ''}${prog && prog.total > 0 ? ` · ${prog.valides}/${prog.total} cours maîtrisés` : ''}</div>
+            ${barre}
           </div>
         </div>
       `
-          )
+          })
           .join('') +
         (nbMatieresRestantes > 0
           ? `<a href="#referentiel" class="btn" style="width: auto; margin-top: 4px;">Voir toutes les matières (+${nbMatieresRestantes})</a>`
@@ -187,6 +220,8 @@ export async function renderAccueil(container) {
     const scoreMaxTotalQcm = tentativesQcm.reduce((s, t) => s + Number(t.score_max), 0)
     const tauxQcm = scoreMaxTotalQcm > 0 ? Math.round((scoreTotalQcm / scoreMaxTotalQcm) * 100) : 0
 
+    const totalErreurs = erreursCas.length + erreursQcm.length
+
     document.getElementById('now-grid').innerHTML = `
       <div class="now-cell">
         <div class="label">progression</div>
@@ -203,7 +238,16 @@ export async function renderAccueil(container) {
         <div class="value voice">${totalQcm > 0 ? `${tauxQcm}% de réussite` : 'Aucun QCM fait'}</div>
         <div class="desc">${totalQcm} QCM traité${totalQcm !== 1 ? 's' : ''} au total.</div>
       </div>
+      <div class="now-cell" id="now-erreurs" style="cursor: pointer;">
+        <div class="label">carnet d'erreurs</div>
+        <div class="value voice">${totalErreurs} erreur${totalErreurs !== 1 ? 's' : ''} active${totalErreurs !== 1 ? 's' : ''}</div>
+        <div class="desc">${totalErreurs > 0 ? 'Cas et QCM encore à revoir.' : 'Rien en attente, bravo.'}</div>
+      </div>
     `
+
+    document.getElementById('now-erreurs').addEventListener('click', () => {
+      window.location.hash = '#erreurs'
+    })
   } catch (err) {
     document.getElementById('matieres-list').innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
   }

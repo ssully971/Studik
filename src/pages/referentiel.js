@@ -26,6 +26,9 @@ export async function renderReferentiel(container) {
         <button class="filter-btn" data-type="clinique">Clinique</button>
         <button class="filter-btn" data-type="mecanisme">Mécanisme</button>
         <button class="filter-btn" data-type="structure">Structure</button>
+      </div>
+
+      <div class="filters" id="tri-filters">
         <select id="matiere-filter" class="periode-select"></select>
         <select id="tri-select" class="periode-select">
           <option value="recent">Plus récent</option>
@@ -37,11 +40,14 @@ export async function renderReferentiel(container) {
           <input type="checkbox" id="archivees-checkbox" />
           <span>Afficher les fiches archivées</span>
         </label>
-        <button id="export-pdf-btn" class="btn" style="width: auto; margin-left: auto;">Exporter en PDF</button>
-        <button id="export-json-btn" class="btn" style="width: auto;">Exporter en JSON</button>
       </div>
 
       <div class="filters" id="tag-filters"></div>
+
+      <div class="import-actions" style="margin-bottom: 18px;">
+        <button id="export-pdf-btn" class="btn" style="width: auto;">Exporter en PDF</button>
+        <button id="export-json-btn" class="btn" style="width: auto;">Exporter en JSON</button>
+      </div>
 
       <div id="fiches-list" class="fiches-list"></div>
     </div>

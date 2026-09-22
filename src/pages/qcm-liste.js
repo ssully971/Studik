@@ -1,4 +1,5 @@
 import { getAllQcm, updateQcmStatut, deleteQcm, updateQcmTags, insertQcm, getAllQcmIds } from '../lib/qcm.js'
+import { demanderConfirmation } from '../lib/confirmer.js'
 import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
 import { getTags } from '../lib/tags.js'
 import { getProgressions, supprimerProgression } from '../lib/qcm-progression.js'
@@ -200,7 +201,7 @@ export async function renderQcmListe(container) {
         <button id="abandonner-seul-btn" class="btn" style="width: auto; color: #C46A5C;">Abandonner ce QCM</button>
       `
       document.getElementById('abandonner-seul-btn').addEventListener('click', async () => {
-        if (!window.confirm('Abandonner ce QCM en cours ? Ta progression sera perdue, aucune tentative ne sera enregistrée.')) return
+        if (!(await demanderConfirmation('Abandonner ce QCM en cours ? Ta progression sera perdue, aucune tentative ne sera enregistrée.'))) return
         try {
           await supprimerProgression(p.qcm_id)
           chargerReprises()
@@ -245,7 +246,7 @@ export async function renderQcmListe(container) {
     listEl.querySelectorAll('[data-abandonner]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const qcmId = btn.dataset.abandonner
-        if (!window.confirm('Abandonner ce QCM en cours ? Ta progression sera perdue, aucune tentative ne sera enregistrée.')) return
+        if (!(await demanderConfirmation('Abandonner ce QCM en cours ? Ta progression sera perdue, aucune tentative ne sera enregistrée.'))) return
         try {
           await supprimerProgression(qcmId)
           const restantes = progressions.filter((p) => p.qcm_id !== qcmId)
@@ -387,7 +388,7 @@ export async function renderQcmListe(container) {
     listEl.querySelectorAll('[data-delete]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.delete
-        if (!window.confirm('Supprimer ce QCM ? Les tentatives associées resteront dans ton historique.')) return
+        if (!(await demanderConfirmation('Supprimer ce QCM ? Les tentatives associées resteront dans ton historique.'))) return
         try {
           await deleteQcm(id)
           allQcm = allQcm.filter((q) => q.id !== id)

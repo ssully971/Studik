@@ -1,7 +1,8 @@
 import { getCurrentUser, updatePseudo, updatePassword } from '../lib/auth.js'
+import { demanderConfirmation } from '../lib/confirmer.js'
 import { getFiches, getAllFichesRaw, insertFiches, deleteAllFiches } from '../lib/fiches.js'
 import { getAllCas, insertCas, deleteAllCas, getStatsTentatives, deleteAllTentatives, restaurerTentatives } from '../lib/cas.js'
-import { getMatieres, insertMatieres, deleteAllMatieres } from '../lib/matieres.js'
+import { getAllMatieresAvecSousMatieres, insertMatieres, deleteAllMatieres } from '../lib/matieres.js'
 import { getAllCaptures, deleteAllCaptures, deleteCapturesTraitees, restaurerCaptures } from '../lib/captures.js'
 import {
   getAllQcmRaw,
@@ -12,9 +13,29 @@ import {
   deleteAllTentativesQcm,
 } from '../lib/qcm.js'
 import { getCheckins, deleteAllCheckins, restaurerCheckins } from '../lib/checkins.js'
-import { getTags, restaurerTags } from '../lib/tags.js'
+import { getTagsAvecPerimetre, restaurerTags } from '../lib/tags.js'
 import { getTheme, setTheme } from '../lib/theme.js'
 import { synchroniserDonnees } from '../lib/sync.js'
+
+// Insère les matières parents avant leurs enfants (parent_id référence une autre ligne de la
+// même table) : un ordre quelconque ferait échouer la contrainte de clé étrangère à la restauration.
+function trierMatieresParProfondeur(matieres) {
+  const byId = {}
+  matieres.forEach((m) => {
+    byId[m.id] = m
+  })
+  function profondeur(m) {
+    let p = 0
+    let courant = m
+    while (courant?.parent_id) {
+      p++
+      courant = byId[courant.parent_id]
+      if (!courant) break
+    }
+    return p
+  }
+  return [...matieres].sort((a, b) => profondeur(a) - profondeur(b))
+}
 
 function statusHTML(id) {
   return `<span id="${id}" class="import-status"></span>`
@@ -172,12 +193,12 @@ export async function renderParametres(container) {
         getAllFichesRaw(),
         getAllCas(),
         getAllQcmRaw(),
-        getMatieres({}),
+        getAllMatieresAvecSousMatieres(),
         getStatsTentatives(),
         getAllQcmTentativesRaw(),
         getAllCaptures(),
         getCheckins(),
-        getTags(),
+        getTagsAvecPerimetre(),
       ])
 
       const backup = {
@@ -220,7 +241,7 @@ export async function renderParametres(container) {
       const text = await file.text()
       const data = JSON.parse(text)
 
-      if (data.matieres?.length) await insertMatieres(data.matieres)
+      if (data.matieres?.length) await insertMatieres(trierMatieresParProfondeur(data.matieres))
       if (data.fiches?.length) await insertFiches(data.fiches)
       if (data.cas?.length) await insertCas(data.cas)
       if (data.qcm?.length) await insertQcm(data.qcm)
@@ -243,14 +264,14 @@ export async function renderParametres(container) {
     btn.disabled = true
     setStatus('synchroniser-status', 'Synchronisation en cours…', '')
     try {
-      const { matieresCreees, sousMatieresCreees, tagsCrees } = await synchroniserDonnees()
-      const rien = matieresCreees.length === 0 && sousMatieresCreees.length === 0 && tagsCrees.length === 0
+      const { matieresCreees, sousMatieresCreees, coursCrees, tagsCrees } = await synchroniserDonnees()
+      const rien = matieresCreees.length === 0 && sousMatieresCreees.length === 0 && coursCrees.length === 0 && tagsCrees.length === 0
       if (rien) {
         setStatus('synchroniser-status', 'Tout est déjà synchronisé.', 'success')
       } else {
         setStatus(
           'synchroniser-status',
-          `${matieresCreees.length} matière${matieresCreees.length !== 1 ? 's' : ''} créée${matieresCreees.length !== 1 ? 's' : ''}, ${sousMatieresCreees.length} sous-matière${sousMatieresCreees.length !== 1 ? 's' : ''} créée${sousMatieresCreees.length !== 1 ? 's' : ''}, ${tagsCrees.length} tag${tagsCrees.length !== 1 ? 's' : ''} créé${tagsCrees.length !== 1 ? 's' : ''}.`,
+          `${matieresCreees.length} matière${matieresCreees.length !== 1 ? 's' : ''} créée${matieresCreees.length !== 1 ? 's' : ''}, ${sousMatieresCreees.length} sous-matière${sousMatieresCreees.length !== 1 ? 's' : ''} créée${sousMatieresCreees.length !== 1 ? 's' : ''}, ${coursCrees.length} cours créé${coursCrees.length !== 1 ? 's' : ''}, ${tagsCrees.length} tag${tagsCrees.length !== 1 ? 's' : ''} créé${tagsCrees.length !== 1 ? 's' : ''}.`,
           'success'
         )
       }
@@ -261,7 +282,7 @@ export async function renderParametres(container) {
   })
 
   document.getElementById('clear-captures-btn').addEventListener('click', async () => {
-    if (!window.confirm('Supprimer définitivement les captures déjà traitées ?')) return
+    if (!(await demanderConfirmation('Supprimer définitivement les captures déjà traitées ?'))) return
     try {
       await deleteCapturesTraitees()
       setStatus('clear-captures-status', 'Captures traitées supprimées.', 'success')
@@ -272,9 +293,9 @@ export async function renderParametres(container) {
 
   document.getElementById('reset-everything-btn').addEventListener('click', async () => {
     if (
-      !window.confirm(
+      !(await demanderConfirmation(
         'Ceci va supprimer TOUTES tes données (fiches, cas, QCM, matières, tentatives, captures, streak). Continuer ?'
-      )
+      ))
     )
       return
     const saisie = window.prompt('Tape SUPPRIMER en majuscules pour confirmer définitivement.')

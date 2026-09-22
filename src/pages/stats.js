@@ -1,5 +1,6 @@
 import { getFiches } from '../lib/fiches.js'
 import { getStatsTentatives, deleteTentative, deleteTentativesByMatiere, deleteAllTentatives } from '../lib/cas.js'
+import { demanderConfirmation } from '../lib/confirmer.js'
 import {
   getAllTentativesQcmStats,
   deleteTentativeQcm,
@@ -342,7 +343,7 @@ export async function renderStats(container) {
     const resetAllBtn = document.getElementById('reset-all-btn')
     if (resetAllBtn) {
       resetAllBtn.addEventListener('click', async () => {
-        if (!window.confirm('Supprimer toutes les tentatives enregistrées (cas et QCM) ? Cette action est définitive.')) return
+        if (!(await demanderConfirmation('Supprimer toutes les tentatives enregistrées (cas et QCM) ? Cette action est définitive.'))) return
         try {
           await Promise.all([deleteAllTentatives(), deleteAllTentativesQcm()])
           renderAll(fiches, [], [])
@@ -355,7 +356,7 @@ export async function renderStats(container) {
     document.querySelectorAll('[data-reset-matiere]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const nom = btn.dataset.resetMatiere
-        if (!window.confirm(`Supprimer toutes les tentatives de cas de "${nom}" ? Cette action est définitive.`)) return
+        if (!(await demanderConfirmation(`Supprimer toutes les tentatives de cas de "${nom}" ? Cette action est définitive.`))) return
         try {
           await deleteTentativesByMatiere(nom)
           const restantes = tentatives.filter((t) => t.cas_cliniques?.matiere !== nom)
@@ -369,7 +370,7 @@ export async function renderStats(container) {
     document.querySelectorAll('[data-reset-qcm-matiere]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const nom = btn.dataset.resetQcmMatiere
-        if (!window.confirm(`Supprimer toutes les tentatives de QCM de "${nom}" ? Cette action est définitive.`)) return
+        if (!(await demanderConfirmation(`Supprimer toutes les tentatives de QCM de "${nom}" ? Cette action est définitive.`))) return
         try {
           await deleteTentativesQcmByMatiere(nom)
           const restantes = tentativesQcm.filter((t) => !(t.qcm?.matieres || []).includes(nom))
@@ -383,7 +384,7 @@ export async function renderStats(container) {
     document.querySelectorAll('[data-delete-tentative]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.deleteTentative
-        if (!window.confirm('Supprimer cette tentative ?')) return
+        if (!(await demanderConfirmation('Supprimer cette tentative ?'))) return
         try {
           await deleteTentative(id)
           const restantes = tentatives.filter((t) => t.id !== id)
@@ -397,7 +398,7 @@ export async function renderStats(container) {
     document.querySelectorAll('[data-delete-qcm-tentative]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.deleteQcmTentative
-        if (!window.confirm('Supprimer cette tentative ?')) return
+        if (!(await demanderConfirmation('Supprimer cette tentative ?'))) return
         try {
           await deleteTentativeQcm(id)
           const restantes = tentativesQcm.filter((t) => t.id !== id)

@@ -152,6 +152,26 @@ export async function marquerTentativeQcmRevue(id) {
   if (error) throw error
 }
 
+// Archive : QCM dont la tentative la plus récente était imparfaite mais a déjà été marquée
+// comme revue (a_revoir = false) — reste visible tant que l'utilisateur ne le supprime pas
+// lui-même, ou jusqu'à une nouvelle tentative parfaite qui le sort naturellement de la liste.
+export async function getQcmTentativesRevues() {
+  const { data, error } = await supabase
+    .from('qcm_tentatives')
+    .select('id, mode, score, score_max, reponses, date_tentative, a_revoir, qcm_id, qcm(id, titre, matieres, questions, tags)')
+    .order('date_tentative', { ascending: false })
+  if (error) throw error
+
+  const vus = new Set()
+  const revues = []
+  data.forEach((t) => {
+    if (vus.has(t.qcm_id)) return
+    vus.add(t.qcm_id)
+    if (!t.a_revoir && Number(t.score) < Number(t.score_max)) revues.push(t)
+  })
+  return revues
+}
+
 export async function deleteTentativeQcm(id) {
   const { error } = await supabase.from('qcm_tentatives').delete().eq('id', id)
   if (error) throw error

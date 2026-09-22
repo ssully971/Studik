@@ -16,19 +16,17 @@ import { renderParametres } from './pages/parametres.js'
 import { renderRevision } from './pages/revision.js'
 import { renderCarnetErreurs } from './pages/carnet-erreurs.js'
 import { renderCapture } from './pages/capture.js'
-import { renderMatieres } from './pages/matieres.js'
 import { renderStats } from './pages/stats.js'
-import { renderCasListe } from './pages/cas-liste.js'
 import { renderQcmListe } from './pages/qcm-liste.js'
 import { renderQcmJouer } from './pages/qcm-jouer.js'
 import { renderQcmDetail } from './pages/qcm-detail.js'
 import { renderQcmRetrySession } from './pages/qcm-retry-session.js'
 import { renderTagPage } from './pages/tag-page.js'
-import { renderPrompts } from './pages/prompts.js'
 import { renderSession } from './pages/session.js'
+import { renderOrganisation } from './pages/organisation.js'
 
 const app = document.getElementById('app')
-const SECONDARY_ROUTES = ['capture', 'import', 'matieres', 'parametres', 'stats', 'cas', 'prompts']
+const SECONDARY_ROUTES = ['capture', 'import', 'parametres', 'stats', 'organisation']
 
 let searchCache = null
 
@@ -90,11 +88,9 @@ function renderShell(user) {
             <a href="#erreurs" data-route="erreurs" class="mobile-only-link">Erreurs</a>
             <div class="dropdown-divider mobile-only-link"></div>
             <a href="#stats" data-route="stats">Statistiques</a>
-            <a href="#cas" data-route="cas">Bibliothèque de cas</a>
-            <a href="#prompts" data-route="prompts">Prompts d'import</a>
             <a href="#capture" data-route="capture">Capture rapide</a>
-            <a href="#import" data-route="import">Importer</a>
-            <a href="#matieres" data-route="matieres">Matières</a>
+            <a href="#import" data-route="import">Import &amp; prompts</a>
+            <a href="#organisation" data-route="organisation">Organisation</a>
             <a href="#parametres" data-route="parametres">Paramètres</a>
             <div class="dropdown-divider"></div>
             <button id="logout-btn">Se déconnecter</button>
@@ -325,8 +321,6 @@ function router() {
     renderFicheDetail(content, parts[1])
   } else if (route === 'entrainement') {
     renderEntrainement(content, parts[1])
-  } else if (route === 'cas') {
-    renderCasListe(content)
   } else if (route === 'qcm') {
     renderQcmListe(content)
   } else if (route === 'qcm-jouer') {
@@ -337,8 +331,6 @@ function router() {
     renderQcmRetrySession(content)
   } else if (route === 'tag') {
     renderTagPage(content, parts[1])
-  } else if (route === 'prompts') {
-    renderPrompts(content)
   } else if (route === 'revision') {
     renderRevision(content)
   } else if (route === 'session') {
@@ -346,11 +338,11 @@ function router() {
   } else if (route === 'erreurs') {
     renderCarnetErreurs(content)
   } else if (route === 'import') {
-    renderImport(content)
+    renderImport(content, parts[1])
   } else if (route === 'capture') {
     renderCapture(content)
-  } else if (route === 'matieres') {
-    renderMatieres(content)
+  } else if (route === 'organisation') {
+    renderOrganisation(content)
   } else if (route === 'stats') {
     renderStats(content)
   } else if (route === 'parametres') {

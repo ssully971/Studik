@@ -71,6 +71,31 @@ export async function synchroniserDonnees() {
 
   if (sousMatieresACreer.size > 0) {
     await insertMatieres(Array.from(sousMatieresACreer.values()))
+    sousMatieresACreer.forEach((m) => {
+      idParNomParent[m.nom] = m.id
+      nomsMatieresExistantes.add(m.nom)
+      idsMatieresExistants.add(m.id)
+    })
+  }
+
+  // --- Cours manquants : sous la sous-matière si la fiche en a une, sinon directement sous
+  // la matière (fiches) ; cas/QCM n'ont pas de sous_matiere, donc toujours sous la matière. ---
+  const coursACreer = new Map()
+  function considererCours(nomCours, nomParent, type) {
+    if (!nomCours || !nomParent) return
+    if (nomsMatieresExistantes.has(nomCours)) return
+    const id = slugify(nomCours)
+    if (idsMatieresExistants.has(id) || coursACreer.has(id)) return
+    const parentId = idParNomParent[nomParent]
+    if (!parentId) return
+    coursACreer.set(id, { id, nom: nomCours, type, couleur: null, ordre_affichage: 0, annee: null, semestre: null, parent_id: parentId })
+  }
+  fiches.forEach((f) => considererCours(f.cours, f.sous_matiere || f.matiere, f.type))
+  cas.forEach((c) => considererCours(c.cours, c.matiere, c.type))
+  qcm.forEach((q) => considererCours(q.cours, (q.matieres || [])[0], 'clinique'))
+
+  if (coursACreer.size > 0) {
+    await insertMatieres(Array.from(coursACreer.values()))
   }
 
   // --- Tags manquants (fiches, cas, QCM) ---
@@ -90,6 +115,7 @@ export async function synchroniserDonnees() {
   return {
     matieresCreees: Array.from(matieresACreer.values()).map((m) => m.nom),
     sousMatieresCreees: Array.from(sousMatieresACreer.values()).map((m) => m.nom),
+    coursCrees: Array.from(coursACreer.values()).map((m) => m.nom),
     tagsCrees: Array.from(tagsACreer),
   }
 }

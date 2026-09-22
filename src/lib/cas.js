@@ -123,6 +123,27 @@ export async function marquerCommeRevu(tentativeId) {
   if (error) throw error
 }
 
+// Archive : cas dont la tentative la plus récente était ratée mais a déjà été marquée comme
+// revue (a_revoir = false) — reste visible tant que l'utilisateur ne le supprime pas lui-même,
+// ou jusqu'à une nouvelle tentative réussie qui le sort naturellement de cette liste.
+export async function getTentativesRevues() {
+  const { data, error } = await supabase
+    .from('tentatives')
+    .select('*, cas_cliniques(id, matiere, type, question, fiches_liees, reponse_attendue, tags)')
+    .order('date_tentative', { ascending: false })
+
+  if (error) throw error
+
+  const vus = new Set()
+  const revues = []
+  data.forEach((t) => {
+    if (vus.has(t.cas_id)) return
+    vus.add(t.cas_id)
+    if (!t.a_revoir && !t.reussi) revues.push(t)
+  })
+  return revues
+}
+
 export async function deleteTentative(id) {
   const { error } = await supabase.from('tentatives').delete().eq('id', id)
   if (error) throw error

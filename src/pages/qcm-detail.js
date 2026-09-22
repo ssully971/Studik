@@ -1,5 +1,6 @@
 import { getQcmById, updateQcm, deleteQcm } from '../lib/qcm.js'
-import { getMatieres } from '../lib/matieres.js'
+import { demanderConfirmation } from '../lib/confirmer.js'
+import { getMatieres, getCoursAplatis } from '../lib/matieres.js'
 import { renderTagPicker } from './tag-picker.js'
 import { appliquerSurlignageEnAttente } from '../lib/highlight.js'
 import { televerserImage, supprimerImage } from '../lib/images.js'
@@ -43,6 +44,10 @@ export async function renderQcmDetail(container, id) {
           <div style="margin-bottom: 14px;">
             <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Durée en mode concours (minutes)</label>
             <input type="number" id="edit-duree" class="search-input" style="margin-bottom: 0; max-width: 120px;" value="${qcm.duree_minutes}" />
+          </div>
+          <div style="margin-bottom: 14px;" id="edit-cours-wrapper">
+            <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Cours (optionnel, rattaché à la première matière choisie)</label>
+            <select id="edit-cours" class="periode-select" style="width: 100%;"></select>
           </div>
           <div style="margin-bottom: 14px;">
             <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Tags</label>
@@ -152,6 +157,28 @@ export async function renderQcmDetail(container, id) {
     document.getElementById('qcm-edit-form').classList.toggle('hidden')
   })
 
+  async function chargerCours(nomMatiere, coursSelectionne) {
+    const wrapper = document.getElementById('edit-cours-wrapper')
+    const select = document.getElementById('edit-cours')
+    let cours = []
+    if (nomMatiere) {
+      try {
+        cours = await getCoursAplatis(nomMatiere)
+      } catch {
+        cours = []
+      }
+    }
+    if (cours.length === 0) {
+      wrapper.style.display = 'none'
+      select.innerHTML = ''
+      return
+    }
+    wrapper.style.display = ''
+    select.innerHTML =
+      `<option value="">Aucun</option>` +
+      cours.map((c) => `<option value="${c.nom}" ${c.nom === coursSelectionne ? 'selected' : ''}>${c.chemin}</option>`).join('')
+  }
+
   let toutesMatieres = []
   try {
     toutesMatieres = await getMatieres({})
@@ -159,6 +186,11 @@ export async function renderQcmDetail(container, id) {
     select.innerHTML = toutesMatieres
       .map((m) => `<option value="${m.nom}" ${qcm.matieres.includes(m.nom) ? 'selected' : ''}>${m.nom}</option>`)
       .join('')
+    await chargerCours(qcm.matieres[0], qcm.cours)
+    select.addEventListener('change', () => {
+      const premiere = Array.from(select.selectedOptions).map((o) => o.value)[0]
+      chargerCours(premiere, null)
+    })
   } catch {
     // silencieux
   }
@@ -183,11 +215,14 @@ export async function renderQcmDetail(container, id) {
       return
     }
 
+    const cours = document.getElementById('edit-cours').value || null
+
     try {
-      await updateQcm(qcm.id, { titre, matieres: matieresSelectionnees, duree_minutes, tags: tagsActuels })
+      await updateQcm(qcm.id, { titre, matieres: matieresSelectionnees, duree_minutes, cours, tags: tagsActuels })
       qcm.titre = titre
       qcm.matieres = matieresSelectionnees
       qcm.duree_minutes = duree_minutes
+      qcm.cours = cours
       qcm.tags = tagsActuels
       document.getElementById('qcm-titre-affiche').textContent = titre
       document.getElementById('qcm-meta-affiche').textContent =
@@ -201,7 +236,7 @@ export async function renderQcmDetail(container, id) {
   })
 
   document.getElementById('delete-qcm-btn').addEventListener('click', async () => {
-    if (!window.confirm(`Supprimer définitivement le QCM "${qcm.titre}" ? Les tentatives associées resteront dans ton historique.`)) return
+    if (!(await demanderConfirmation(`Supprimer définitivement le QCM "${qcm.titre}" ? Les tentatives associées resteront dans ton historique.`))) return
     try {
       await deleteQcm(qcm.id)
       window.location.hash = '#qcm'

@@ -1,5 +1,12 @@
-import { getTentativesRatees, marquerCommeRevu, GABARITS_CAS } from '../lib/cas.js'
-import { getQcmTentativesARevoir, marquerTentativeQcmRevue, questionsRateesDeLaTentative } from '../lib/qcm.js'
+import { getTentativesRatees, getTentativesRevues, marquerCommeRevu, deleteTentative, GABARITS_CAS } from '../lib/cas.js'
+import { demanderConfirmation } from '../lib/confirmer.js'
+import {
+  getQcmTentativesARevoir,
+  getQcmTentativesRevues,
+  marquerTentativeQcmRevue,
+  deleteTentativeQcm,
+  questionsRateesDeLaTentative,
+} from '../lib/qcm.js'
 import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
 import { renderTagFilters } from './tag-filter.js'
 import { renderTagPicker } from './tag-picker.js'
@@ -13,6 +20,8 @@ const TYPE_LABELS = {
 
 const PAGE_SIZE = 5
 
+let modeActuel = 'actives'
+
 function formatDate(iso) {
   const d = new Date(iso)
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -25,24 +34,25 @@ function ouvrirModal(titre, contenuHtml) {
   overlay.classList.remove('hidden')
 }
 
+// Un seul rendu de ligne de correction, réutilisé pour les cas et les QCM : vert = coché et
+// correct, orange = correct mais oublié (pas coché), rouge = coché à tort.
+function ligneCorrection(texte, correct, coche, explication) {
+  let classe = 'item-explication-neutre'
+  let symbole = '—'
+  if (correct && coche) {
+    classe = 'item-explication-ok'
+    symbole = '✔'
+  } else if (correct && !coche) {
+    classe = 'item-explication-missed'
+    symbole = '✘ manqué'
+  } else if (!correct && coche) {
+    classe = 'item-explication-wrong'
+    symbole = '✘ erreur'
+  }
+  return `<li class="${classe}"><span class="item-explication-symbole">${symbole}</span> <strong>${texte}</strong>${explication ? ` — ${explication}` : ''}</li>`
+}
+
 export async function renderCarnetErreurs(container) {
-  container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
-
-  let tentatives, tentativesQcm
-  try {
-    ;[tentatives, tentativesQcm] = await Promise.all([getTentativesRatees(), getQcmTentativesARevoir()])
-  } catch (err) {
-    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${err.message}</p></div>`
-    return
-  }
-
-  let matiereColorMap = {}
-  try {
-    matiereColorMap = buildMatiereColorMap(await getMatieres({}))
-  } catch {
-    matiereColorMap = {}
-  }
-
   container.innerHTML = `
     <div class="wrap">
       <div class="section-head">
@@ -50,29 +60,12 @@ export async function renderCarnetErreurs(container) {
         <span class="count" id="erreurs-count"></span>
       </div>
 
-      <input type="text" id="search-input" class="search-input" placeholder="Rechercher dans les erreurs (matière, question, titre)…" />
-
-      <div class="filters" id="filters-row">
-        <select id="tri-select" class="periode-select">
-          <option value="recent">Plus récent</option>
-          <option value="ancien">Plus ancien</option>
-          <option value="matiere">Matière (A→Z)</option>
-        </select>
+      <div class="filters" style="margin-bottom: 20px;">
+        <button class="filter-btn ${modeActuel === 'actives' ? 'active' : ''}" data-mode="actives">Erreurs actives</button>
+        <button class="filter-btn ${modeActuel === 'archive' ? 'active' : ''}" data-mode="archive">Archive</button>
       </div>
 
-      <div class="filters" id="tag-filters"></div>
-
-      <div class="section-head" style="margin-top: 8px; border-bottom: none; padding-bottom: 0;">
-        <h3 class="voice" style="font-size: 15px;">Cas cliniques</h3>
-      </div>
-      <div id="erreurs-list" class="fiches-list" style="margin-bottom: 12px;"></div>
-      <div id="erreurs-voir-plus" style="margin-bottom: 32px;"></div>
-
-      <div class="section-head" style="border-bottom: none; padding-bottom: 0;">
-        <h3 class="voice" style="font-size: 15px;">QCM</h3>
-      </div>
-      <div id="erreurs-qcm-list" class="fiches-list" style="margin-bottom: 12px;"></div>
-      <div id="erreurs-qcm-voir-plus"></div>
+      <div id="erreurs-mode-content"></div>
     </div>
 
     <div id="detail-modal-overlay" class="modal-overlay hidden">
@@ -92,6 +85,66 @@ export async function renderCarnetErreurs(container) {
   document.getElementById('detail-modal-overlay').addEventListener('click', (e) => {
     if (e.target.id === 'detail-modal-overlay') e.target.classList.add('hidden')
   })
+
+  document.querySelectorAll('[data-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.mode === modeActuel) return
+      modeActuel = btn.dataset.mode
+      renderCarnetErreurs(container)
+    })
+  })
+
+  const modeContent = document.getElementById('erreurs-mode-content')
+  if (modeActuel === 'archive') {
+    await renderArchive(modeContent)
+  } else {
+    await renderActives(modeContent)
+  }
+}
+
+async function renderActives(container) {
+  container.innerHTML = `<p class="voice">Chargement…</p>`
+
+  let tentatives, tentativesQcm
+  try {
+    ;[tentatives, tentativesQcm] = await Promise.all([getTentativesRatees(), getQcmTentativesARevoir()])
+  } catch (err) {
+    container.innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+    return
+  }
+
+  let matiereColorMap = {}
+  try {
+    matiereColorMap = buildMatiereColorMap(await getMatieres({}))
+  } catch {
+    matiereColorMap = {}
+  }
+
+  container.innerHTML = `
+    <input type="text" id="search-input" class="search-input" placeholder="Rechercher dans les erreurs (matière, question, titre)…" />
+
+    <div class="filters" id="filters-row">
+      <select id="tri-select" class="periode-select">
+        <option value="recent">Plus récent</option>
+        <option value="ancien">Plus ancien</option>
+        <option value="matiere">Matière (A→Z)</option>
+      </select>
+    </div>
+
+    <div class="filters" id="tag-filters"></div>
+
+    <div class="section-head" style="margin-top: 8px; border-bottom: none; padding-bottom: 0;">
+      <h3 class="voice" style="font-size: 15px;">Cas cliniques</h3>
+    </div>
+    <div id="erreurs-list" class="fiches-list" style="margin-bottom: 12px;"></div>
+    <div id="erreurs-voir-plus" style="margin-bottom: 32px;"></div>
+
+    <div class="section-head" style="border-bottom: none; padding-bottom: 0;">
+      <h3 class="voice" style="font-size: 15px;">QCM</h3>
+    </div>
+    <div id="erreurs-qcm-list" class="fiches-list" style="margin-bottom: 12px;"></div>
+    <div id="erreurs-qcm-voir-plus"></div>
+  `
 
   let limiteCas = PAGE_SIZE
   let limiteQcm = PAGE_SIZE
@@ -240,33 +293,6 @@ export async function renderCarnetErreurs(container) {
     })
   }
 
-  function afficherDetailCas(t) {
-    const cas = t.cas_cliniques
-    const gabarit = GABARITS_CAS[cas.type] || GABARITS_CAS.clinique
-    const items = (cas.reponse_attendue && cas.reponse_attendue[gabarit.itemsKey]) || []
-    const resultats = (cas.reponse_attendue && cas.reponse_attendue[gabarit.resultKey]) || []
-    const reponseDonnee = t.reponse_donnee || []
-
-    const html = `
-      <p style="margin-bottom: 12px;">${cas.question}</p>
-      <p style="font-size: 12px; color: var(--text-faint); margin-bottom: 6px;">${gabarit.itemsLabel}</p>
-      <ul class="detail-list">
-        ${items
-          .map((item, i) => {
-            const coche = reponseDonnee[i]
-            let symbole = '—'
-            if (item.correct && coche) symbole = '✔'
-            else if (item.correct && !coche) symbole = '✘ (manqué)'
-            else if (!item.correct && coche) symbole = '✘ (erreur)'
-            return `<li>${symbole} ${item.label}</li>`
-          })
-          .join('')}
-      </ul>
-      ${resultats.length ? `<p style="font-size: 12px; color: var(--text-faint); margin: 12px 0 6px;">${gabarit.resultLabel}</p><ul class="detail-list">${resultats.map((r) => `<li>${r}</li>`).join('')}</ul>` : ''}
-    `
-    ouvrirModal(cas.question, html)
-  }
-
   function renderListQcm(list) {
     const listEl = document.getElementById('erreurs-qcm-list')
     const voirPlusEl = document.getElementById('erreurs-qcm-voir-plus')
@@ -340,48 +366,55 @@ export async function renderCarnetErreurs(container) {
     })
   }
 
+  function afficherDetailCas(t) {
+    const cas = t.cas_cliniques
+    const gabarit = GABARITS_CAS[cas.type] || GABARITS_CAS.clinique
+    const items = (cas.reponse_attendue && cas.reponse_attendue[gabarit.itemsKey]) || []
+    const resultats = (cas.reponse_attendue && cas.reponse_attendue[gabarit.resultKey]) || []
+    const reponseDonnee = t.reponse_donnee || []
+
+    const html = `
+      <p style="margin-bottom: 12px;">${cas.question}</p>
+      <p style="font-size: 12px; color: var(--text-faint); margin-bottom: 6px;">${gabarit.itemsLabel}</p>
+      <ul class="detail-list">
+        ${items.map((item, i) => ligneCorrection(item.label, item.correct, reponseDonnee[i])).join('')}
+      </ul>
+      ${resultats.length ? `<p style="font-size: 12px; color: var(--text-faint); margin: 12px 0 6px;">${gabarit.resultLabel}</p><ul class="detail-list">${resultats.map((r) => `<li>${r}</li>`).join('')}</ul>` : ''}
+    `
+    ouvrirModal(cas.question, html)
+  }
+
   function afficherDetailQcm(t) {
     const qcm = t.qcm
     const reponses = t.reponses || []
     const indicesRates = questionsRateesDeLaTentative(qcm, t)
+    let filtreVue = 'toutes'
 
-    const detailQuestions = qcm.questions
-      .map((q, i) => {
-        const reponsesQuestion = reponses[i] || []
-        const itemsAExpliquer = q.items
-          .map((item, j) => ({ item, j, coche: reponsesQuestion[j] }))
-          .filter(({ item, coche }) => Boolean(coche) !== Boolean(item.correct))
+    function questionsARendre() {
+      return filtreVue === 'erreurs' ? indicesRates.map((i) => i) : qcm.questions.map((_, i) => i)
+    }
 
-        return `
-        <div class="detail-section">
-          <h3 class="voice" style="font-size: 14px;">Question ${i + 1}</h3>
-          <p style="margin-bottom: 8px; font-size: 13px;">${q.enonce}</p>
-          <ul class="detail-list">
-            ${q.items
-              .map((item, j) => {
-                const coche = reponsesQuestion[j]
-                let symbole = '—'
-                if (item.correct && coche) symbole = '✔'
-                else if (item.correct && !coche) symbole = '✘ (manqué)'
-                else if (!item.correct && coche) symbole = '✘ (erreur)'
-                return `<li>${symbole} ${item.texte}</li>`
-              })
-              .join('')}
-          </ul>
-          ${
-            itemsAExpliquer.length > 0
-              ? `<ul class="detail-list" style="margin-top: 8px;">${itemsAExpliquer
-                  .map(({ item }) => {
-                    const explication = item.explication || q.explication
-                    return explication ? `<li><strong>${item.texte}</strong> — ${explication}</li>` : ''
-                  })
-                  .join('')}</ul>`
-              : ''
-          }
-        </div>
-      `
-      })
-      .join('')
+    function rendreQuestions() {
+      const indices = questionsARendre()
+      if (indices.length === 0) {
+        return `<p class="empty-note">Aucune question ratée sur cette tentative.</p>`
+      }
+      return indices
+        .map((i) => {
+          const q = qcm.questions[i]
+          const reponsesQuestion = reponses[i] || []
+          return `
+          <div class="detail-section">
+            <h3 class="voice" style="font-size: 14px;">Question ${i + 1}</h3>
+            <p style="margin-bottom: 8px; font-size: 13px;">${q.enonce}</p>
+            <ul class="detail-list">
+              ${q.items.map((item, j) => ligneCorrection(item.texte, item.correct, reponsesQuestion[j], item.explication || q.explication)).join('')}
+            </ul>
+          </div>
+        `
+        })
+        .join('')
+    }
 
     const matieres = qcm.matieres || []
 
@@ -404,9 +437,23 @@ export async function renderCarnetErreurs(container) {
           <button class="btn" id="retry-tags-btn" style="width: auto; margin-top: 8px;">Refaire ces tags</button>
         </div>
       </div>
-      ${detailQuestions}
+
+      <div class="filters" style="margin-bottom: 14px;">
+        <button class="filter-btn ${filtreVue === 'toutes' ? 'active' : ''}" data-filtre-vue="toutes">Toutes les questions</button>
+        <button class="filter-btn ${filtreVue === 'erreurs' ? 'active' : ''}" data-filtre-vue="erreurs">Uniquement les erreurs</button>
+      </div>
+
+      <div id="detail-questions">${rendreQuestions()}</div>
     `
     ouvrirModal(qcm.titre, html)
+
+    document.querySelectorAll('[data-filtre-vue]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        filtreVue = btn.dataset.filtreVue
+        document.querySelectorAll('[data-filtre-vue]').forEach((b) => b.classList.toggle('active', b.dataset.filtreVue === filtreVue))
+        document.getElementById('detail-questions').innerHTML = rendreQuestions()
+      })
+    })
 
     let tagsChoisis = []
     renderTagPicker(document.getElementById('retry-tags-picker'), {
@@ -439,4 +486,113 @@ export async function renderCarnetErreurs(container) {
   }
 
   applyFiltre()
+}
+
+async function renderArchive(container) {
+  container.innerHTML = `<p class="voice">Chargement…</p>`
+
+  let tentatives, tentativesQcm
+  try {
+    ;[tentatives, tentativesQcm] = await Promise.all([getTentativesRevues(), getQcmTentativesRevues()])
+  } catch (err) {
+    container.innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+    return
+  }
+
+  let matiereColorMap = {}
+  try {
+    matiereColorMap = buildMatiereColorMap(await getMatieres({}))
+  } catch {
+    matiereColorMap = {}
+  }
+
+  document.getElementById('erreurs-count').textContent = `${tentatives.length + tentativesQcm.length} au total`
+
+  container.innerHTML = `
+    <p class="settings-desc" style="margin-bottom: 16px;">Erreurs déjà marquées comme revues. Elles restent ici tant que tu ne les supprimes pas toi-même, ou jusqu'à une nouvelle tentative réussie.</p>
+
+    <div class="section-head" style="margin-top: 8px; border-bottom: none; padding-bottom: 0;">
+      <h3 class="voice" style="font-size: 15px;">Cas cliniques</h3>
+    </div>
+    <div id="archive-cas-list" class="fiches-list" style="margin-bottom: 32px;"></div>
+
+    <div class="section-head" style="border-bottom: none; padding-bottom: 0;">
+      <h3 class="voice" style="font-size: 15px;">QCM</h3>
+    </div>
+    <div id="archive-qcm-list" class="fiches-list"></div>
+  `
+
+  const casListEl = document.getElementById('archive-cas-list')
+  casListEl.innerHTML = tentatives.length
+    ? tentatives
+        .map(
+          (t) => `
+      <div class="fiche-row type-${t.cas_cliniques.type}">
+        <div class="tab" style="background: ${couleurTab(t.cas_cliniques.matiere, t.cas_cliniques.type, matiereColorMap)};"></div>
+        <div class="fiche-body">
+          <div class="fiche-top">
+            <span class="fiche-title voice">${t.cas_cliniques.question}</span>
+            <span class="type-label">${TYPE_LABELS[t.cas_cliniques.type]}</span>
+          </div>
+          <div class="fiche-meta">${t.cas_cliniques.matiere} · ratée le ${formatDate(t.date_tentative)}</div>
+          <div class="import-actions" style="margin-top: 10px;">
+            <a href="#entrainement/${t.cas_cliniques.id}" class="btn primary" style="width: auto;">Rejouer le cas</a>
+            <button class="btn" data-supprimer="${t.id}" style="width: auto; color: #C46A5C;">Supprimer</button>
+          </div>
+        </div>
+      </div>
+    `
+        )
+        .join('')
+    : `<p class="empty-note">Aucune erreur archivée pour l'instant.</p>`
+
+  casListEl.querySelectorAll('[data-supprimer]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!(await demanderConfirmation('Supprimer définitivement cette entrée archivée ?'))) return
+      try {
+        await deleteTentative(btn.dataset.supprimer)
+        tentatives = tentatives.filter((t) => t.id !== btn.dataset.supprimer)
+        renderArchive(container)
+      } catch (err) {
+        alert('Erreur : ' + err.message)
+      }
+    })
+  })
+
+  const qcmListEl = document.getElementById('archive-qcm-list')
+  qcmListEl.innerHTML = tentativesQcm.length
+    ? tentativesQcm
+        .map((t) => {
+          const taux = t.score_max > 0 ? Math.round((t.score / t.score_max) * 100) : 0
+          return `
+      <div class="fiche-row">
+        <div class="tab" style="background: ${couleurTab(t.qcm.matieres, null, matiereColorMap)};"></div>
+        <div class="fiche-body">
+          <div class="fiche-top">
+            <span class="fiche-title voice">${t.qcm.titre}</span>
+            <span class="type-label">${taux}%</span>
+          </div>
+          <div class="fiche-meta">${(t.qcm.matieres || []).join(', ')} · fait le ${formatDate(t.date_tentative)} · ${t.score}/${t.score_max} (${t.mode})</div>
+          <div class="import-actions" style="margin-top: 10px;">
+            <button class="btn" data-supprimer-qcm="${t.id}" style="width: auto; color: #C46A5C;">Supprimer</button>
+          </div>
+        </div>
+      </div>
+    `
+        })
+        .join('')
+    : `<p class="empty-note">Aucun QCM archivé pour l'instant.</p>`
+
+  qcmListEl.querySelectorAll('[data-supprimer-qcm]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!(await demanderConfirmation('Supprimer définitivement cette entrée archivée ?'))) return
+      try {
+        await deleteTentativeQcm(btn.dataset.supprimerQcm)
+        tentativesQcm = tentativesQcm.filter((t) => t.id !== btn.dataset.supprimerQcm)
+        renderArchive(container)
+      } catch (err) {
+        alert('Erreur : ' + err.message)
+      }
+    })
+  })
 }

@@ -35,7 +35,7 @@ export async function renderTagPage(container, nomEncode) {
 
   container.innerHTML = `
     <div class="wrap">
-      <a href="#prompts" class="breadcrumb">← Tags</a>
+      <a href="#import/prompts" class="breadcrumb">← Tags</a>
 
       <div class="section-head">
         <h2 class="voice">Tag « ${nom} »</h2>

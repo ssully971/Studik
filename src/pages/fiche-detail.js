@@ -9,12 +9,13 @@ import {
   deleteFiche,
   enregistrerRevision,
 } from '../lib/fiches.js'
-import { getMatieres, getSousMatieres } from '../lib/matieres.js'
+import { getMatieres, getSousMatieres, getEnfantsPartitionnes } from '../lib/matieres.js'
 import { exporterFichePDF } from '../lib/pdf.js'
 import { richText } from '../lib/richtext.js'
 import { renderTagPicker } from './tag-picker.js'
 import { appliquerSurlignageEnAttente } from '../lib/highlight.js'
 import { televerserImage } from '../lib/images.js'
+import { demanderConfirmation } from '../lib/confirmer.js'
 
 export function renderChamp(label, value) {
   if (!value) return ''
@@ -196,6 +197,11 @@ export async function renderFicheDetail(container, id) {
               <select id="sous-matiere-select" class="periode-select" style="width: 100%;"></select>
             </div>
 
+            <div style="margin-bottom: 14px;" id="cours-wrapper">
+              <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Cours (optionnel)</label>
+              <select id="cours-select" class="periode-select" style="width: 100%;"></select>
+            </div>
+
             <div style="margin-bottom: 14px;">
               <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Statut</label>
               <select id="statut-select" class="periode-select">
@@ -375,20 +381,32 @@ export async function renderFicheDetail(container, id) {
   })
 
   let matieresDisponibles = []
+  let aDesSousMatieres = false
+  let sousMatieresDisponibles = []
+  let coursDirectsMatiere = []
 
+  // Enfants directs d'une matière, partitionnés entre vraies sous-matières et cours qui y sont
+  // directement rattachés (une matière peut sauter la couche sous-matière).
   async function chargerSousMatieres(nomMatiere, sousMatiereSelectionnee) {
     const wrapper = document.getElementById('sous-matiere-wrapper')
     const select = document.getElementById('sous-matiere-select')
     const matiereInfo = matieresDisponibles.find((m) => m.nom === nomMatiere)
 
-    let sousMatieres = []
+    sousMatieresDisponibles = []
+    coursDirectsMatiere = []
     try {
-      sousMatieres = matiereInfo ? await getSousMatieres(matiereInfo.id) : []
+      if (matiereInfo) {
+        const partition = await getEnfantsPartitionnes(matiereInfo.id)
+        sousMatieresDisponibles = partition.sousMatieres
+        coursDirectsMatiere = partition.coursDirects
+      }
     } catch {
-      sousMatieres = []
+      // silencieux
     }
 
-    if (sousMatieres.length === 0) {
+    aDesSousMatieres = sousMatieresDisponibles.length > 0
+
+    if (!aDesSousMatieres) {
       wrapper.style.display = 'none'
       select.innerHTML = ''
       return
@@ -397,7 +415,39 @@ export async function renderFicheDetail(container, id) {
     wrapper.style.display = ''
     select.innerHTML =
       `<option value="">Aucune</option>` +
-      sousMatieres.map((s) => `<option value="${s.nom}" ${s.nom === sousMatiereSelectionnee ? 'selected' : ''}>${s.nom}</option>`).join('')
+      sousMatieresDisponibles.map((s) => `<option value="${s.nom}" ${s.nom === sousMatiereSelectionnee ? 'selected' : ''}>${s.nom}</option>`).join('')
+  }
+
+  // Un cours est enfant de la sous-matière choisie, ou directement de la matière si elle n'a
+  // pas de sous-matières.
+  async function chargerCours(nomMatiere, nomSousMatiere, coursSelectionne) {
+    const wrapper = document.getElementById('cours-wrapper')
+    const select = document.getElementById('cours-select')
+
+    let cours = []
+    if (aDesSousMatieres) {
+      const sousMatiereInfo = sousMatieresDisponibles.find((s) => s.nom === nomSousMatiere)
+      if (sousMatiereInfo) {
+        try {
+          cours = await getSousMatieres(sousMatiereInfo.id)
+        } catch {
+          cours = []
+        }
+      }
+    } else {
+      cours = coursDirectsMatiere
+    }
+
+    if (cours.length === 0) {
+      wrapper.style.display = 'none'
+      select.innerHTML = ''
+      return
+    }
+
+    wrapper.style.display = ''
+    select.innerHTML =
+      `<option value="">Aucun</option>` +
+      cours.map((c) => `<option value="${c.nom}" ${c.nom === coursSelectionne ? 'selected' : ''}>${c.nom}</option>`).join('')
   }
 
   try {
@@ -405,15 +455,20 @@ export async function renderFicheDetail(container, id) {
     const matiereSelect = document.getElementById('matiere-select')
     matiereSelect.innerHTML = matieresDisponibles.map((m) => `<option value="${m.nom}" ${m.nom === fiche.matiere ? 'selected' : ''}>${m.nom}</option>`).join('')
     await chargerSousMatieres(fiche.matiere, fiche.sous_matiere)
-    matiereSelect.addEventListener('change', () => {
-      chargerSousMatieres(matiereSelect.value, null)
+    await chargerCours(fiche.matiere, fiche.sous_matiere, fiche.cours)
+    matiereSelect.addEventListener('change', async () => {
+      await chargerSousMatieres(matiereSelect.value, null)
+      await chargerCours(matiereSelect.value, null, null)
+    })
+    document.getElementById('sous-matiere-select').addEventListener('change', (e) => {
+      chargerCours(matiereSelect.value, e.target.value, null)
     })
   } catch {
     // silencieux
   }
 
   document.getElementById('archiver-btn').addEventListener('click', async () => {
-    if (!window.confirm(`Archiver la fiche "${fiche.titre}" ?`)) return
+    if (!(await demanderConfirmation(`Archiver la fiche "${fiche.titre}" ?`))) return
     try {
       await updateStatut(fiche.id, 'archive')
       fiche.statut = 'archive'
@@ -451,6 +506,7 @@ export async function renderFicheDetail(container, id) {
     const statut = document.getElementById('statut-select').value
     const matiere = document.getElementById('matiere-select').value
     const sous_matiere = document.getElementById('sous-matiere-select').value || null
+    const cours = document.getElementById('cours-select').value || null
 
     try {
       await updateStatut(fiche.id, statut)
@@ -458,6 +514,7 @@ export async function renderFicheDetail(container, id) {
       const champsMatiere = {}
       if (matiere && matiere !== fiche.matiere) champsMatiere.matiere = matiere
       if (sous_matiere !== (fiche.sous_matiere || null)) champsMatiere.sous_matiere = sous_matiere
+      if (cours !== (fiche.cours || null)) champsMatiere.cours = cours
       if (Object.keys(champsMatiere).length > 0) {
         await updateFiche(fiche.id, champsMatiere)
         Object.assign(fiche, champsMatiere)
@@ -534,7 +591,7 @@ export async function renderFicheDetail(container, id) {
   })
 
   document.getElementById('delete-fiche-btn').addEventListener('click', async () => {
-    if (!window.confirm(`Supprimer définitivement la fiche "${fiche.titre}" ?`)) return
+    if (!(await demanderConfirmation(`Supprimer définitivement la fiche "${fiche.titre}" ?`))) return
     try {
       await deleteFiche(fiche.id)
       window.location.hash = '#referentiel'
