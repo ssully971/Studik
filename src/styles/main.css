@@ -930,19 +930,17 @@ a.tag:hover,
 }
 
 /* Le header (logo + nav + recherche + menu) a besoin d'environ 1150px pour tenir sur une seule
-   ligne sans se chevaucher — bascule dans le même mode compact que le mobile (nav caché derrière
-   Menu, recherche en icône) dès qu'on passe en dessous, ce qui couvre aussi bien les tablettes que
-   les fenêtres desktop pas assez larges. Le reste de la mise en page (grilles, cartes...) garde son
-   propre seuil, plus bas, défini dans le bloc mobile ci-dessous. */
+   ligne sans se chevaucher. En dessous, la recherche se réduit à une icône (popup au clic) pour
+   libérer de la place, mais la nav reste visible — elle passe juste sur sa propre ligne, sous le
+   bandeau logo/recherche/menu, plutôt que de disparaître derrière "Menu" (une tablette a la place
+   pour l'afficher, contrairement à un téléphone). Le reste de la mise en page (grilles, cartes...)
+   garde son propre seuil, plus bas, défini dans le bloc mobile ci-dessous — c'est ce seuil-là,
+   pas celui-ci, qui bascule vraiment en mode "tout derrière Menu". */
 @media (max-width: 1180px) {
   .mobile-search-toggle {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-  }
-
-  .mobile-only-link {
-    display: block;
   }
 
   .search-wrapper {
@@ -967,12 +965,19 @@ a.tag:hover,
   }
 
   .header-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: 'brand . menu' 'nav nav nav';
     padding: 14px 20px;
+    row-gap: 10px;
   }
 
   .brand-group {
+    grid-area: brand;
     min-width: 0;
+  }
+
+  .menu-wrapper {
+    grid-area: menu;
   }
 
   .brand-group .mark,
@@ -990,7 +995,8 @@ a.tag:hover,
   }
 
   nav {
-    display: none;
+    grid-area: nav;
+    flex-wrap: wrap;
   }
 }
 
@@ -1024,6 +1030,7 @@ a.tag:hover,
 
   .header-row {
     grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'brand menu';
     row-gap: 10px;
     padding: 12px 16px;
   }
