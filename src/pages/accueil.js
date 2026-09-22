@@ -104,6 +104,17 @@ export async function renderAccueil(container) {
   await chargerStreak()
   chargerHeatmap()
 
+  // Le survol (:hover) ne suffit pas au tactile : un tap sur la carte bascule aussi la heatmap,
+  // sauf si on a touché un bouton/lien à l'intérieur.
+  const streakCard = document.querySelector('.streak-card')
+  streakCard.addEventListener('click', (e) => {
+    if (e.target.closest('button, a')) return
+    streakCard.classList.toggle('ouvert')
+  })
+  document.addEventListener('click', (e) => {
+    if (!streakCard.contains(e.target)) streakCard.classList.remove('ouvert')
+  })
+
   async function chargerHeatmap() {
     try {
       const { compte, checkinsParJour } = await getActiviteParJour()

@@ -9,11 +9,14 @@ function niveauIntensite(count) {
 }
 
 const MOIS_COURTS = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc']
-const JOURS_SEMAINE = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+// Abréviations à 3 lettres, jamais deux lettres identiques (contrairement à "L M M J V S D" où
+// mardi et mercredi étaient tous deux "M" et donc indissociables sans survoler une case).
+const JOURS_SEMAINE = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+const NOMS_JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
 const LIGNES_AVEC_LABEL = [0, 2, 4] // lundi, mercredi, vendredi
 
 function formatDateCourte(date) {
-  return `${date.getDate()} ${MOIS_COURTS[date.getMonth()]}`
+  return `${NOMS_JOURS[jourSemaineLundi(date)]} ${date.getDate()} ${MOIS_COURTS[date.getMonth()]}`
 }
 
 // 0 = lundi ... 6 = dimanche (Date.getDay() renvoie 0 = dimanche par défaut)

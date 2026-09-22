@@ -313,6 +313,10 @@ function router() {
     menuToggle.classList.toggle('active', SECONDARY_ROUTES.includes(route))
   }
 
+  document.getElementById('menu-dropdown')?.classList.add('hidden')
+  document.getElementById('global-search-results')?.classList.add('hidden')
+  document.getElementById('search-wrapper')?.classList.remove('mobile-open')
+
   if (route === 'accueil') {
     renderAccueil(content)
   } else if (route === 'referentiel') {
@@ -362,6 +366,7 @@ function setupRaccourcisClavier() {
     if (e.key === 'Escape') {
       if (dropdown) dropdown.classList.add('hidden')
       if (searchResults) searchResults.classList.add('hidden')
+      document.getElementById('search-wrapper')?.classList.remove('mobile-open')
       if (isTyping) document.activeElement.blur()
       return
     }

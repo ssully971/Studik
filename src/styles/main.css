@@ -491,6 +491,7 @@ nav a.active {
 
 .import-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 14px;
   margin-top: 14px;
@@ -556,6 +557,7 @@ nav a.active {
 
 .tags {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
 }
@@ -857,6 +859,10 @@ a.tag:hover,
   border-color: var(--text-dim);
 }
 
+.cas-champs-grid {
+  grid-template-columns: 1fr 140px 140px;
+}
+
 .menu-wrapper {
   position: relative;
 }
@@ -923,6 +929,71 @@ a.tag:hover,
   display: none;
 }
 
+/* Le header (logo + nav + recherche + menu) a besoin d'environ 1150px pour tenir sur une seule
+   ligne sans se chevaucher — bascule dans le même mode compact que le mobile (nav caché derrière
+   Menu, recherche en icône) dès qu'on passe en dessous, ce qui couvre aussi bien les tablettes que
+   les fenêtres desktop pas assez larges. Le reste de la mise en page (grilles, cartes...) garde son
+   propre seuil, plus bas, défini dans le bloc mobile ci-dessous. */
+@media (max-width: 1180px) {
+  .mobile-search-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-only-link {
+    display: block;
+  }
+
+  .search-wrapper {
+    display: none;
+  }
+
+  .search-wrapper.mobile-open {
+    display: block;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 16px;
+    right: 16px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    padding: 10px;
+    z-index: 20;
+  }
+
+  .search-wrapper.mobile-open .global-search-input {
+    width: 100%;
+  }
+
+  .header-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 14px 20px;
+  }
+
+  .brand-group {
+    min-width: 0;
+  }
+
+  .brand-group .mark,
+  .brand-group .brand {
+    flex-shrink: 0;
+  }
+
+  #periode-select {
+    min-width: 0;
+    max-width: 160px;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  nav {
+    display: none;
+  }
+}
+
 @media (max-width: 720px) {
   .mobile-search-toggle {
     display: inline-flex;
@@ -952,9 +1023,27 @@ a.tag:hover,
   }
 
   .header-row {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     row-gap: 10px;
     padding: 12px 16px;
+  }
+
+  .brand-group {
+    min-width: 0;
+  }
+
+  .brand-group .mark,
+  .brand-group .brand {
+    flex-shrink: 0;
+  }
+
+  #periode-select {
+    min-width: 0;
+    max-width: 132px;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   nav {
@@ -979,6 +1068,12 @@ a.tag:hover,
 
   .fiche-actions {
     grid-column: 1 / -1;
+    flex-wrap: wrap;
+  }
+
+  .fiche-actions .btn {
+    width: auto;
+    flex: 1 1 auto;
   }
 
   .now-grid,
@@ -1054,6 +1149,17 @@ a.tag:hover,
     display: none;
   }
 
+  .org-row {
+    flex-wrap: wrap;
+  }
+
+  .org-nom {
+    flex: 1 1 100%;
+  }
+
+  .org-actions {
+    margin-left: auto;
+  }
 }
 
 .search-wrapper {
@@ -1298,7 +1404,8 @@ a.tag:hover,
   z-index: 5;
 }
 
-.streak-card:hover .heatmap-popup {
+.streak-card:hover .heatmap-popup,
+.streak-card.ouvert .heatmap-popup {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
@@ -1316,7 +1423,7 @@ a.tag:hover,
 }
 
 .heatmap-months-spacer {
-  width: 16px;
+  width: 28px;
   flex-shrink: 0;
 }
 
@@ -1343,7 +1450,7 @@ a.tag:hover,
   display: flex;
   flex-direction: column;
   gap: 3px;
-  width: 16px;
+  width: 28px;
   flex-shrink: 0;
 }
 
@@ -1353,6 +1460,7 @@ a.tag:hover,
   font-family: "IBM Plex Mono", monospace;
   font-size: 9px;
   color: var(--text-faint);
+  white-space: nowrap;
 }
 
 .heatmap-grid {
@@ -1667,6 +1775,7 @@ a.tag:hover,
   font-size: 14px;
   color: var(--text);
   flex: 1;
+  min-width: 0;
 }
 
 .org-progression {

@@ -260,7 +260,7 @@ function renderFormulaireEdition(c) {
 
   return `
     <h3 class="voice">Modifier ce cas</h3>
-    <div class="matiere-edit-grid" style="grid-template-columns: 1fr 140px 140px;">
+    <div class="matiere-edit-grid cas-champs-grid">
       <label>
         Matière
         <input type="text" data-champ="matiere" value="${c.matiere}" />
