@@ -3,6 +3,7 @@
 À REMPLIR AVANT D'ENVOYER :
 - Type de cas : [clinique / mecanisme / structure]
 - Matière exacte : [MATIÈRE]
+- Cours exact, si le cas appartient à un cours déjà créé sur le site (sinon laisse vide) : [COURS]
 - Tags autorisés (liste fermée, n'en utilise aucun autre — laisse vide si tu ne veux pas taguer) : [TAG1, TAG2, TAG3, ...]
 - Source jointe (le cours sur lequel baser le cas) : [PDF / photo / texte collé / mes propres notes]
 - Niveau imposé (optionnel — sinon l'IA choisit elle-même entre 1 et 3) : [1 / 2 / 3 / laisse vide]
@@ -19,6 +20,7 @@ RÈGLES DE FOND
 - Laisse le champ "fiches_liees" vide (`[]`) — il sera rempli manuellement plus tard.
 - N'utilise que les tags listés ci-dessus, dans le champ "Tags autorisés". N'en invente aucun autre. Si aucun tag n'est listé, laisse `"tags": []`.
 - Dans "reponse_attendue", les éléments marqués `"correct": false` doivent être des éléments plausibles mais absents du cas (pas des absurdités faciles à écarter) — ça doit être un vrai exercice de discrimination.
+- Pour "cours" : recopie EXACTEMENT le nom donné ci-dessus (mêmes accents, mêmes majuscules), sans le reformuler — un nom légèrement différent créerait un doublon dans l'organisation du site. Si aucun cours n'est donné ci-dessus, mets `null`, n'invente jamais de nom.
 
 IDENTIFIANT
 Construis "id" selon ce format : `cas_prefixe-matiere_nom-court`
@@ -35,6 +37,7 @@ Construis "id" selon ce format : `cas_prefixe-matiere_nom-court`
     "id": "...",
     "type": "clinique",
     "matiere": "[MATIÈRE]",
+    "cours": null,
     "niveau": 1,
     "fiches_liees": [],
     "tags": [],
@@ -67,6 +70,7 @@ Construis "id" selon ce format : `cas_prefixe-matiere_nom-court`
     "id": "...",
     "type": "mecanisme",
     "matiere": "[MATIÈRE]",
+    "cours": null,
     "niveau": 1,
     "fiches_liees": [],
     "tags": [],
@@ -98,6 +102,7 @@ Construis "id" selon ce format : `cas_prefixe-matiere_nom-court`
     "id": "...",
     "type": "structure",
     "matiere": "[MATIÈRE]",
+    "cours": null,
     "niveau": 1,
     "fiches_liees": [],
     "tags": [],

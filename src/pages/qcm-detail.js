@@ -5,6 +5,7 @@ import { renderTagPicker } from './tag-picker.js'
 import { appliquerSurlignageEnAttente } from '../lib/highlight.js'
 import { televerserImage, supprimerImage } from '../lib/images.js'
 import { escapeHtml } from '../lib/escape.js'
+import { renderCoursAttachPicker } from './cours-attach-picker.js'
 
 export async function renderQcmDetail(container, id) {
   container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
@@ -49,6 +50,10 @@ export async function renderQcmDetail(container, id) {
           <div style="margin-bottom: 14px;" id="edit-cours-wrapper">
             <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Cours (optionnel, rattaché à la première matière choisie)</label>
             <select id="edit-cours" class="periode-select" style="width: 100%;"></select>
+          </div>
+          <div style="margin-bottom: 14px;">
+            <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Emplacements supplémentaires (matière, sous-matière ou cours, en plus de celui ci-dessus)</label>
+            <div id="cours-attach-picker"></div>
           </div>
           <div style="margin-bottom: 14px;">
             <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Tags</label>
@@ -195,6 +200,8 @@ export async function renderQcmDetail(container, id) {
   } catch {
     // silencieux
   }
+
+  renderCoursAttachPicker(document.getElementById('cours-attach-picker'), { type: 'qcm', id: qcm.id })
 
   let tagsActuels = [...qcm.tags]
   renderTagPicker(document.getElementById('edit-tags-picker'), {

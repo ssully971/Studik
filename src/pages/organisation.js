@@ -7,12 +7,19 @@ import {
   calculerProfondeur,
   estCoursNoeud,
   estValideNoeud,
-  getTousLesCoursAplatis,
+  getTousLesEmplacements,
 } from '../lib/matieres.js'
-import { getFicheCountByMatiere, getAllFichesRaw, updateFiche } from '../lib/fiches.js'
+import {
+  getFicheCountByMatiere,
+  getAllFichesRaw,
+  updateFiche,
+  renommerMatiereFiches,
+  renommerSousMatiereFiches,
+  renommerCoursFiches,
+} from '../lib/fiches.js'
 import { getPeriodeActuelle } from '../lib/periode.js'
-import { getAllCas, updateCas } from '../lib/cas.js'
-import { getAllQcmRaw, updateQcm } from '../lib/qcm.js'
+import { getAllCas, updateCas, renommerMatiereCas, renommerCoursCas } from '../lib/cas.js'
+import { getAllQcmRaw, updateQcm, renommerMatiereQcm, renommerCoursQcm } from '../lib/qcm.js'
 import { getTousLesAttachements, attacherContenu, detacherContenu, getCoursAttaches } from '../lib/contenuCours.js'
 import { slugify } from '../lib/slug.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
@@ -37,6 +44,28 @@ const estValide = estValideNoeud
 function cleContenu(matiere, sousMatiere, cours) {
   return `${matiere} ${sousMatiere || ''} ${cours}`
 }
+
+// Construit les <option> d'un sélecteur d'emplacement en 3 groupes distincts (matières / sous-
+// matières / cours) plutôt qu'une liste plate : les trois niveaux se ressemblent facilement une
+// fois mélangés (ex. "UE5 Sémiologie générale" la matière vs "UE5 Sémiologie générale › Douleur
+// thoracique" le cours), les séparer évite de se tromper de niveau.
+function optionsEmplacementsGroupees(emplacements) {
+  const groupes = [
+    ['Matières', emplacements.filter((c) => c.niveau === 'matiere')],
+    ['Sous-matières', emplacements.filter((c) => c.niveau === 'sous-matiere')],
+    ['Cours', emplacements.filter((c) => c.niveau === 'cours')],
+  ]
+  return groupes
+    .filter(([, liste]) => liste.length > 0)
+    .map(([label, liste]) => `<optgroup label="${label}">${liste.map((c) => `<option value="${c.id}">${escapeHtml(c.chemin)}</option>`).join('')}</optgroup>`)
+    .join('')
+}
+
+// Hors de renderOrganisation (et non réinitialisés à chaque appel) : sinon chaque recharger()
+// après une création/modification repart d'un arbre entièrement replié et d'une recherche
+// vide, ce qui donnait l'impression que "toute la page se rafraîchit".
+let expandedIds = new Set()
+let terme = ''
 
 export async function renderOrganisation(container) {
   container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
@@ -167,22 +196,37 @@ export async function renderOrganisation(container) {
   }
   arbre.forEach((r) => collecterCoursConnus(r, 0, r.nom))
 
-  function contenuNonClasseRacine(racineNom) {
+  // Fusionne les rattachements secondaires (contenu_cours) d'un noeud dans un bloc {fiches,
+  // cas, qcm} déjà construit — partagé par le contenu d'un cours et le contenu "non classé"
+  // d'une matière/sous-matière, puisqu'un rattachement peut maintenant cibler n'importe quel
+  // niveau de la hiérarchie, pas seulement un cours.
+  function fusionnerAttachements(base, noeudId) {
+    ;(attachementsParCours[noeudId] || []).forEach((a) => {
+      const cle = a.contenu_type === 'fiche' ? 'fiches' : a.contenu_type
+      const item = itemParId(cle, a.contenu_id)
+      if (item && !base[cle].some((i) => i.id === item.id)) base[cle].push({ ...item, _attache: true })
+    })
+    return base
+  }
+
+  function contenuNonClasseRacine(racineNom, racineId) {
     const connus = coursConnusParRacine[racineNom] || new Set()
-    return {
+    const base = {
       fiches: fiches.filter((f) => f.matiere === racineNom && !f.sous_matiere && (!f.cours || !connus.has(f.cours))),
       cas: cas.filter((c) => c.matiere === racineNom && (!c.cours || !connus.has(c.cours))),
       qcm: qcm.filter((q) => (q.matieres || []).includes(racineNom) && (!q.cours || !connus.has(q.cours))),
     }
+    return fusionnerAttachements(base, racineId)
   }
 
-  function contenuNonClasseSousMatiere(racineNom, sousMatiereNom) {
+  function contenuNonClasseSousMatiere(racineNom, sousMatiereNom, sousMatiereId) {
     const connus = coursConnusParRacine[racineNom] || new Set()
-    return {
+    const base = {
       fiches: fiches.filter((f) => f.matiere === racineNom && f.sous_matiere === sousMatiereNom && (!f.cours || !connus.has(f.cours))),
       cas: [],
       qcm: [],
     }
+    return fusionnerAttachements(base, sousMatiereId)
   }
 
   container.innerHTML = `
@@ -195,6 +239,8 @@ export async function renderOrganisation(container) {
       <div class="import-actions" style="margin-bottom: 16px;">
         <button id="org-nouvelle-matiere-btn" class="btn primary" style="width: auto;">+ Nouvelle matière</button>
       </div>
+
+      <div id="org-orphelins"></div>
 
       <input type="text" id="org-recherche" class="search-input" placeholder="Rechercher une matière, un cours, une fiche, un cas, un QCM…" />
 
@@ -253,6 +299,9 @@ export async function renderOrganisation(container) {
             </label>
           </div>
         </div>
+        <div id="noeud-fusion-zone" class="hidden" style="margin-bottom: 14px;">
+          <button type="button" id="noeud-fusionner-btn" class="btn" style="width: auto;">Fusionner avec une autre matière…</button>
+        </div>
         <div class="import-actions">
           <button id="noeud-save-btn" class="btn primary" style="width: auto;">Enregistrer</button>
           <span id="noeud-status" class="import-status"></span>
@@ -277,8 +326,9 @@ export async function renderOrganisation(container) {
           <button id="assigner-modal-close" class="btn" style="width: auto;">Fermer</button>
         </div>
         <p id="assigner-lieu-actuel" class="settings-desc"></p>
+        <div id="assigner-apercu-actuel" class="settings-card" style="margin-bottom: 14px;"></div>
         <div style="margin: 14px 0;">
-          <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Cours cible</label>
+          <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Nouvel emplacement (matière, sous-matière ou cours)</label>
           <select id="assigner-cours-select" class="periode-select" style="width: 100%;"></select>
         </div>
         <div class="import-actions">
@@ -306,10 +356,54 @@ export async function renderOrganisation(container) {
         <div id="rattacher-resultats" style="max-height: 50vh; overflow-y: auto; margin-top: 10px;"></div>
       </div>
     </div>
+
+    <div id="apercu-modal-overlay" class="modal-overlay hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <span id="apercu-modal-title" class="voice"></span>
+          <button id="apercu-modal-close" class="btn" style="width: auto;">Fermer</button>
+        </div>
+        <div id="apercu-modal-content"></div>
+      </div>
+    </div>
+
+    <div id="fusion-modal-overlay" class="modal-overlay hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <span id="fusion-modal-title" class="voice"></span>
+          <button id="fusion-modal-close" class="btn" style="width: auto;">Fermer</button>
+        </div>
+        <p class="settings-desc">Déplace tout le contenu (et les sous-matières/cours de même nom fusionnent avec ceux de la matière cible) vers une autre matière, puis supprime celle-ci. Action irréversible.</p>
+        <div style="margin: 14px 0;">
+          <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Fusionner dans</label>
+          <select id="fusion-select" class="periode-select" style="width: 100%;"></select>
+        </div>
+        <div class="import-actions">
+          <button id="fusion-confirmer" class="btn primary" style="width: auto; color: #C46A5C;">Fusionner et supprimer</button>
+          <span id="fusion-status" class="import-status"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="deplacer-noeud-modal-overlay" class="modal-overlay hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <span id="deplacer-noeud-title" class="voice"></span>
+          <button id="deplacer-noeud-close" class="btn" style="width: auto;">Fermer</button>
+        </div>
+        <p class="settings-desc">Déplace ce cours, et tout son contenu principal, vers une autre matière ou sous-matière déjà créée.</p>
+        <div style="margin: 14px 0;">
+          <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Nouvel emplacement</label>
+          <select id="deplacer-noeud-select" class="periode-select" style="width: 100%;"></select>
+        </div>
+        <div class="import-actions">
+          <button id="deplacer-noeud-confirmer" class="btn primary" style="width: auto;">Déplacer</button>
+          <span id="deplacer-noeud-status" class="import-status"></span>
+        </div>
+      </div>
+    </div>
   `
 
-  let expandedIds = new Set()
-  let terme = ''
   let modeCourant = null
   let profondeurCourante = 0
 
@@ -336,6 +430,7 @@ export async function renderOrganisation(container) {
     document.getElementById('contenu-popup-liste').innerHTML = data.items.map(ligneItem).join('')
     contenuPopupOverlay.classList.remove('hidden')
     wirerBoutonsAssigner(document.getElementById('contenu-popup-liste'))
+    wirerBoutonsApercu(document.getElementById('contenu-popup-liste'))
   }
 
   // --- Assigner un élément (fiche/cas/QCM) à un cours : déplacer son rattachement principal,
@@ -347,7 +442,7 @@ export async function renderOrganisation(container) {
   })
 
   let assignerCourant = null
-  let tousLesCoursCache = null
+  let tousLesEmplacementsCache = null
 
   async function ouvrirAssignerModal(type, id) {
     const item = itemParId(type, id)
@@ -356,6 +451,7 @@ export async function renderOrganisation(container) {
 
     const titre = type === 'cas' ? item.question : item.titre
     document.getElementById('assigner-modal-title').textContent = titre
+    document.getElementById('assigner-apercu-actuel').innerHTML = apercuContenu(type, item)
 
     const lieu =
       type === 'qcm'
@@ -364,15 +460,15 @@ export async function renderOrganisation(container) {
     document.getElementById('assigner-lieu-actuel').textContent = `Lieu principal actuel : ${lieu}`
     document.getElementById('assigner-status').textContent = ''
 
-    if (!tousLesCoursCache) tousLesCoursCache = await getTousLesCoursAplatis()
+    if (!tousLesEmplacementsCache) tousLesEmplacementsCache = await getTousLesEmplacements()
     const select = document.getElementById('assigner-cours-select')
-    select.innerHTML = tousLesCoursCache.map((c) => `<option value="${c.id}">${escapeHtml(c.chemin)}</option>`).join('')
+    select.innerHTML = optionsEmplacementsGroupees(tousLesEmplacementsCache)
 
     const zone = document.getElementById('assigner-attaches-existants')
     zone.innerHTML = ''
     try {
       const coursIds = await getCoursAttaches(TYPE_DB[type], id)
-      const chemins = coursIds.map((cid) => tousLesCoursCache.find((c) => c.id === cid)).filter(Boolean)
+      const chemins = coursIds.map((cid) => tousLesEmplacementsCache.find((c) => c.id === cid)).filter(Boolean)
       if (chemins.length > 0) {
         zone.innerHTML =
           `<h4 style="font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 6px;">Aussi attaché à</h4>` +
@@ -405,22 +501,26 @@ export async function renderOrganisation(container) {
 
   document.getElementById('assigner-deplacer-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('assigner-status')
-    if (!assignerCourant || !tousLesCoursCache) return
-    const coursId = document.getElementById('assigner-cours-select').value
-    const cible = tousLesCoursCache.find((c) => c.id === coursId)
+    if (!assignerCourant || !tousLesEmplacementsCache) return
+    const emplacementId = document.getElementById('assigner-cours-select').value
+    const cible = tousLesEmplacementsCache.find((c) => c.id === emplacementId)
     if (!cible) return
     const parties = cible.chemin.split(' › ')
-    const sousMatiereCible = parties.length === 3 ? parties[1] : null
+    // Cas/QCM n'ont pas de sous_matiere en base : viser une sous-matière retombe sur sa matière,
+    // sans cours précis — mieux qu'un échec, et rattrapable via "Attacher aussi ici" au niveau
+    // exact voulu (contenu_cours n'a pas cette limite).
+    const coursCible = cible.niveau === 'cours' ? cible.nom : null
+    const sousMatiereCible = cible.niveau === 'cours' ? (parties.length === 3 ? parties[1] : null) : cible.niveau === 'sous-matiere' ? cible.nom : null
 
     try {
       const { type, id, item } = assignerCourant
       if (type === 'fiches') {
-        await updateFiche(id, { matiere: cible.racine, sous_matiere: sousMatiereCible, cours: cible.nom })
+        await updateFiche(id, { matiere: cible.racine, sous_matiere: sousMatiereCible, cours: coursCible })
       } else if (type === 'cas') {
-        await updateCas(id, { matiere: cible.racine, cours: cible.nom })
+        await updateCas(id, { matiere: cible.racine, cours: coursCible })
       } else {
         const matieres = (item.matieres || []).includes(cible.racine) ? item.matieres : [...(item.matieres || []), cible.racine]
-        await updateQcm(id, { matieres, cours: cible.nom })
+        await updateQcm(id, { matieres, cours: coursCible })
       }
       assignerOverlay.classList.add('hidden')
       await recharger()
@@ -433,9 +533,9 @@ export async function renderOrganisation(container) {
   document.getElementById('assigner-attacher-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('assigner-status')
     if (!assignerCourant) return
-    const coursId = document.getElementById('assigner-cours-select').value
+    const emplacementId = document.getElementById('assigner-cours-select').value
     try {
-      await attacherContenu(coursId, TYPE_DB[assignerCourant.type], assignerCourant.id)
+      await attacherContenu(emplacementId, TYPE_DB[assignerCourant.type], assignerCourant.id)
       assignerOverlay.classList.add('hidden')
       await recharger()
     } catch (err) {
@@ -479,7 +579,7 @@ export async function renderOrganisation(container) {
       ? filtres
           .map((it) => {
             const label = rattacherType === 'cas' ? it.question : it.titre
-            return `<div class="org-content-row"><span class="org-content-item">${escapeHtml(label)}</span><button type="button" class="btn" style="width: auto;" data-attacher-existant="${it.id}">Attacher</button></div>`
+            return `<div class="org-content-row"><span class="org-content-item">${escapeHtml(label)}</span><button type="button" class="org-action-btn" data-apercu-type="${rattacherType}" data-apercu-id="${it.id}" title="Aperçu">👁</button><button type="button" class="btn" style="width: auto;" data-attacher-existant="${it.id}">Attacher</button></div>`
           })
           .join('')
       : `<p class="empty-note">Aucun résultat.</p>`
@@ -497,6 +597,7 @@ export async function renderOrganisation(container) {
         }
       })
     })
+    wirerBoutonsApercu(zone)
   }
 
   function ouvrirRattacherModal(coursId) {
@@ -518,6 +619,223 @@ export async function renderOrganisation(container) {
   })
   document.getElementById('rattacher-recherche').addEventListener('input', rafraichirResultatsRattacher)
 
+  // --- Déplacer un cours vers une autre matière/sous-matière déjà créée : migre à la fois le
+  // noeud (parent_id) et son contenu principal (les rattachements secondaires via contenu_cours
+  // survivent tels quels, puisqu'ils pointent sur l'id du cours, jamais sur son nom).
+  const deplacerNoeudOverlay = document.getElementById('deplacer-noeud-modal-overlay')
+  document.getElementById('deplacer-noeud-close').addEventListener('click', () => deplacerNoeudOverlay.classList.add('hidden'))
+  deplacerNoeudOverlay.addEventListener('click', (e) => {
+    if (e.target === deplacerNoeudOverlay) deplacerNoeudOverlay.classList.add('hidden')
+  })
+
+  let deplacerNoeudCourant = null
+  let deplacerNoeudCibles = []
+
+  function ancetres(noeud) {
+    const chaine = []
+    let courant = noeud
+    while (courant?.parent_id) {
+      courant = noeudsParId[courant.parent_id]
+      if (courant) chaine.unshift(courant)
+    }
+    return chaine
+  }
+
+  function ciblesDeplacementPossibles(noeudId) {
+    const cibles = []
+    arbre.forEach((racine) => {
+      if (racine.id !== noeudId) cibles.push({ id: racine.id, chemin: racine.nom, racineNom: racine.nom, sousMatiereNom: null, niveau: 'matiere' })
+      racine.enfants.forEach((e) => {
+        if (!estCours(e, 1) && e.id !== noeudId) {
+          cibles.push({ id: e.id, chemin: `${racine.nom} › ${e.nom}`, racineNom: racine.nom, sousMatiereNom: e.nom, niveau: 'sous-matiere' })
+        }
+      })
+    })
+    return cibles
+  }
+
+  function ouvrirDeplacerNoeudModal(noeud, profondeur, racineNom, sousMatiereAncestorNom) {
+    deplacerNoeudCourant = { noeud, profondeur, racineNom, sousMatiereAncestorNom }
+    deplacerNoeudCibles = ciblesDeplacementPossibles(noeud.id)
+    document.getElementById('deplacer-noeud-title').textContent = `Déplacer « ${noeud.nom} »`
+    document.getElementById('deplacer-noeud-select').innerHTML = optionsEmplacementsGroupees(deplacerNoeudCibles)
+    document.getElementById('deplacer-noeud-status').textContent = ''
+    deplacerNoeudOverlay.classList.remove('hidden')
+  }
+
+  async function migrerContenuCours(noeud, profondeur, racineAncienne, sousMatiereAncienne, racineNouvelle, sousMatiereNouvelle) {
+    const contenu = contenuDuCours(racineAncienne, sousMatiereAncienne, noeud.nom, noeud.id)
+    await Promise.all([
+      ...contenu.fiches.filter((f) => !f._attache).map((f) => updateFiche(f.id, { matiere: racineNouvelle, sous_matiere: sousMatiereNouvelle, cours: noeud.nom })),
+      ...contenu.cas.filter((c) => !c._attache).map((c) => updateCas(c.id, { matiere: racineNouvelle, cours: noeud.nom })),
+      ...contenu.qcm
+        .filter((q) => !q._attache)
+        .map((q) => {
+          const matieres = (q.matieres || []).includes(racineAncienne)
+            ? q.matieres.map((m) => (m === racineAncienne ? racineNouvelle : m))
+            : [...(q.matieres || []), racineNouvelle]
+          return updateQcm(q.id, { matieres, cours: noeud.nom })
+        }),
+    ])
+  }
+
+  document.getElementById('deplacer-noeud-confirmer').addEventListener('click', async () => {
+    const statusEl = document.getElementById('deplacer-noeud-status')
+    if (!deplacerNoeudCourant) return
+    const emplacementId = document.getElementById('deplacer-noeud-select').value
+    const cible = deplacerNoeudCibles.find((c) => c.id === emplacementId)
+    if (!cible) return
+    const { noeud, profondeur, racineNom, sousMatiereAncestorNom } = deplacerNoeudCourant
+    try {
+      await updateMatiere(noeud.id, { parent_id: cible.id, est_cours: true })
+      await migrerContenuCours(noeud, profondeur, racineNom, sousMatiereAncestorNom, cible.racineNom, cible.sousMatiereNom)
+      deplacerNoeudOverlay.classList.add('hidden')
+      await recharger()
+    } catch (err) {
+      statusEl.textContent = 'Erreur : ' + err.message
+      statusEl.className = 'import-status error'
+    }
+  })
+
+  // --- Fusionner deux matières racines : corrige les doublons créés quand un import (ou une
+  // modification) référence l'ancien nom d'une matière déjà renommée — migre tout le contenu
+  // par nom, fusionne récursivement les sous-matières/cours de même nom avec ceux de la cible,
+  // réattribue les rattachements secondaires, puis supprime la matière source.
+  const fusionOverlay = document.getElementById('fusion-modal-overlay')
+  document.getElementById('fusion-modal-close').addEventListener('click', () => fusionOverlay.classList.add('hidden'))
+  fusionOverlay.addEventListener('click', (e) => {
+    if (e.target === fusionOverlay) fusionOverlay.classList.add('hidden')
+  })
+
+  let fusionSource = null
+
+  function ouvrirFusionModal(noeud) {
+    fusionSource = noeud
+    document.getElementById('fusion-modal-title').textContent = `Fusionner « ${noeud.nom} »`
+    const cibles = arbre.filter((r) => r.id !== noeud.id)
+    document.getElementById('fusion-select').innerHTML = cibles.map((r) => `<option value="${r.id}">${escapeHtml(r.nom)}</option>`).join('')
+    document.getElementById('fusion-status').textContent = ''
+    fusionOverlay.classList.remove('hidden')
+  }
+
+  async function fusionnerNoeud(source, cible, profondeur) {
+    if (profondeur === 0) {
+      await Promise.all([renommerMatiereFiches(source.nom, cible.nom), renommerMatiereCas(source.nom, cible.nom), renommerMatiereQcm(source.nom, cible.nom)])
+    }
+    for (const a of attachementsParCours[source.id] || []) {
+      try {
+        await attacherContenu(cible.id, a.contenu_type, a.contenu_id)
+        await detacherContenu(source.id, a.contenu_type, a.contenu_id)
+      } catch {
+        // silencieux : si contenu_cours n'existe pas encore, rien à migrer ici
+      }
+    }
+    const enfantsSource = enfantsParParent[source.id] || []
+    const enfantsCible = enfantsParParent[cible.id] || []
+    for (const enfant of enfantsSource) {
+      const correspondant = enfantsCible.find((e) => e.nom === enfant.nom)
+      if (correspondant) {
+        await fusionnerNoeud(enfant, correspondant, profondeur + 1)
+      } else {
+        await updateMatiere(enfant.id, { parent_id: cible.id })
+      }
+    }
+    await deleteMatiere(source.id)
+  }
+
+  document.getElementById('fusion-confirmer').addEventListener('click', async () => {
+    const statusEl = document.getElementById('fusion-status')
+    if (!fusionSource) return
+    const cibleId = document.getElementById('fusion-select').value
+    const cible = noeudsParId[cibleId]
+    if (!cible) return
+    if (
+      !(await demanderConfirmation(
+        `Fusionner « ${fusionSource.nom} » dans « ${cible.nom} » ? Tout le contenu sera déplacé, les sous-matières/cours de même nom seront fusionnés, et « ${fusionSource.nom} » sera supprimée. Cette action est définitive.`
+      ))
+    )
+      return
+    statusEl.textContent = 'Fusion en cours…'
+    statusEl.className = 'import-status'
+    try {
+      await fusionnerNoeud(fusionSource, cible, 0)
+      fusionOverlay.classList.add('hidden')
+      await recharger()
+    } catch (err) {
+      statusEl.textContent = 'Erreur : ' + err.message
+      statusEl.className = 'import-status error'
+    }
+  })
+
+  // --- Contenu orphelin : fiches/cas/QCM dont le champ matière ne correspond à AUCUNE matière
+  // existante (typiquement une matière renommée depuis, référencée par un import généré avant
+  // le renommage) — invisible dans l'arbre sinon, donc signalé à part avec une réattribution
+  // en un clic plutôt que de laisser un nouvel import recréer un doublon.
+  function calculerOrphelins() {
+    const nomsRacines = new Set(arbre.map((r) => r.nom))
+    const orphelins = {}
+    function add(nom, type) {
+      if (!nom || nomsRacines.has(nom)) return
+      if (!orphelins[nom]) orphelins[nom] = { fiches: 0, cas: 0, qcm: 0 }
+      orphelins[nom][type]++
+    }
+    fiches.forEach((f) => add(f.matiere, 'fiches'))
+    cas.forEach((c) => add(c.matiere, 'cas'))
+    qcm.forEach((q) => (q.matieres || []).forEach((m) => add(m, 'qcm')))
+    return orphelins
+  }
+
+  function renderOrphelins() {
+    const orphelins = calculerOrphelins()
+    const noms = Object.keys(orphelins)
+    const zone = document.getElementById('org-orphelins')
+    if (noms.length === 0) {
+      zone.innerHTML = ''
+      return
+    }
+    zone.innerHTML = `
+      <div class="settings-card" style="border-color: #C46A5C; margin-bottom: 16px;">
+        <h3 class="voice" style="font-size: 14px; margin-bottom: 8px;">⚠ Contenu sur un nom de matière introuvable (${noms.length})</h3>
+        <p class="settings-desc">Ce contenu référence un nom de matière qui ne correspond à aucune matière existante — probablement une matière renommée depuis, ou une faute de frappe dans un import. Réattribue-le à la bonne matière.</p>
+        ${noms
+          .map((nom) => {
+            const o = orphelins[nom]
+            const total = o.fiches + o.cas + o.qcm
+            const detail = [o.fiches && `${o.fiches} fiche${o.fiches !== 1 ? 's' : ''}`, o.cas && `${o.cas} cas`, o.qcm && `${o.qcm} QCM`]
+              .filter(Boolean)
+              .join(', ')
+            return `
+            <div class="org-content-row" style="margin-top: 10px;">
+              <span class="org-content-item">« ${escapeHtml(nom)} » — ${total} élément${total !== 1 ? 's' : ''} (${detail})</span>
+              <select class="periode-select" data-orphelin-cible="${escapeHtml(nom)}" style="width: auto;">
+                <option value="">Réattribuer à…</option>
+                ${arbre.map((r) => `<option value="${escapeHtml(r.nom)}">${escapeHtml(r.nom)}</option>`).join('')}
+              </select>
+            </div>
+          `
+          })
+          .join('')}
+      </div>
+    `
+    zone.querySelectorAll('[data-orphelin-cible]').forEach((select) => {
+      select.addEventListener('change', async (e) => {
+        const cibleNom = e.target.value
+        if (!cibleNom) return
+        const sourceNom = select.dataset.orphelinCible
+        if (!(await demanderConfirmation(`Réattribuer tout le contenu de « ${sourceNom} » vers « ${cibleNom} » ?`))) {
+          e.target.value = ''
+          return
+        }
+        try {
+          await Promise.all([renommerMatiereFiches(sourceNom, cibleNom), renommerMatiereCas(sourceNom, cibleNom), renommerMatiereQcm(sourceNom, cibleNom)])
+          await recharger()
+        } catch (err) {
+          alert('Erreur : ' + err.message)
+        }
+      })
+    })
+  }
+
   function ouvrirModalNoeud(mode) {
     modeCourant = mode
     const estRacine = mode.type === 'creer-racine' || (mode.type === 'editer' && !mode.noeud.parent_id)
@@ -531,6 +849,7 @@ export async function renderOrganisation(container) {
     document.getElementById('noeud-modal-title').textContent =
       mode.type === 'editer' ? `Modifier « ${mode.noeud.nom} »` : mode.type === 'creer-racine' ? 'Nouvelle matière' : `Ajouter sous « ${mode.parentNom} »`
     document.getElementById('noeud-champs-racine').style.display = estRacine ? '' : 'none'
+    document.getElementById('noeud-fusion-zone').classList.toggle('hidden', !(estRacine && mode.type === 'editer'))
     document.getElementById('noeud-nom').value = mode.type === 'editer' ? mode.noeud.nom : ''
 
     if (estRacine) {
@@ -562,8 +881,48 @@ export async function renderOrganisation(container) {
     document.getElementById('noeud-nom').focus()
   }
 
+  // Le contenu (fiches/cas/QCM) référence les matières/sous-matières/cours par leur NOM, pas
+  // par leur id : sans ce cascadage, renommer un noeud laisse tout son contenu accroché à
+  // l'ancien nom, invisible partout dans Organisation (bug déjà rencontré : contenu "disparu"
+  // après renommage, puis "dupliqué" au réimport suivant faute de correspondance de nom).
+  async function cascaderRenommage(noeud, profondeur, nouveauNom) {
+    const ancienNom = noeud.nom
+    if (profondeur === 0) {
+      await Promise.all([renommerMatiereFiches(ancienNom, nouveauNom), renommerMatiereCas(ancienNom, nouveauNom), renommerMatiereQcm(ancienNom, nouveauNom)])
+      return
+    }
+    const parent = noeudsParId[noeud.parent_id]
+    if (!parent) return
+    if (!estCours(noeud, profondeur)) {
+      await renommerSousMatiereFiches(parent.nom, ancienNom, nouveauNom)
+      return
+    }
+    if (profondeur === 1) {
+      await Promise.all([
+        renommerCoursFiches(parent.nom, null, ancienNom, nouveauNom),
+        renommerCoursCas(parent.nom, ancienNom, nouveauNom),
+        renommerCoursQcm(parent.nom, ancienNom, nouveauNom),
+      ])
+    } else {
+      const racine = noeudsParId[parent.parent_id]
+      if (!racine) return
+      await Promise.all([
+        renommerCoursFiches(racine.nom, parent.nom, ancienNom, nouveauNom),
+        renommerCoursCas(racine.nom, ancienNom, nouveauNom),
+        renommerCoursQcm(racine.nom, ancienNom, nouveauNom),
+      ])
+    }
+  }
+
   document.getElementById('org-nouvelle-matiere-btn').addEventListener('click', () => {
     ouvrirModalNoeud({ type: 'creer-racine' })
+  })
+
+  document.getElementById('noeud-fusionner-btn').addEventListener('click', () => {
+    if (!modeCourant || modeCourant.type !== 'editer') return
+    const noeud = modeCourant.noeud
+    noeudOverlay.classList.add('hidden')
+    ouvrirFusionModal(noeud)
   })
 
   document.getElementById('noeud-save-btn').addEventListener('click', async () => {
@@ -588,6 +947,9 @@ export async function renderOrganisation(container) {
           champs.est_cours = document.getElementById('noeud-type-cours').checked
         }
         await updateMatiere(modeCourant.noeud.id, champs)
+        if (nom !== modeCourant.noeud.nom) {
+          await cascaderRenommage(modeCourant.noeud, profondeurCourante, nom)
+        }
       } else {
         const id = slugify(nom)
         const idsExistants = await getAllMatiereIds()
@@ -683,6 +1045,57 @@ export async function renderOrganisation(container) {
     return correspond
   }
 
+  // Aperçu du contenu réel d'un élément (matière/cours + extrait) : plusieurs cas/QCM partagent
+  // souvent le même titre générique ("Quels signes reconnaissez-vous…"), impossible à
+  // distinguer par leur seul nom — sert dans la popup 👁 et dans l'entête de "Assigner".
+  function apercuContenu(type, item) {
+    if (type === 'fiches') {
+      const chemin = `${item.matiere}${item.sous_matiere ? ' › ' + item.sous_matiere : ''}${item.cours ? ' › ' + item.cours : ''}`
+      const valeurs = Object.values(item.contenu_structure || {}).find((v) => (Array.isArray(v) ? v.length : v))
+      const extrait = Array.isArray(valeurs) ? valeurs.slice(0, 3).join(' · ') : valeurs
+      return `
+        <p class="settings-desc">${escapeHtml(chemin)}</p>
+        ${item.tags?.length ? `<div class="tags">${item.tags.map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+        ${extrait ? `<p style="margin-top: 10px; font-size: 13px;">${escapeHtml(String(extrait)).slice(0, 300)}</p>` : ''}
+      `
+    }
+    if (type === 'cas') {
+      const chemin = `${item.matiere}${item.cours ? ' › ' + item.cours : ''} · niveau ${item.niveau}`
+      return `
+        <p class="settings-desc">${escapeHtml(chemin)}</p>
+        <p style="margin-top: 10px; font-size: 13px;">${escapeHtml(item.enonce?.situation || '').slice(0, 300)}</p>
+      `
+    }
+    const chemin = `${(item.matieres || []).join(', ')}${item.cours ? ' › ' + item.cours : ''}`
+    const premiereQuestion = item.questions?.[0]?.enonce
+    return `
+      <p class="settings-desc">${escapeHtml(chemin)} · ${item.questions?.length || 0} question${item.questions?.length !== 1 ? 's' : ''}</p>
+      ${premiereQuestion ? `<p style="margin-top: 10px; font-size: 13px;">${escapeHtml(premiereQuestion).slice(0, 300)}</p>` : ''}
+    `
+  }
+
+  const apercuOverlay = document.getElementById('apercu-modal-overlay')
+  document.getElementById('apercu-modal-close').addEventListener('click', () => apercuOverlay.classList.add('hidden'))
+  apercuOverlay.addEventListener('click', (e) => {
+    if (e.target === apercuOverlay) apercuOverlay.classList.add('hidden')
+  })
+
+  function ouvrirApercu(type, item) {
+    if (!item) return
+    document.getElementById('apercu-modal-title').textContent = type === 'cas' ? item.question : item.titre
+    document.getElementById('apercu-modal-content').innerHTML = apercuContenu(type, item)
+    apercuOverlay.classList.remove('hidden')
+  }
+
+  function wirerBoutonsApercu(root) {
+    root.querySelectorAll('[data-apercu-type]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        ouvrirApercu(btn.dataset.apercuType, itemParId(btn.dataset.apercuType, btn.dataset.apercuId))
+      })
+    })
+  }
+
   const LIMITE_APERCU = 6
   let popupCompteur = 0
 
@@ -693,7 +1106,7 @@ export async function renderOrganisation(container) {
         : item._type === 'cas'
           ? `<a href="#entrainement/${item.id}" class="org-content-item">${escapeHtml(item.question)}${item._attache ? ' 🔗' : ''}</a>`
           : `<a href="#qcm-detail/${item.id}" class="org-content-item">${escapeHtml(item.titre)}${item._attache ? ' 🔗' : ''}</a>`
-    return `<div class="org-content-row">${lien}<button type="button" class="org-item-assign-btn" data-assigner-type="${item._type}" data-assigner-id="${item.id}" title="Déplacer / attacher à un autre cours">⇄</button></div>`
+    return `<div class="org-content-row">${lien}<button type="button" class="org-action-btn" data-apercu-type="${item._type}" data-apercu-id="${item.id}" title="Aperçu">👁</button><button type="button" class="org-item-assign-btn" data-assigner-type="${item._type}" data-assigner-id="${item.id}" title="Déplacer / attacher ailleurs">⇄</button></div>`
   }
 
   function groupeContenu(items, type, titre) {
@@ -728,7 +1141,8 @@ export async function renderOrganisation(container) {
     const actions = `
       <div class="org-actions">
         ${peutAvoirEnfant ? `<button type="button" class="org-action-btn" data-ajouter="${noeud.id}" title="Ajouter un élément ici">+</button>` : ''}
-        ${cours ? `<button type="button" class="org-action-btn" data-rattacher="${noeud.id}" title="Rattacher du contenu existant à ce cours">🔗</button>` : ''}
+        <button type="button" class="org-action-btn" data-rattacher="${noeud.id}" title="Rattacher du contenu existant ici">🔗</button>
+        ${cours ? `<button type="button" class="org-action-btn" data-deplacer-noeud="${noeud.id}" title="Déplacer vers une autre matière/sous-matière">↕</button>` : ''}
         <button type="button" class="org-action-btn" data-editer="${noeud.id}" title="Modifier">✎</button>
         <button type="button" class="org-action-btn org-action-danger" data-supprimer="${noeud.id}" title="Supprimer">🗑</button>
       </div>
@@ -748,6 +1162,7 @@ export async function renderOrganisation(container) {
             <select class="periode-select org-progression" data-progression="${noeud.id}">
               ${OPTIONS_PROGRESSION.map((v) => `<option value="${v}" ${v === progression ? 'selected' : ''}>${v}%</option>`).join('')}
             </select>
+            <div class="stat-bar" style="width: 50px; margin: 0; flex-shrink: 0;"><div class="stat-bar-fill" style="width: ${progression}%; background: ${couleur};"></div></div>
             <span class="org-count">${total} élément${total !== 1 ? 's' : ''}</span>
             ${actions}
           </div>
@@ -762,7 +1177,7 @@ export async function renderOrganisation(container) {
     const sousMatierePourEnfants = profondeur === 0 ? null : noeud.nom
     const nbEnfants = noeud.enfants.length
 
-    const nonClasse = profondeur === 0 ? contenuNonClasseRacine(racineNom) : contenuNonClasseSousMatiere(racineNom, noeud.nom)
+    const nonClasse = profondeur === 0 ? contenuNonClasseRacine(racineNom, noeud.id) : contenuNonClasseSousMatiere(racineNom, noeud.nom, noeud.id)
     const totalNonClasse = nonClasse.fiches.length + nonClasse.cas.length + nonClasse.qcm.length
 
     return `
@@ -772,13 +1187,19 @@ export async function renderOrganisation(container) {
           <span class="org-tab" style="background: ${couleur};"></span>
           <span class="org-badge ${valide ? 'valide' : ''}" title="${valide ? 'Validé' : 'Pas encore validé'}">${valide ? '✓' : ''}</span>
           <span class="org-nom">${escapeHtml(noeud.nom)}</span>
-          <span class="org-count">${nbEnfants === 0 ? 'vide' : `${nbEnfants} élément${nbEnfants !== 1 ? 's' : ''}`}</span>
+          <span class="org-count">${
+            nbEnfants === 0 && totalNonClasse === 0
+              ? 'vide'
+              : [nbEnfants > 0 ? `${nbEnfants} sous-élément${nbEnfants !== 1 ? 's' : ''}` : '', totalNonClasse > 0 ? `${totalNonClasse} directement dedans` : '']
+                  .filter(Boolean)
+                  .join(' · ')
+          }</span>
           ${actions}
         </div>
         <div class="org-children ${ouvert ? '' : 'hidden'}">
           ${
             totalNonClasse > 0
-              ? `<div class="org-nonclasse"><span class="org-nonclasse-label">Non classé (${totalNonClasse}) — sans cours précis</span>${blocContenu(nonClasse)}</div>`
+              ? `<div class="org-nonclasse"><span class="org-nonclasse-label">Directement dans « ${escapeHtml(noeud.nom)} » (${totalNonClasse}) — sans cours précis</span>${blocContenu(nonClasse)}</div>`
               : ''
           }
           ${noeud.enfants.map((e) => rendreNoeud(e, profondeur + 1, racineNom, sousMatierePourEnfants)).join('')}
@@ -877,18 +1298,36 @@ export async function renderOrganisation(container) {
       })
     })
 
+    treeEl.querySelectorAll('[data-deplacer-noeud]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const noeud = noeudsParId[btn.dataset.deplacerNoeud]
+        if (!noeud) return
+        const profondeur = calculerProfondeur(noeud, noeudsParId)
+        const chaine = ancetres(noeud)
+        const racineNom = chaine[0]?.nom
+        const sousMatiereAncestorNom = chaine.length > 1 ? chaine[1].nom : null
+        ouvrirDeplacerNoeudModal(noeud, profondeur, racineNom, sousMatiereAncestorNom)
+      })
+    })
+
     wirerBoutonsAssigner(treeEl)
+    wirerBoutonsApercu(treeEl)
   }
 
   async function recharger() {
+    const scrollY = window.scrollY
     await renderOrganisation(container)
+    window.scrollTo(0, scrollY)
   }
 
+  document.getElementById('org-recherche').value = terme
   document.getElementById('org-recherche').addEventListener('input', (e) => {
     terme = e.target.value.trim().toLowerCase()
     if (terme) expandedIds = new Set()
     render()
   })
 
+  renderOrphelins()
   render()
 }

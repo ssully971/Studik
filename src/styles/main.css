@@ -185,6 +185,7 @@ a {
 
 .filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 18px;
 }
@@ -967,8 +968,8 @@ a.tag:hover,
   .header-row {
     grid-template-columns: auto auto auto;
     justify-content: space-between;
-    padding: 14px 16px;
-    column-gap: 10px;
+    padding: 16px 16px;
+    column-gap: 12px;
   }
 
   .brand-group {
@@ -983,7 +984,7 @@ a.tag:hover,
 
   #periode-select {
     min-width: 0;
-    max-width: 100px;
+    max-width: 110px;
     flex-shrink: 1;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -991,12 +992,12 @@ a.tag:hover,
   }
 
   nav {
-    gap: 0;
+    gap: 2px;
   }
 
   nav a {
-    padding: 8px 6px;
-    font-size: 12px;
+    padding: 10px 9px;
+    font-size: 13px;
   }
 }
 

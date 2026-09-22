@@ -1,11 +1,12 @@
 import { getCasAleatoire, getCasById, enregistrerTentative, getAllCas, deleteCas, updateCasStatut, updateCasTags, updateCas, GABARITS_CAS } from '../lib/cas.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
-import { getMatieres, buildMatiereColorMap, couleurTab, getCoursAplatis } from '../lib/matieres.js'
+import { getMatieres, buildMatiereColorMap, couleurTab, getCoursAplatis, getTousLesCoursAplatis } from '../lib/matieres.js'
 import { getTags } from '../lib/tags.js'
 import { renderTagPicker } from './tag-picker.js'
 import { renderTagFilters } from './tag-filter.js'
 import { appliquerSurlignageEnAttente } from '../lib/highlight.js'
 import { escapeHtml } from '../lib/escape.js'
+import { renderCoursAttachPicker } from './cours-attach-picker.js'
 
 let filtreMatiere = ''
 let filtreNiveau = ''
@@ -318,6 +319,11 @@ function renderFormulaireEdition(c) {
       <textarea data-champ="resultats" class="notes-textarea">${resultats.join('\n')}</textarea>
     </div>
 
+    <div style="margin-bottom: 14px;">
+      <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Emplacements supplémentaires (matière, sous-matière ou cours, en plus de celui ci-dessus)</label>
+      <div id="cours-attach-${c.id}"></div>
+    </div>
+
     <div class="import-actions">
       <button class="btn primary" data-sauvegarder="${c.id}" style="width: auto;">Enregistrer</button>
       <span class="import-status" id="edit-status-${c.id}"></span>
@@ -350,6 +356,7 @@ async function renderBibliotheque(container) {
       <button class="filter-btn" data-type="mecanisme">Mécanisme</button>
       <button class="filter-btn" data-type="structure">Structure</button>
       <select id="matiere-filter" class="periode-select"></select>
+      <select id="cours-filter" class="periode-select"></select>
       <select id="niveau-filter" class="periode-select">
         <option value="">Tous niveaux</option>
         <option value="1">Niveau 1</option>
@@ -385,6 +392,7 @@ async function renderBibliotheque(container) {
 
   let activeType = ''
   let activeMatiere = ''
+  let activeCours = ''
   let activeNiveau = ''
   let activeTags = []
   let activeTri = 'recent'
@@ -403,10 +411,11 @@ async function renderBibliotheque(container) {
     const filtered = allCas.filter((c) => {
       const matchesType = !activeType || c.type === activeType
       const matchesMatiere = !activeMatiere || c.matiere === activeMatiere
+      const matchesCours = !activeCours || c.cours === activeCours
       const matchesNiveau = !activeNiveau || String(c.niveau) === activeNiveau
       const matchesSearch = !term || c.question.toLowerCase().includes(term)
       const matchesTags = activeTags.length === 0 || activeTags.some((t) => (c.tags || []).includes(t))
-      return matchesType && matchesMatiere && matchesNiveau && matchesSearch && matchesTags
+      return matchesType && matchesMatiere && matchesCours && matchesNiveau && matchesSearch && matchesTags
     })
     renderList(trier(filtered))
   }
@@ -507,6 +516,8 @@ async function renderBibliotheque(container) {
       panel.querySelector('[data-champ="matiere"]').addEventListener('blur', (e) => {
         peuplerCoursPourMatiere(panel, e.target.value.trim(), null)
       })
+      const attachEl = document.getElementById(`cours-attach-${c.id}`)
+      if (attachEl) renderCoursAttachPicker(attachEl, { type: 'cas', id: c.id })
     })
 
     listEl.querySelectorAll('[data-sauvegarder]').forEach((btn) => {
@@ -601,6 +612,19 @@ async function renderBibliotheque(container) {
       `<option value="">Toutes matières</option>` + matieres.map((m) => `<option value="${escapeHtml(m.nom)}">${escapeHtml(m.nom)}</option>`).join('')
     matiereSelect.addEventListener('change', (e) => {
       activeMatiere = e.target.value
+      applyFilters()
+    })
+  } catch {
+    // silencieux
+  }
+
+  try {
+    const tousLesCours = await getTousLesCoursAplatis()
+    const coursSelect = document.getElementById('cours-filter')
+    coursSelect.innerHTML =
+      `<option value="">Tous cours</option>` + tousLesCours.map((c) => `<option value="${escapeHtml(c.nom)}">${escapeHtml(c.chemin)}</option>`).join('')
+    coursSelect.addEventListener('change', (e) => {
+      activeCours = e.target.value
       applyFilters()
     })
   } catch {

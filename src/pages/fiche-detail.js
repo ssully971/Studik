@@ -17,6 +17,7 @@ import { appliquerSurlignageEnAttente } from '../lib/highlight.js'
 import { televerserImage } from '../lib/images.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
 import { escapeHtml } from '../lib/escape.js'
+import { renderCoursAttachPicker } from './cours-attach-picker.js'
 
 export function renderChamp(label, value) {
   if (!value) return ''
@@ -201,6 +202,11 @@ export async function renderFicheDetail(container, id) {
             <div style="margin-bottom: 14px;" id="cours-wrapper">
               <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Cours (optionnel)</label>
               <select id="cours-select" class="periode-select" style="width: 100%;"></select>
+            </div>
+
+            <div style="margin-bottom: 14px;">
+              <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Emplacements supplémentaires (matière, sous-matière ou cours, en plus de celui ci-dessus)</label>
+              <div id="cours-attach-picker"></div>
             </div>
 
             <div style="margin-bottom: 14px;">
@@ -425,8 +431,11 @@ export async function renderFicheDetail(container, id) {
     const wrapper = document.getElementById('cours-wrapper')
     const select = document.getElementById('cours-select')
 
+    // Une matière peut mélanger sous-matières et cours directement rattachés : dès qu'aucune
+    // sous-matière n'est choisie, on retombe sur les cours directs de la matière, même si elle
+    // a par ailleurs des sous-matières (sinon ces cours directs deviennent inaccessibles).
     let cours = []
-    if (aDesSousMatieres) {
+    if (nomSousMatiere) {
       const sousMatiereInfo = sousMatieresDisponibles.find((s) => s.nom === nomSousMatiere)
       if (sousMatiereInfo) {
         try {
@@ -467,6 +476,8 @@ export async function renderFicheDetail(container, id) {
   } catch {
     // silencieux
   }
+
+  renderCoursAttachPicker(document.getElementById('cours-attach-picker'), { type: 'fiche', id: fiche.id })
 
   document.getElementById('archiver-btn').addEventListener('click', async () => {
     if (!(await demanderConfirmation(`Archiver la fiche "${fiche.titre}" ?`))) return

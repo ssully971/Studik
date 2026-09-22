@@ -196,6 +196,26 @@ export async function getTousLesCoursAplatis() {
   return resultats
 }
 
+// Tous les noeuds du site (matières, sous-matières ET cours), aplatis avec un chemin
+// d'affichage complet et leur niveau — sert aux sélecteurs qui doivent pouvoir cibler
+// n'importe quel niveau de la hiérarchie (pas seulement un cours) : rattacher un élément
+// directement à une matière ou une sous-matière, sans passer par un cours précis.
+export async function getTousLesEmplacements() {
+  const arbre = await getArbreMatieres({})
+  const resultats = []
+  function parcourir(noeud, profondeur, racineNom, chemin) {
+    const estCours = estCoursNoeud(noeud, profondeur)
+    const niveau = profondeur === 0 ? 'matiere' : estCours ? 'cours' : 'sous-matiere'
+    const cheminCourant = [...chemin, noeud.nom]
+    resultats.push({ id: noeud.id, nom: noeud.nom, racine: racineNom, niveau, chemin: cheminCourant.join(' › ') })
+    if (!estCours) {
+      ;(noeud.enfants || []).forEach((e) => parcourir(e, profondeur + 1, racineNom, cheminCourant))
+    }
+  }
+  arbre.forEach((r) => parcourir(r, 0, r.nom, []))
+  return resultats
+}
+
 export async function getCoursAplatis(nomMatiere) {
   const matiereId = await getMatiereIdParNom(nomMatiere)
   if (!matiereId) return []

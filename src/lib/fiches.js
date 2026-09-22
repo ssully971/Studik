@@ -139,3 +139,26 @@ export async function getAllFichesRaw() {
   if (error) throw error
   return data
 }
+
+// --- Cascade de renommage (Organisation) : quand une matière/sous-matière/cours est
+// renommé(e), le contenu qui le référence par nom (pas par id) doit suivre, sinon il devient
+// invisible partout (bug déjà rencontré : contenu "perdu" après renommage d'une matière).
+
+export async function renommerMatiereFiches(ancienNom, nouveauNom) {
+  const { error } = await supabase.from('fiches').update({ matiere: nouveauNom }).eq('matiere', ancienNom)
+  if (error) throw error
+}
+
+export async function renommerSousMatiereFiches(nomMatiere, ancienNom, nouveauNom) {
+  const { error } = await supabase.from('fiches').update({ sous_matiere: nouveauNom }).eq('matiere', nomMatiere).eq('sous_matiere', ancienNom)
+  if (error) throw error
+}
+
+// sousMatiere = null pour un cours directement rattaché à la matière (pas de couche
+// sous-matière au-dessus).
+export async function renommerCoursFiches(nomMatiere, sousMatiere, ancienNom, nouveauNom) {
+  let query = supabase.from('fiches').update({ cours: nouveauNom }).eq('matiere', nomMatiere).eq('cours', ancienNom)
+  query = sousMatiere ? query.eq('sous_matiere', sousMatiere) : query.is('sous_matiere', null)
+  const { error } = await query
+  if (error) throw error
+}

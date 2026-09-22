@@ -123,6 +123,13 @@ export async function marquerCommeRevu(tentativeId) {
   if (error) throw error
 }
 
+// Sort une entrée de l'archive pour la remettre dans les erreurs actives (annuler un
+// "marquer comme revu" fait par erreur, sans repasser une tentative).
+export async function marquerCommeNonRevu(tentativeId) {
+  const { error } = await supabase.from('tentatives').update({ a_revoir: true }).eq('id', tentativeId)
+  if (error) throw error
+}
+
 // Archive : cas dont la tentative la plus récente était ratée mais a déjà été marquée comme
 // revue (a_revoir = false) — reste visible tant que l'utilisateur ne le supprime pas lui-même,
 // ou jusqu'à une nouvelle tentative réussie qui le sort naturellement de cette liste.
@@ -172,6 +179,18 @@ export async function getStatsTentatives() {
     .order('date_tentative', { ascending: false })
   if (error) throw error
   return data
+}
+
+// --- Cascade de renommage (Organisation) : voir lib/fiches.js pour le contexte complet.
+
+export async function renommerMatiereCas(ancienNom, nouveauNom) {
+  const { error } = await supabase.from('cas_cliniques').update({ matiere: nouveauNom }).eq('matiere', ancienNom)
+  if (error) throw error
+}
+
+export async function renommerCoursCas(nomMatiere, ancienNom, nouveauNom) {
+  const { error } = await supabase.from('cas_cliniques').update({ cours: nouveauNom }).eq('matiere', nomMatiere).eq('cours', ancienNom)
+  if (error) throw error
 }
 
 export async function restaurerTentatives(tentativesArray) {

@@ -152,6 +152,32 @@ export async function marquerTentativeQcmRevue(id) {
   if (error) throw error
 }
 
+// Sort une entrée de l'archive pour la remettre dans les erreurs actives (annuler un
+// "marquer comme revu" fait par erreur, sans refaire le QCM).
+export async function marquerTentativeQcmNonRevue(id) {
+  const { error } = await supabase.from('qcm_tentatives').update({ a_revoir: true }).eq('id', id)
+  if (error) throw error
+}
+
+// --- Cascade de renommage (Organisation) : voir lib/fiches.js pour le contexte complet.
+// `matieres` est un tableau (un QCM peut couvrir plusieurs matières) : pas de remplacement
+// SQL direct possible sur un élément de tableau, on relit puis réécrit chaque ligne concernée.
+
+export async function renommerMatiereQcm(ancienNom, nouveauNom) {
+  const { data, error } = await supabase.from('qcm').select('id, matieres').contains('matieres', [ancienNom])
+  if (error) throw error
+  for (const q of data) {
+    const matieres = q.matieres.map((m) => (m === ancienNom ? nouveauNom : m))
+    const { error: err2 } = await supabase.from('qcm').update({ matieres }).eq('id', q.id)
+    if (err2) throw err2
+  }
+}
+
+export async function renommerCoursQcm(nomMatiere, ancienNom, nouveauNom) {
+  const { error } = await supabase.from('qcm').update({ cours: nouveauNom }).contains('matieres', [nomMatiere]).eq('cours', ancienNom)
+  if (error) throw error
+}
+
 // Archive : QCM dont la tentative la plus récente était imparfaite mais a déjà été marquée
 // comme revue (a_revoir = false) — reste visible tant que l'utilisateur ne le supprime pas
 // lui-même, ou jusqu'à une nouvelle tentative parfaite qui le sort naturellement de la liste.

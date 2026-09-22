@@ -1,10 +1,11 @@
-import { getTentativesRatees, getTentativesRevues, marquerCommeRevu, deleteTentative, GABARITS_CAS } from '../lib/cas.js'
+import { getTentativesRatees, getTentativesRevues, marquerCommeRevu, marquerCommeNonRevu, deleteTentative, GABARITS_CAS } from '../lib/cas.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
 import { escapeHtml } from '../lib/escape.js'
 import {
   getQcmTentativesARevoir,
   getQcmTentativesRevues,
   marquerTentativeQcmRevue,
+  marquerTentativeQcmNonRevue,
   deleteTentativeQcm,
   questionsRateesDeLaTentative,
 } from '../lib/qcm.js'
@@ -538,6 +539,7 @@ async function renderArchive(container) {
           <div class="fiche-meta">${t.cas_cliniques.matiere} · ratée le ${formatDate(t.date_tentative)}</div>
           <div class="import-actions" style="margin-top: 10px;">
             <a href="#entrainement/${t.cas_cliniques.id}" class="btn primary" style="width: auto;">Rejouer le cas</a>
+            <button class="btn" data-restaurer="${t.id}" style="width: auto;">Remettre dans les erreurs actives</button>
             <button class="btn" data-supprimer="${t.id}" style="width: auto; color: #C46A5C;">Supprimer</button>
           </div>
         </div>
@@ -560,6 +562,18 @@ async function renderArchive(container) {
     })
   })
 
+  casListEl.querySelectorAll('[data-restaurer]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      try {
+        await marquerCommeNonRevu(btn.dataset.restaurer)
+        tentatives = tentatives.filter((t) => t.id !== btn.dataset.restaurer)
+        renderArchive(container)
+      } catch (err) {
+        alert('Erreur : ' + err.message)
+      }
+    })
+  })
+
   const qcmListEl = document.getElementById('archive-qcm-list')
   qcmListEl.innerHTML = tentativesQcm.length
     ? tentativesQcm
@@ -575,6 +589,7 @@ async function renderArchive(container) {
           </div>
           <div class="fiche-meta">${(t.qcm.matieres || []).join(', ')} · fait le ${formatDate(t.date_tentative)} · ${t.score}/${t.score_max} (${t.mode})</div>
           <div class="import-actions" style="margin-top: 10px;">
+            <button class="btn" data-restaurer-qcm="${t.id}" style="width: auto;">Remettre dans les erreurs actives</button>
             <button class="btn" data-supprimer-qcm="${t.id}" style="width: auto; color: #C46A5C;">Supprimer</button>
           </div>
         </div>
@@ -590,6 +605,18 @@ async function renderArchive(container) {
       try {
         await deleteTentativeQcm(btn.dataset.supprimerQcm)
         tentativesQcm = tentativesQcm.filter((t) => t.id !== btn.dataset.supprimerQcm)
+        renderArchive(container)
+      } catch (err) {
+        alert('Erreur : ' + err.message)
+      }
+    })
+  })
+
+  qcmListEl.querySelectorAll('[data-restaurer-qcm]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      try {
+        await marquerTentativeQcmNonRevue(btn.dataset.restaurerQcm)
+        tentativesQcm = tentativesQcm.filter((t) => t.id !== btn.dataset.restaurerQcm)
         renderArchive(container)
       } catch (err) {
         alert('Erreur : ' + err.message)

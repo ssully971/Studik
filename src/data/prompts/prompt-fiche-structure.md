@@ -2,6 +2,8 @@
 
 À REMPLIR AVANT D'ENVOYER :
 - Matière exacte : [MATIÈRE]
+- Sous-matière exacte, si la matière en a une (sinon laisse vide) : [SOUS-MATIÈRE]
+- Cours exact, si le contenu appartient à un cours déjà créé sur le site (sinon laisse vide) : [COURS]
 - Tags autorisés (liste fermée, n'en utilise aucun autre) : [TAG1, TAG2, TAG3, ...]
 - Source jointe : [PDF / photo / texte collé / mes propres notes]
 
@@ -17,6 +19,7 @@ RÈGLES DE FOND
 - N'utilise que les tags listés ci-dessus, dans le champ "Tags autorisés". N'en invente aucun autre.
 - Laisse les champs "pre_requis" et "consequences" vides (`[]`) — ils seront remplis manuellement plus tard.
 - Ne remplis PAS "date_creation", "date_maj", "date_derniere_revision", "dernier_resultat" — ces champs sont gérés automatiquement par le site.
+- Pour "sous_matiere" et "cours" : recopie EXACTEMENT le nom donné ci-dessus (mêmes accents, mêmes majuscules), sans le reformuler ni l'abréger — un nom légèrement différent créerait un doublon dans l'organisation du site plutôt que de rejoindre l'existant. Si l'un des deux (ou les deux) n'est pas donné ci-dessus, mets `null`, n'invente jamais de nom.
 
 MISE EN FORME (facultative mais recommandée)
 Le site affiche une mise en forme simple à partir de ces symboles dans les champs texte :
@@ -38,6 +41,8 @@ FORMAT DE SORTIE ATTENDU (un tableau JSON contenant UN SEUL objet) :
   {
     "id": "...",
     "matiere": "[MATIÈRE]",
+    "sous_matiere": null,
+    "cours": null,
     "type": "structure",
     "titre": "...",
     "synonymes": ["..."],

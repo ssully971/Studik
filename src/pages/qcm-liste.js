@@ -1,6 +1,6 @@
 import { getAllQcm, updateQcmStatut, deleteQcm, updateQcmTags, insertQcm, getAllQcmIds } from '../lib/qcm.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
-import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
+import { getMatieres, buildMatiereColorMap, couleurTab, getTousLesCoursAplatis } from '../lib/matieres.js'
 import { getTags } from '../lib/tags.js'
 import { getProgressions, supprimerProgression } from '../lib/qcm-progression.js'
 import { renderTagPicker } from './tag-picker.js'
@@ -35,6 +35,7 @@ export async function renderQcmListe(container) {
 
       <div class="filters" id="qcm-filters">
         <select id="matiere-filter" class="periode-select"></select>
+        <select id="cours-filter" class="periode-select"></select>
         <select id="statut-filter" class="periode-select">
           <option value="">Tous statuts</option>
           <option value="brouillon">Brouillon</option>
@@ -268,6 +269,7 @@ export async function renderQcmListe(container) {
   chargerReprises()
 
   let activeMatiere = ''
+  let activeCours = ''
   let activeStatut = ''
   let activeTags = []
   let activeTri = 'recent'
@@ -285,10 +287,11 @@ export async function renderQcmListe(container) {
     const term = document.getElementById('search-input').value.toLowerCase()
     const filtered = allQcm.filter((q) => {
       const matchesMatiere = !activeMatiere || (q.matieres || []).includes(activeMatiere)
+      const matchesCours = !activeCours || q.cours === activeCours
       const matchesStatut = !activeStatut || q.statut === activeStatut
       const matchesSearch = !term || q.titre.toLowerCase().includes(term)
       const matchesTags = activeTags.length === 0 || activeTags.some((t) => (q.tags || []).includes(t))
-      return matchesMatiere && matchesStatut && matchesSearch && matchesTags
+      return matchesMatiere && matchesCours && matchesStatut && matchesSearch && matchesTags
     })
     document.getElementById('qcm-count').textContent = `${filtered.length} QCM`
     renderList(filtered)
@@ -437,6 +440,19 @@ export async function renderQcmListe(container) {
     activeMatiere = e.target.value
     applyFilters()
   })
+
+  try {
+    const tousLesCours = await getTousLesCoursAplatis()
+    const coursSelect = document.getElementById('cours-filter')
+    coursSelect.innerHTML =
+      `<option value="">Tous cours</option>` + tousLesCours.map((c) => `<option value="${escapeHtml(c.nom)}">${escapeHtml(c.chemin)}</option>`).join('')
+    coursSelect.addEventListener('change', (e) => {
+      activeCours = e.target.value
+      applyFilters()
+    })
+  } catch {
+    // silencieux : le filtre cours reste optionnel
+  }
 
   await renderTagFilters(document.getElementById('qcm-tag-filters'), {
     selected: activeTags,

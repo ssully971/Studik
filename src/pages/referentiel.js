@@ -1,5 +1,5 @@
 import { getFiches, texteRechercheFiche } from '../lib/fiches.js'
-import { getMatieres, buildMatiereColorMap, getCouleurEffective } from '../lib/matieres.js'
+import { getMatieres, buildMatiereColorMap, getCouleurEffective, getArbreMatieres, estCoursNoeud, getTousLesCoursAplatis } from '../lib/matieres.js'
 import { getPeriodeActuelle, resoudrePeriodesEffectives } from '../lib/periode.js'
 import { getTagsAvecPerimetre } from '../lib/tags.js'
 import { exporterFichesPDF } from '../lib/pdf.js'
@@ -31,6 +31,8 @@ export async function renderReferentiel(container) {
 
       <div class="filters" id="tri-filters">
         <select id="matiere-filter" class="periode-select"></select>
+        <select id="sous-matiere-filter" class="periode-select"></select>
+        <select id="cours-filter" class="periode-select"></select>
         <select id="tri-select" class="periode-select">
           <option value="recent">Plus récent</option>
           <option value="ancien">Plus ancien</option>
@@ -58,6 +60,8 @@ export async function renderReferentiel(container) {
   let currentFiltered = []
   let activeType = ''
   let activeMatiere = ''
+  let activeSousMatiere = ''
+  let activeCours = ''
   let activeTags = []
   let activeTri = 'recent'
   let inclureArchivees = false
@@ -79,9 +83,11 @@ export async function renderReferentiel(container) {
     const filtered = allFiches.filter((f) => {
       const matchesType = !activeType || f.type === activeType
       const matchesMatiere = !activeMatiere || f.matiere === activeMatiere
+      const matchesSousMatiere = !activeSousMatiere || f.sous_matiere === activeSousMatiere
+      const matchesCours = !activeCours || f.cours === activeCours
       const matchesSearch = !searchTerm || texteRechercheFiche(f).includes(searchTerm)
       const matchesTags = activeTags.length === 0 || activeTags.some((t) => (f.tags || []).includes(t))
-      return matchesType && matchesMatiere && matchesSearch && matchesTags
+      return matchesType && matchesMatiere && matchesSousMatiere && matchesCours && matchesSearch && matchesTags
     })
     currentFiltered = filtered
     document.getElementById('fiche-count').textContent = `${filtered.length} fiche${filtered.length !== 1 ? 's' : ''}`
@@ -239,6 +245,40 @@ export async function renderReferentiel(container) {
     })
   } catch {
     // silencieux : le filtre matière reste optionnel
+  }
+
+  try {
+    const arbreComplet = await getArbreMatieres({})
+    const sousMatieres = new Set()
+    function collecterSousMatieres(noeud, profondeur) {
+      if (estCoursNoeud(noeud, profondeur)) return
+      if (profondeur === 1) sousMatieres.add(noeud.nom)
+      ;(noeud.enfants || []).forEach((e) => collecterSousMatieres(e, profondeur + 1))
+    }
+    arbreComplet.forEach((r) => collecterSousMatieres(r, 0))
+
+    const sousMatiereSelect = document.getElementById('sous-matiere-filter')
+    sousMatiereSelect.innerHTML =
+      `<option value="">Toutes sous-matières</option>` +
+      Array.from(sousMatieres)
+        .sort((a, b) => a.localeCompare(b))
+        .map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`)
+        .join('')
+    sousMatiereSelect.addEventListener('change', (e) => {
+      activeSousMatiere = e.target.value
+      applyFilters()
+    })
+
+    const tousLesCours = await getTousLesCoursAplatis()
+    const coursSelect = document.getElementById('cours-filter')
+    coursSelect.innerHTML =
+      `<option value="">Tous cours</option>` + tousLesCours.map((c) => `<option value="${escapeHtml(c.nom)}">${escapeHtml(c.chemin)}</option>`).join('')
+    coursSelect.addEventListener('change', (e) => {
+      activeCours = e.target.value
+      applyFilters()
+    })
+  } catch {
+    // silencieux : les filtres sous-matière/cours restent optionnels
   }
 
   try {

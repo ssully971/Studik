@@ -3,6 +3,7 @@
 À REMPLIR AVANT D'ENVOYER :
 - Titre du QCM : [TITRE]
 - Matière(s) exacte(s), une ou plusieurs : [MATIÈRE 1, MATIÈRE 2...]
+- Cours exact, si le QCM porte sur un cours déjà créé sur le site (sinon laisse vide) : [COURS]
 - Nombre de questions souhaité : [NOMBRE, ex. 20]
 - Nombre d'items (propositions) par question, par défaut 5 : [NOMBRE ou "5 par défaut"]
 - Durée en mode concours (minutes), par défaut 30 : [NOMBRE ou "30 par défaut"]
@@ -70,6 +71,8 @@ Avant de répondre, vérifie que : chaque question a une correction parfaitement
 
 Construis "id" selon ce format : `qcm_prefixe-matiere_nom-court` — minuscules, sans accents, mots séparés par des tirets. Exemple : `qcm_semio-cardio_douleur-thoracique`.
 
+Pour "cours" : recopie EXACTEMENT le nom donné ci-dessus (mêmes accents, mêmes majuscules), sans le reformuler — un nom légèrement différent créerait un doublon dans l'organisation du site. Si aucun cours n'est donné ci-dessus, mets `null`, n'invente jamais de nom.
+
 ## Format de sortie attendu (un tableau JSON contenant UN SEUL objet QCM)
 
 ```
@@ -78,6 +81,7 @@ Construis "id" selon ce format : `qcm_prefixe-matiere_nom-court` — minuscules,
     "id": "...",
     "titre": "[TITRE]",
     "matieres": ["[MATIÈRE 1]", "[MATIÈRE 2]"],
+    "cours": null,
     "duree_minutes": 30,
     "fiches_liees": [],
     "tags": [],

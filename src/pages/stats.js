@@ -8,7 +8,7 @@ import {
   deleteTentativesQcmByMatiere,
   deleteAllTentativesQcm,
 } from '../lib/qcm.js'
-import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
+import { getMatieres, buildMatiereColorMap, couleurTab, getArbreMatieres, estCoursNoeud } from '../lib/matieres.js'
 
 const PAGE_SIZE = 5
 
@@ -50,8 +50,31 @@ export async function renderStats(container) {
   })
   const matiereColorMap = buildMatiereColorMap(matieres)
 
+  // Progression par cours/sous-matière (arbre Organisation) : dégrade en douceur si
+  // l'arborescence n'a pas pu être chargée, plutôt que de casser toute la page de stats.
+  let arbreMatieres = []
+  try {
+    arbreMatieres = await getArbreMatieres({})
+  } catch {
+    arbreMatieres = []
+  }
+
+  function coursAplatisAvecProgression() {
+    const resultats = []
+    function parcourir(noeud, profondeur, racine, chemin) {
+      if (estCoursNoeud(noeud, profondeur)) {
+        resultats.push({ chemin: [...chemin, noeud.nom].join(' › '), progression: noeud.progression || 0, type: racine.type })
+      } else {
+        ;(noeud.enfants || []).forEach((e) => parcourir(e, profondeur + 1, racine, [...chemin, noeud.nom]))
+      }
+    }
+    arbreMatieres.forEach((r) => parcourir(r, 0, r, []))
+    return resultats.sort((a, b) => a.chemin.localeCompare(b.chemin))
+  }
+
   let limiteHistorique = PAGE_SIZE
   let limiteHistoriqueQcm = PAGE_SIZE
+  let limiteCoursStats = 10
 
   renderAll(fiches, tentatives, tentativesQcm)
 
@@ -139,6 +162,12 @@ export async function renderStats(container) {
         <div id="fiches-stats-list" class="fiches-list" style="margin-bottom: 40px;"></div>
 
         <div class="section-head">
+          <h2 class="voice">Progression par cours</h2>
+        </div>
+        <div id="cours-stats-list" class="fiches-list"></div>
+        <div id="cours-stats-voir-plus" style="margin-top: 10px; margin-bottom: 40px;"></div>
+
+        <div class="section-head">
           <h2 class="voice">Réussite par matière (entraînement)</h2>
         </div>
         <div id="tentatives-stats-list" class="fiches-list" style="margin-bottom: 40px;"></div>
@@ -189,6 +218,46 @@ export async function renderStats(container) {
         `
         })
         .join('')
+    }
+
+    const coursStatsEl = document.getElementById('cours-stats-list')
+    const coursStatsVoirPlusEl = document.getElementById('cours-stats-voir-plus')
+    const coursListeComplete = coursAplatisAvecProgression()
+    if (coursListeComplete.length === 0) {
+      coursStatsEl.innerHTML = `<p class="empty-note">Aucun cours créé pour l'instant — organise ton contenu dans #organisation.</p>`
+      coursStatsVoirPlusEl.innerHTML = ''
+    } else {
+      const coursVisibles = coursListeComplete.slice(0, limiteCoursStats)
+      coursStatsEl.innerHTML = coursVisibles
+        .map((c) => {
+          const color = { clinique: 'var(--clinique)', mecanisme: 'var(--mecanisme)', structure: 'var(--structure)' }[c.type] || 'var(--clinique)'
+          return `
+          <div class="fiche-row" style="grid-template-columns: 4px 1fr;">
+            <div class="tab" style="background: ${color};"></div>
+            <div class="fiche-body">
+              <div class="fiche-top">
+                <span class="fiche-title voice">${escapeHtml(c.chemin)}</span>
+                <span class="type-label">${c.progression}%</span>
+              </div>
+              ${bar(c.progression, 100, color)}
+            </div>
+          </div>
+        `
+        })
+        .join('')
+
+      coursStatsVoirPlusEl.innerHTML =
+        coursListeComplete.length > coursVisibles.length
+          ? `<button id="voir-plus-cours-stats-btn" class="btn" style="width: auto;">Voir plus (${coursListeComplete.length - coursVisibles.length} restant${coursListeComplete.length - coursVisibles.length !== 1 ? 's' : ''})</button>`
+          : ''
+
+      const voirPlusCoursBtn = document.getElementById('voir-plus-cours-stats-btn')
+      if (voirPlusCoursBtn) {
+        voirPlusCoursBtn.addEventListener('click', () => {
+          limiteCoursStats += 10
+          renderAll(fiches, tentatives, tentativesQcm)
+        })
+      }
     }
 
     const tentativesListEl = document.getElementById('tentatives-stats-list')
