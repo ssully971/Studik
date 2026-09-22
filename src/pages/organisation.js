@@ -329,6 +329,7 @@ export async function renderOrganisation(container) {
         <div id="assigner-apercu-actuel" class="settings-card" style="margin-bottom: 14px;"></div>
         <div style="margin: 14px 0;">
           <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Nouvel emplacement (matière, sous-matière ou cours)</label>
+          <input type="text" id="assigner-recherche-emplacement" class="search-input" placeholder="Rechercher…" style="margin-bottom: 8px;" />
           <select id="assigner-cours-select" class="periode-select" style="width: 100%;"></select>
         </div>
         <div class="import-actions">
@@ -394,6 +395,7 @@ export async function renderOrganisation(container) {
         <p class="settings-desc">Déplace ce cours, et tout son contenu principal, vers une autre matière ou sous-matière déjà créée.</p>
         <div style="margin: 14px 0;">
           <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Nouvel emplacement</label>
+          <input type="text" id="deplacer-noeud-recherche" class="search-input" placeholder="Rechercher…" style="margin-bottom: 8px;" />
           <select id="deplacer-noeud-select" class="periode-select" style="width: 100%;"></select>
         </div>
         <div class="import-actions">
@@ -444,6 +446,13 @@ export async function renderOrganisation(container) {
   let assignerCourant = null
   let tousLesEmplacementsCache = null
 
+  document.getElementById('assigner-recherche-emplacement').addEventListener('input', (e) => {
+    if (!tousLesEmplacementsCache) return
+    const terme = e.target.value.trim().toLowerCase()
+    const filtres = terme ? tousLesEmplacementsCache.filter((c) => c.chemin.toLowerCase().includes(terme)) : tousLesEmplacementsCache
+    document.getElementById('assigner-cours-select').innerHTML = optionsEmplacementsGroupees(filtres)
+  })
+
   async function ouvrirAssignerModal(type, id) {
     const item = itemParId(type, id)
     if (!item) return
@@ -461,8 +470,8 @@ export async function renderOrganisation(container) {
     document.getElementById('assigner-status').textContent = ''
 
     if (!tousLesEmplacementsCache) tousLesEmplacementsCache = await getTousLesEmplacements()
-    const select = document.getElementById('assigner-cours-select')
-    select.innerHTML = optionsEmplacementsGroupees(tousLesEmplacementsCache)
+    document.getElementById('assigner-recherche-emplacement').value = ''
+    document.getElementById('assigner-cours-select').innerHTML = optionsEmplacementsGroupees(tousLesEmplacementsCache)
 
     const zone = document.getElementById('assigner-attaches-existants')
     zone.innerHTML = ''
@@ -631,6 +640,12 @@ export async function renderOrganisation(container) {
   let deplacerNoeudCourant = null
   let deplacerNoeudCibles = []
 
+  document.getElementById('deplacer-noeud-recherche').addEventListener('input', (e) => {
+    const terme = e.target.value.trim().toLowerCase()
+    const filtres = terme ? deplacerNoeudCibles.filter((c) => c.chemin.toLowerCase().includes(terme)) : deplacerNoeudCibles
+    document.getElementById('deplacer-noeud-select').innerHTML = optionsEmplacementsGroupees(filtres)
+  })
+
   function ancetres(noeud) {
     const chaine = []
     let courant = noeud
@@ -658,6 +673,7 @@ export async function renderOrganisation(container) {
     deplacerNoeudCourant = { noeud, profondeur, racineNom, sousMatiereAncestorNom }
     deplacerNoeudCibles = ciblesDeplacementPossibles(noeud.id)
     document.getElementById('deplacer-noeud-title').textContent = `Déplacer « ${noeud.nom} »`
+    document.getElementById('deplacer-noeud-recherche').value = ''
     document.getElementById('deplacer-noeud-select').innerHTML = optionsEmplacementsGroupees(deplacerNoeudCibles)
     document.getElementById('deplacer-noeud-status').textContent = ''
     deplacerNoeudOverlay.classList.remove('hidden')

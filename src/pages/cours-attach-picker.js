@@ -31,9 +31,13 @@ export async function renderCoursAttachPicker(container, { type, id }) {
       .join('')
   }
 
+  let filtreTerme = ''
+
   function render() {
     const attachesInfo = coursAttaches.map((cid) => tousLesCours.find((c) => c.id === cid)).filter(Boolean)
-    const disponibles = tousLesCours.filter((c) => !coursAttaches.includes(c.id))
+    const disponibles = tousLesCours
+      .filter((c) => !coursAttaches.includes(c.id))
+      .filter((c) => !filtreTerme || c.chemin.toLowerCase().includes(filtreTerme))
     container.innerHTML = `
       <div class="liens-list" style="margin-bottom: 8px;">
         ${
@@ -44,6 +48,7 @@ export async function renderCoursAttachPicker(container, { type, id }) {
             : `<p class="empty-note" style="padding: 4px 0;">Aucun cours supplémentaire.</p>`
         }
       </div>
+      <input type="text" class="search-input" data-recherche-emplacement value="${escapeHtml(filtreTerme)}" placeholder="Rechercher…" style="margin-bottom: 8px;" />
       <select id="cours-attach-select" class="periode-select" style="width: 100%;">
         <option value="">+ Attacher à une autre matière/sous-matière/cours…</option>
         ${optionsGroupees(disponibles)}
@@ -58,9 +63,18 @@ export async function renderCoursAttachPicker(container, { type, id }) {
           coursAttaches = coursAttaches.filter((cid) => cid !== btn.dataset.detacher)
           render()
         } catch (err) {
-          document.getElementById('cours-attach-status').textContent = 'Erreur : ' + err.message
+          container.querySelector('#cours-attach-status').textContent = 'Erreur : ' + err.message
         }
       })
+    })
+
+    const rechercheInput = container.querySelector('[data-recherche-emplacement]')
+    rechercheInput.addEventListener('input', (e) => {
+      filtreTerme = e.target.value.trim().toLowerCase()
+      render()
+      container.querySelector('[data-recherche-emplacement]').focus()
+      const val = container.querySelector('[data-recherche-emplacement]')
+      val.selectionStart = val.selectionEnd = val.value.length
     })
 
     container.querySelector('#cours-attach-select').addEventListener('change', async (e) => {
@@ -69,9 +83,10 @@ export async function renderCoursAttachPicker(container, { type, id }) {
       try {
         await attacherContenu(coursId, type, id)
         coursAttaches = [...coursAttaches, coursId]
+        filtreTerme = ''
         render()
       } catch (err) {
-        document.getElementById('cours-attach-status').textContent = 'Erreur : ' + err.message
+        container.querySelector('#cours-attach-status').textContent = 'Erreur : ' + err.message
       }
     })
   }
