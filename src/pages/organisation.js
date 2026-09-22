@@ -16,6 +16,7 @@ import { getAllQcmRaw, updateQcm } from '../lib/qcm.js'
 import { getTousLesAttachements, attacherContenu, detacherContenu, getCoursAttaches } from '../lib/contenuCours.js'
 import { slugify } from '../lib/slug.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
+import { escapeHtml } from '../lib/escape.js'
 
 const TYPE_DB = { fiches: 'fiche', cas: 'cas', qcm: 'qcm' }
 
@@ -365,7 +366,7 @@ export async function renderOrganisation(container) {
 
     if (!tousLesCoursCache) tousLesCoursCache = await getTousLesCoursAplatis()
     const select = document.getElementById('assigner-cours-select')
-    select.innerHTML = tousLesCoursCache.map((c) => `<option value="${c.id}">${c.chemin}</option>`).join('')
+    select.innerHTML = tousLesCoursCache.map((c) => `<option value="${c.id}">${escapeHtml(c.chemin)}</option>`).join('')
 
     const zone = document.getElementById('assigner-attaches-existants')
     zone.innerHTML = ''
@@ -378,7 +379,7 @@ export async function renderOrganisation(container) {
           chemins
             .map(
               (c) =>
-                `<div class="org-content-row"><span class="org-content-item">${c.chemin}</span><button type="button" class="org-action-btn org-action-danger" data-detacher-cours="${c.id}">🗑</button></div>`
+                `<div class="org-content-row"><span class="org-content-item">${escapeHtml(c.chemin)}</span><button type="button" class="org-action-btn org-action-danger" data-detacher-cours="${c.id}">🗑</button></div>`
             )
             .join('')
         zone.querySelectorAll('[data-detacher-cours]').forEach((btn) => {
@@ -478,7 +479,7 @@ export async function renderOrganisation(container) {
       ? filtres
           .map((it) => {
             const label = rattacherType === 'cas' ? it.question : it.titre
-            return `<div class="org-content-row"><span class="org-content-item">${label}</span><button type="button" class="btn" style="width: auto;" data-attacher-existant="${it.id}">Attacher</button></div>`
+            return `<div class="org-content-row"><span class="org-content-item">${escapeHtml(label)}</span><button type="button" class="btn" style="width: auto;" data-attacher-existant="${it.id}">Attacher</button></div>`
           })
           .join('')
       : `<p class="empty-note">Aucun résultat.</p>`
@@ -688,10 +689,10 @@ export async function renderOrganisation(container) {
   function ligneItem(item) {
     const lien =
       item._type === 'fiches'
-        ? `<a href="#fiche/${item.id}" class="org-content-item">${item.titre}${item._attache ? ' 🔗' : ''}</a>`
+        ? `<a href="#fiche/${item.id}" class="org-content-item">${escapeHtml(item.titre)}${item._attache ? ' 🔗' : ''}</a>`
         : item._type === 'cas'
-          ? `<a href="#entrainement/${item.id}" class="org-content-item">${item.question}${item._attache ? ' 🔗' : ''}</a>`
-          : `<a href="#qcm-detail/${item.id}" class="org-content-item">${item.titre}${item._attache ? ' 🔗' : ''}</a>`
+          ? `<a href="#entrainement/${item.id}" class="org-content-item">${escapeHtml(item.question)}${item._attache ? ' 🔗' : ''}</a>`
+          : `<a href="#qcm-detail/${item.id}" class="org-content-item">${escapeHtml(item.titre)}${item._attache ? ' 🔗' : ''}</a>`
     return `<div class="org-content-row">${lien}<button type="button" class="org-item-assign-btn" data-assigner-type="${item._type}" data-assigner-id="${item.id}" title="Déplacer / attacher à un autre cours">⇄</button></div>`
   }
 
@@ -743,7 +744,7 @@ export async function renderOrganisation(container) {
           <div class="org-row" data-toggle="${noeud.id}">
             <button type="button" class="org-caret ${ouvert ? 'ouvert' : ''}" data-toggle-btn="${noeud.id}">▸</button>
             <span class="org-tab" style="background: ${couleur};"></span>
-            <span class="org-nom">${noeud.nom}</span>
+            <span class="org-nom">${escapeHtml(noeud.nom)}</span>
             <select class="periode-select org-progression" data-progression="${noeud.id}">
               ${OPTIONS_PROGRESSION.map((v) => `<option value="${v}" ${v === progression ? 'selected' : ''}>${v}%</option>`).join('')}
             </select>
@@ -770,7 +771,7 @@ export async function renderOrganisation(container) {
           <button type="button" class="org-caret ${ouvert ? 'ouvert' : ''}" data-toggle-btn="${noeud.id}">▸</button>
           <span class="org-tab" style="background: ${couleur};"></span>
           <span class="org-badge ${valide ? 'valide' : ''}" title="${valide ? 'Validé' : 'Pas encore validé'}">${valide ? '✓' : ''}</span>
-          <span class="org-nom">${noeud.nom}</span>
+          <span class="org-nom">${escapeHtml(noeud.nom)}</span>
           <span class="org-count">${nbEnfants === 0 ? 'vide' : `${nbEnfants} élément${nbEnfants !== 1 ? 's' : ''}`}</span>
           ${actions}
         </div>

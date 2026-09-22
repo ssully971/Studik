@@ -1,5 +1,6 @@
 import { getQcmById, enregistrerTentativeQcm, scoreQuestion, scoreQcm } from '../lib/qcm.js'
 import { getProgressionByQcmId, sauvegarderProgression, supprimerProgression } from '../lib/qcm-progression.js'
+import { escapeHtml } from '../lib/escape.js'
 
 let timerInterval = null
 
@@ -46,9 +47,9 @@ function renderChoixMode(container, qcm) {
   container.innerHTML = `
     <div class="wrap">
       <div class="section-head">
-        <h2 class="voice">${qcm.titre}</h2>
+        <h2 class="voice">${escapeHtml(qcm.titre)}</h2>
       </div>
-      <p class="import-hint">${qcm.questions.length} question${qcm.questions.length !== 1 ? 's' : ''} · ${(qcm.matieres || []).join(', ') || 'aucune matière'}</p>
+      <p class="import-hint">${qcm.questions.length} question${qcm.questions.length !== 1 ? 's' : ''} · ${escapeHtml((qcm.matieres || []).join(', ')) || 'aucune matière'}</p>
 
       <div class="cas-card">
         <p class="cas-situation">Choisis le mode dans lequel tu veux faire ce QCM.</p>
@@ -179,7 +180,7 @@ function renderCorrectionItems(question, reponsesItem) {
           } else {
             symbole = correcte ? '✔' : '—'
           }
-          return `<li class="${classe}"><span class="item-explication-symbole">${symbole}</span> <strong>${item.texte}</strong>${explication ? ` — ${explication}` : ''}</li>`
+          return `<li class="${classe}"><span class="item-explication-symbole">${symbole}</span> <strong>${escapeHtml(item.texte)}</strong>${explication ? ` — ${escapeHtml(explication)}` : ''}</li>`
         })
         .join('')}
     </ul>
@@ -198,12 +199,12 @@ function renderQuestion(container, qcm, mode, state) {
   container.innerHTML = `
     <div class="wrap">
       <div class="section-head">
-        <h2 class="voice">${qcm.titre}</h2>
+        <h2 class="voice">${escapeHtml(qcm.titre)}</h2>
         <span class="count">Question ${state.index + 1} / ${qcm.questions.length} · <span id="qcm-timer">${timerInitial}</span></span>
       </div>
 
       <div class="cas-card">
-        <p class="cas-situation">${q.enonce}</p>
+        <p class="cas-situation">${escapeHtml(q.enonce)}</p>
         ${q.image ? `<div class="qcm-question-image"><img src="${q.image}" alt="" /></div>` : ''}
 
         <div class="checkbox-group" id="items-group">
@@ -212,7 +213,7 @@ function renderQuestion(container, qcm, mode, state) {
               (item, i) => `
             <label class="checkbox-label" data-item="${i}">
               <input type="checkbox" data-index="${i}" ${reponsesQuestion[i] ? 'checked' : ''} />
-              <span>${item.texte}</span>
+              <span>${escapeHtml(item.texte)}</span>
             </label>
           `
             )
@@ -345,7 +346,7 @@ async function terminerQcm(container, qcm, mode, state) {
   container.innerHTML = `
     <div class="wrap">
       <div class="section-head">
-        <h2 class="voice">Résumé — ${qcm.titre}</h2>
+        <h2 class="voice">Résumé — ${escapeHtml(qcm.titre)}</h2>
       </div>
 
       <div class="now-grid" style="grid-template-columns: 1fr; margin-bottom: 24px;">
@@ -373,7 +374,7 @@ async function terminerQcm(container, qcm, mode, state) {
       return `
       <div class="detail-section">
         <h3 class="voice">Question ${i + 1} — ${pts} pt${pts !== 1 ? 's' : ''}</h3>
-        <p style="margin-bottom: 10px;">${q.enonce}</p>
+        <p style="margin-bottom: 10px;">${escapeHtml(q.enonce)}</p>
         ${renderCorrectionItems(q, reponsesQuestion)}
       </div>
     `

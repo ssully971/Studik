@@ -3,6 +3,7 @@ import { getMatieres, buildMatiereColorMap, getCouleurEffective } from '../lib/m
 import { getPeriodeActuelle, resoudrePeriodesEffectives } from '../lib/periode.js'
 import { getTagsAvecPerimetre } from '../lib/tags.js'
 import { renderTagFilters } from './tag-filter.js'
+import { escapeHtml } from '../lib/escape.js'
 
 const TYPE_LABELS = {
   clinique: 'clinique',
@@ -93,7 +94,7 @@ export async function renderRevision(container) {
           <div class="tab" style="background: ${getCouleurEffective(f.matiere, f.sous_matiere, matiereColorMap, f.type)};"></div>
           <div class="fiche-body" data-open="${f.id}">
             <div class="fiche-top">
-              <span class="fiche-title voice">${f.titre}</span>
+              <span class="fiche-title voice">${escapeHtml(f.titre)}</span>
               <span class="type-label">${TYPE_LABELS[f.type]}</span>
             </div>
             <div class="fiche-meta">${f.matiere}${f.sous_matiere ? ' · ' + f.sous_matiere : ''}${f.tags.length ? ' · ' + f.tags.join(', ') : ''}</div>

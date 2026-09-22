@@ -2,6 +2,7 @@ import { getFiches } from '../lib/fiches.js'
 import { getAllCas } from '../lib/cas.js'
 import { getAllQcm } from '../lib/qcm.js'
 import { getMatieres, buildMatiereColorMap, getCouleurEffective } from '../lib/matieres.js'
+import { escapeHtml } from '../lib/escape.js'
 
 const TYPE_LABELS = {
   clinique: 'clinique',
@@ -68,10 +69,10 @@ export async function renderTagPage(container, nomEncode) {
         <div class="tab" style="background: ${getCouleurEffective(f.matiere, f.sous_matiere, matiereColorMap, f.type)};"></div>
         <div class="fiche-body">
           <div class="fiche-top">
-            <span class="fiche-title voice">${f.titre}</span>
+            <span class="fiche-title voice">${escapeHtml(f.titre)}</span>
             <span class="type-label">${TYPE_LABELS[f.type]}</span>
           </div>
-          <div class="fiche-meta">${f.matiere}${f.sous_matiere ? ' · ' + f.sous_matiere : ''}</div>
+          <div class="fiche-meta">${escapeHtml(f.matiere)}${f.sous_matiere ? ' · ' + escapeHtml(f.sous_matiere) : ''}</div>
         </div>
       </a>
     `
@@ -88,10 +89,10 @@ export async function renderTagPage(container, nomEncode) {
         <div class="tab"></div>
         <div class="fiche-body">
           <div class="fiche-top">
-            <span class="fiche-title voice">${c.question}</span>
+            <span class="fiche-title voice">${escapeHtml(c.question)}</span>
             <span class="type-label">${TYPE_LABELS[c.type]} · niveau ${c.niveau}</span>
           </div>
-          <div class="fiche-meta">${c.matiere}</div>
+          <div class="fiche-meta">${escapeHtml(c.matiere)}</div>
         </div>
       </a>
     `
@@ -108,7 +109,7 @@ export async function renderTagPage(container, nomEncode) {
         <div class="tab"></div>
         <div class="fiche-body">
           <div class="fiche-top">
-            <span class="fiche-title voice">${q.titre}</span>
+            <span class="fiche-title voice">${escapeHtml(q.titre)}</span>
             <span class="type-label">${q.questions.length} question${q.questions.length !== 1 ? 's' : ''}</span>
           </div>
           <div class="fiche-meta">${(q.matieres || []).join(', ') || 'Aucune matière'}</div>

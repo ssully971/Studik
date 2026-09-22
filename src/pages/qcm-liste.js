@@ -6,6 +6,7 @@ import { getProgressions, supprimerProgression } from '../lib/qcm-progression.js
 import { renderTagPicker } from './tag-picker.js'
 import { renderTagFilters } from './tag-filter.js'
 import { slugify } from '../lib/slug.js'
+import { escapeHtml } from '../lib/escape.js'
 
 export async function renderQcmListe(container) {
   container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
@@ -116,7 +117,7 @@ export async function renderQcmListe(container) {
   try {
     toutesMatieres = await getMatieres({})
     matiereColorMap = buildMatiereColorMap(toutesMatieres)
-    document.getElementById('nouveau-matieres').innerHTML = toutesMatieres.map((m) => `<option value="${m.nom}">${m.nom}</option>`).join('')
+    document.getElementById('nouveau-matieres').innerHTML = toutesMatieres.map((m) => `<option value="${escapeHtml(m.nom)}">${escapeHtml(m.nom)}</option>`).join('')
   } catch {
     // silencieux
   }
@@ -299,7 +300,7 @@ export async function renderQcmListe(container) {
         <div class="tab" style="background: ${couleurTab(q.matieres, null, matiereColorMap)};"></div>
         <div class="fiche-body">
           <div class="fiche-top">
-            <a href="#qcm-detail/${q.id}" class="fiche-title voice">${q.titre}</a>
+            <a href="#qcm-detail/${q.id}" class="fiche-title voice">${escapeHtml(q.titre)}</a>
             <span class="type-label">${q.questions.length} question${q.questions.length !== 1 ? 's' : ''}</span>
           </div>
           <div class="fiche-meta">${(q.matieres || []).join(', ') || 'Aucune matière'} · ${q.duree_minutes} min en concours</div>
@@ -431,7 +432,7 @@ export async function renderQcmListe(container) {
 
   const matiereSelect = document.getElementById('matiere-filter')
   matiereSelect.innerHTML =
-    `<option value="">Toutes matières</option>` + toutesMatieres.map((m) => `<option value="${m.nom}">${m.nom}</option>`).join('')
+    `<option value="">Toutes matières</option>` + toutesMatieres.map((m) => `<option value="${escapeHtml(m.nom)}">${escapeHtml(m.nom)}</option>`).join('')
   matiereSelect.addEventListener('change', (e) => {
     activeMatiere = e.target.value
     applyFilters()

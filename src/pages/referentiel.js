@@ -4,6 +4,7 @@ import { getPeriodeActuelle, resoudrePeriodesEffectives } from '../lib/periode.j
 import { getTagsAvecPerimetre } from '../lib/tags.js'
 import { exporterFichesPDF } from '../lib/pdf.js'
 import { renderTagFilters } from './tag-filter.js'
+import { escapeHtml } from '../lib/escape.js'
 
 const TYPE_LABELS = {
   clinique: 'clinique',
@@ -93,11 +94,11 @@ export async function renderReferentiel(container) {
         <div class="tab" style="background: ${getCouleurEffective(f.matiere, f.sous_matiere, matiereColorMap, f.type)};"></div>
         <div class="fiche-body">
           <div class="fiche-top">
-            <span class="fiche-title voice">${f.titre}</span>
+            <span class="fiche-title voice">${escapeHtml(f.titre)}</span>
             ${f.dernier_resultat === 'pas_bien' ? '<span class="pas-top-dot" title="Marquée pas top à la dernière révision"></span>' : ''}
             <span class="type-label">${TYPE_LABELS[f.type]}</span>
           </div>
-          <div class="fiche-meta">${f.matiere}${f.sous_matiere ? ' · ' + f.sous_matiere : ''}${f.tags.length ? ' · ' + f.tags.join(', ') : ''}</div>
+          <div class="fiche-meta">${escapeHtml(f.matiere)}${f.sous_matiere ? ' · ' + escapeHtml(f.sous_matiere) : ''}${f.tags.length ? ' · ' + escapeHtml(f.tags.join(', ')) : ''}</div>
         </div>
       </div>
     `
@@ -161,7 +162,7 @@ export async function renderReferentiel(container) {
           const { sansSousMatiere, sousGroupes } = scinderParSousMatiere(fichesMatiere)
           return `
             <div class="section-head" style="margin-top: 24px; padding-bottom: 8px;">
-              <h3 class="voice" style="font-size: 16px;">${nom}</h3>
+              <h3 class="voice" style="font-size: 16px;">${escapeHtml(nom)}</h3>
               <span class="count">${fichesMatiere.length}</span>
             </div>
             ${lignesFiches(sansSousMatiere)}
@@ -169,7 +170,7 @@ export async function renderReferentiel(container) {
               .map(
                 (sg) => `
               <div class="section-head" style="margin-top: 10px; border-bottom: none; padding-bottom: 0; padding-left: 14px;">
-                <h4 class="voice" style="font-size: 13px; color: var(--text-dim);">${sg.nom}</h4>
+                <h4 class="voice" style="font-size: 13px; color: var(--text-dim);">${escapeHtml(sg.nom)}</h4>
               </div>
               ${lignesFiches(sg.fiches)}
             `
@@ -231,7 +232,7 @@ export async function renderReferentiel(container) {
     matiereColorMap = buildMatiereColorMap(matieresTop)
     const matiereSelect = document.getElementById('matiere-filter')
     matiereSelect.innerHTML =
-      `<option value="">Toutes matières</option>` + matieresTop.map((m) => `<option value="${m.nom}">${m.nom}</option>`).join('')
+      `<option value="">Toutes matières</option>` + matieresTop.map((m) => `<option value="${escapeHtml(m.nom)}">${escapeHtml(m.nom)}</option>`).join('')
     matiereSelect.addEventListener('change', (e) => {
       activeMatiere = e.target.value
       applyFilters()

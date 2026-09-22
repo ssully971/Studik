@@ -5,6 +5,7 @@ import { getTags } from '../lib/tags.js'
 import { renderTagPicker } from './tag-picker.js'
 import { renderTagFilters } from './tag-filter.js'
 import { appliquerSurlignageEnAttente } from '../lib/highlight.js'
+import { escapeHtml } from '../lib/escape.js'
 
 let filtreMatiere = ''
 let filtreNiveau = ''
@@ -95,7 +96,7 @@ async function renderPratique(container, casId) {
     const select = document.getElementById('filtre-matiere')
     select.innerHTML =
       `<option value="">Toutes matières</option>` +
-      matieres.map((m) => `<option value="${m.nom}" ${filtreMatiere === m.nom ? 'selected' : ''}>${m.nom}</option>`).join('')
+      matieres.map((m) => `<option value="${escapeHtml(m.nom)}" ${filtreMatiere === m.nom ? 'selected' : ''}>${escapeHtml(m.nom)}</option>`).join('')
   } catch {
     // silencieux : le filtre matière reste optionnel
   }
@@ -166,7 +167,7 @@ export function renderCas(container, cas, { onAutreCas, onValide } = {}) {
 
       ${elements.length ? `<ul class="detail-list">${elements.map((e) => `<li>${e}</li>`).join('')}</ul>` : ''}
 
-      <p class="cas-question voice">${cas.question}</p>
+      <p class="cas-question voice">${escapeHtml(cas.question)}</p>
 
       <p style="font-size: 12px; color: var(--text-faint); margin-bottom: 8px;">${gabarit.itemsLabel}</p>
       <div class="checkbox-group" id="items-group">
@@ -286,13 +287,13 @@ function renderFormulaireEdition(c) {
       <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Cours (optionnel)</label>
       <select data-champ="cours" class="periode-select" style="width: 100%;">
         <option value="">Aucun</option>
-        ${c.cours ? `<option value="${c.cours}" selected>${c.cours}</option>` : ''}
+        ${c.cours ? `<option value="${escapeHtml(c.cours)}" selected>${escapeHtml(c.cours)}</option>` : ''}
       </select>
     </div>
 
     <div style="margin-bottom: 14px;">
       <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Question</label>
-      <input type="text" data-champ="question" class="search-input" style="margin-bottom: 0;" value="${c.question}" />
+      <input type="text" data-champ="question" class="search-input" style="margin-bottom: 0;" value="${escapeHtml(c.question)}" />
     </div>
 
     <div style="margin-bottom: 14px;">
@@ -426,10 +427,10 @@ async function renderBibliotheque(container) {
           <div class="tab" style="background: ${couleurTab(c.matiere, c.type, matiereColorMap)};"></div>
           <div class="fiche-body">
             <div class="fiche-top">
-              <span class="fiche-title voice">${c.question}</span>
+              <span class="fiche-title voice">${escapeHtml(c.question)}</span>
               <span class="type-label">${TYPE_LABELS[c.type]} · niveau ${c.niveau}</span>
             </div>
-            <div class="fiche-meta">${c.matiere}</div>
+            <div class="fiche-meta">${escapeHtml(c.matiere)}</div>
             <div style="margin-top: 8px;" id="tags-picker-${c.id}"></div>
           </div>
           <div class="fiche-actions" style="gap: 8px;">
@@ -496,7 +497,7 @@ async function renderBibliotheque(container) {
       }
       select.innerHTML =
         `<option value="">Aucun</option>` +
-        cours.map((co) => `<option value="${co.nom}" ${co.nom === coursSelectionne ? 'selected' : ''}>${co.chemin}</option>`).join('')
+        cours.map((co) => `<option value="${escapeHtml(co.nom)}" ${co.nom === coursSelectionne ? 'selected' : ''}>${escapeHtml(co.chemin)}</option>`).join('')
     }
 
     list.forEach((c) => {
@@ -597,7 +598,7 @@ async function renderBibliotheque(container) {
     const matieres = await getMatieres({})
     const matiereSelect = document.getElementById('matiere-filter')
     matiereSelect.innerHTML =
-      `<option value="">Toutes matières</option>` + matieres.map((m) => `<option value="${m.nom}">${m.nom}</option>`).join('')
+      `<option value="">Toutes matières</option>` + matieres.map((m) => `<option value="${escapeHtml(m.nom)}">${escapeHtml(m.nom)}</option>`).join('')
     matiereSelect.addEventListener('change', (e) => {
       activeMatiere = e.target.value
       applyFilters()

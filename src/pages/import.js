@@ -473,7 +473,7 @@ function renderModeImport(container) {
       let html = `<p class="import-status success">${nouveaux} ${nomsAjoutes} ${labels.ajoutees}, ${misesAJour} mis à jour (${inserted.length} au total).</p>`
 
       if (infos.length > 0) {
-        html += `<div class="import-warnings"><p style="margin-bottom: 6px; font-size: 13px; color: var(--text-dim);">${infos.length} information${infos.length !== 1 ? 's' : ''} :</p><ul class="detail-list">${infos.map((i) => `<li>${i}</li>`).join('')}</ul></div>`
+        html += `<div class="import-warnings"><p style="margin-bottom: 6px; font-size: 13px; color: var(--text-dim);">${infos.length} information${infos.length !== 1 ? 's' : ''} :</p><ul class="detail-list">${infos.map((i) => `<li>${escapeHtml(i)}</li>`).join('')}</ul></div>`
       }
 
       if (avertissements.length > 0) {

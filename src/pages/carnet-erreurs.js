@@ -1,5 +1,6 @@
 import { getTentativesRatees, getTentativesRevues, marquerCommeRevu, deleteTentative, GABARITS_CAS } from '../lib/cas.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
+import { escapeHtml } from '../lib/escape.js'
 import {
   getQcmTentativesARevoir,
   getQcmTentativesRevues,
@@ -241,7 +242,7 @@ async function renderActives(container) {
             <div class="tab" style="background: ${couleurTab(cas.matiere, cas.type, matiereColorMap)};"></div>
             <div class="fiche-body">
               <div class="fiche-top">
-                <span class="fiche-title voice">${cas.question}</span>
+                <span class="fiche-title voice">${escapeHtml(cas.question)}</span>
                 <span class="type-label">${TYPE_LABELS[cas.type]}</span>
               </div>
               <div class="fiche-meta">${cas.matiere} · ratée le ${formatDate(t.date_tentative)}</div>
@@ -316,7 +317,7 @@ async function renderActives(container) {
             <div class="tab" style="background: ${couleurTab(qcm.matieres, null, matiereColorMap)};"></div>
             <div class="fiche-body">
               <div class="fiche-top">
-                <span class="fiche-title voice">${qcm.titre}</span>
+                <span class="fiche-title voice">${escapeHtml(qcm.titre)}</span>
                 <span class="type-label">${taux}%</span>
               </div>
               <div class="fiche-meta">${(qcm.matieres || []).join(', ')} · fait le ${formatDate(t.date_tentative)} · ${t.score}/${t.score_max} (${t.mode}) · ${nbRatees} question${nbRatees !== 1 ? 's' : ''} ratée${nbRatees !== 1 ? 's' : ''}</div>
@@ -374,7 +375,7 @@ async function renderActives(container) {
     const reponseDonnee = t.reponse_donnee || []
 
     const html = `
-      <p style="margin-bottom: 12px;">${cas.question}</p>
+      <p style="margin-bottom: 12px;">${escapeHtml(cas.question)}</p>
       <p style="font-size: 12px; color: var(--text-faint); margin-bottom: 6px;">${gabarit.itemsLabel}</p>
       <ul class="detail-list">
         ${items.map((item, i) => ligneCorrection(item.label, item.correct, reponseDonnee[i])).join('')}

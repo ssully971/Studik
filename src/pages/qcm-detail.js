@@ -4,6 +4,7 @@ import { getMatieres, getCoursAplatis } from '../lib/matieres.js'
 import { renderTagPicker } from './tag-picker.js'
 import { appliquerSurlignageEnAttente } from '../lib/highlight.js'
 import { televerserImage, supprimerImage } from '../lib/images.js'
+import { escapeHtml } from '../lib/escape.js'
 
 export async function renderQcmDetail(container, id) {
   container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
@@ -21,9 +22,9 @@ export async function renderQcmDetail(container, id) {
       <a href="#qcm" class="breadcrumb">← QCM</a>
 
       <div class="detail-header">
-        <h1 class="voice" id="qcm-titre-affiche">${qcm.titre}</h1>
-        <div class="fiche-meta" id="qcm-meta-affiche">${(qcm.matieres || []).join(', ') || 'Aucune matière'} · ${qcm.duree_minutes} min en concours · ${qcm.questions.length} question${qcm.questions.length !== 1 ? 's' : ''}</div>
-        ${qcm.tags.length ? `<div class="tags" id="qcm-tags-affiches">${qcm.tags.map((t) => `<span class="tag">${t}</span>`).join('')}</div>` : ''}
+        <h1 class="voice" id="qcm-titre-affiche">${escapeHtml(qcm.titre)}</h1>
+        <div class="fiche-meta" id="qcm-meta-affiche">${escapeHtml((qcm.matieres || []).join(', ')) || 'Aucune matière'} · ${qcm.duree_minutes} min en concours · ${qcm.questions.length} question${qcm.questions.length !== 1 ? 's' : ''}</div>
+        ${qcm.tags.length ? `<div class="tags" id="qcm-tags-affiches">${qcm.tags.map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
       </div>
 
       <div class="settings-card" id="qcm-edit-panel" style="margin-bottom: 24px;">
@@ -35,7 +36,7 @@ export async function renderQcmDetail(container, id) {
         <div id="qcm-edit-form" class="hidden">
           <div style="margin-bottom: 14px;">
             <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Titre</label>
-            <input type="text" id="edit-titre" class="search-input" style="margin-bottom: 0;" value="${qcm.titre}" />
+            <input type="text" id="edit-titre" class="search-input" style="margin-bottom: 0;" value="${escapeHtml(qcm.titre)}" />
           </div>
           <div style="margin-bottom: 14px;">
             <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Matières (plusieurs possibles)</label>
@@ -77,7 +78,7 @@ export async function renderQcmDetail(container, id) {
         (q, i) => `
         <div class="detail-section">
           <h3 class="voice">Question ${i + 1}</h3>
-          <p style="margin-bottom: 10px;">${q.enonce}</p>
+          <p style="margin-bottom: 10px;">${escapeHtml(q.enonce)}</p>
 
           ${
             q.image
@@ -96,10 +97,10 @@ export async function renderQcmDetail(container, id) {
 
           <ul class="detail-list" style="margin-top: 10px;">
             ${q.items
-              .map((item) => `<li>${item.correct ? '✔' : '—'} ${item.texte}${item.explication ? ` — <span style="color: var(--text-faint);">${item.explication}</span>` : ''}</li>`)
+              .map((item) => `<li>${item.correct ? '✔' : '—'} ${escapeHtml(item.texte)}${item.explication ? ` — <span style="color: var(--text-faint);">${escapeHtml(item.explication)}</span>` : ''}</li>`)
               .join('')}
           </ul>
-          ${q.explication ? `<p style="margin-top: 8px; font-size: 13px; color: var(--text-faint);">${q.explication}</p>` : ''}
+          ${q.explication ? `<p style="margin-top: 8px; font-size: 13px; color: var(--text-faint);">${escapeHtml(q.explication)}</p>` : ''}
         </div>
       `
       )
@@ -176,7 +177,7 @@ export async function renderQcmDetail(container, id) {
     wrapper.style.display = ''
     select.innerHTML =
       `<option value="">Aucun</option>` +
-      cours.map((c) => `<option value="${c.nom}" ${c.nom === coursSelectionne ? 'selected' : ''}>${c.chemin}</option>`).join('')
+      cours.map((c) => `<option value="${escapeHtml(c.nom)}" ${c.nom === coursSelectionne ? 'selected' : ''}>${escapeHtml(c.chemin)}</option>`).join('')
   }
 
   let toutesMatieres = []
@@ -184,7 +185,7 @@ export async function renderQcmDetail(container, id) {
     toutesMatieres = await getMatieres({})
     const select = document.getElementById('edit-matieres')
     select.innerHTML = toutesMatieres
-      .map((m) => `<option value="${m.nom}" ${qcm.matieres.includes(m.nom) ? 'selected' : ''}>${m.nom}</option>`)
+      .map((m) => `<option value="${escapeHtml(m.nom)}" ${qcm.matieres.includes(m.nom) ? 'selected' : ''}>${escapeHtml(m.nom)}</option>`)
       .join('')
     await chargerCours(qcm.matieres[0], qcm.cours)
     select.addEventListener('change', () => {

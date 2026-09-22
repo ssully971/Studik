@@ -2,6 +2,7 @@ import { getFichesARevoir, enregistrerRevision } from '../lib/fiches.js'
 import { getTentativesRatees, getCasById } from '../lib/cas.js'
 import { renderChamp } from './fiche-detail.js'
 import { renderCas } from './entrainement.js'
+import { escapeHtml } from '../lib/escape.js'
 
 function melanger(array) {
   const copie = [...array]
@@ -96,8 +97,8 @@ async function demarrerSession(content, taille) {
       </div>
 
       <div class="detail-header type-${fiche.type}">
-        <h1 class="voice">${fiche.titre}</h1>
-        <div class="fiche-meta">${fiche.matiere} · <span class="type-label">${fiche.type}</span></div>
+        <h1 class="voice">${escapeHtml(fiche.titre)}</h1>
+        <div class="fiche-meta">${escapeHtml(fiche.matiere)} · <span class="type-label">${fiche.type}</span></div>
       </div>
 
       ${Object.entries(contenu)

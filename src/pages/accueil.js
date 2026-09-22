@@ -10,6 +10,7 @@ import { getTentativesRatees } from '../lib/cas.js'
 import { getQcmTentativesARevoir } from '../lib/qcm.js'
 import { renderHeatmap } from './heatmap.js'
 import anecdotes from '../data/anecdotes.json'
+import { escapeHtml } from '../lib/escape.js'
 
 // Compte les cours sous un noeud de l'arbre matières, et combien sont validés (progression
 // 100) — même définition que dans #organisation (lib/matieres.js).
@@ -186,11 +187,11 @@ export async function renderAccueil(container) {
                 ? `<div class="stat-bar" style="margin-top: 6px;"><div class="stat-bar-fill" style="width: ${Math.round((prog.valides / prog.total) * 100)}%; background: ${couleur};"></div></div>`
                 : ''
             return `
-        <div class="fiche-row type-${g.type}" data-matiere="${g.matiere}">
+        <div class="fiche-row type-${g.type}" data-matiere="${escapeHtml(g.matiere)}">
           <div class="tab" style="background: ${couleur};"></div>
           <div class="fiche-body">
             <div class="fiche-top">
-              <span class="fiche-title voice">${g.matiere}</span>
+              <span class="fiche-title voice">${escapeHtml(g.matiere)}</span>
               <span class="type-label">${TYPE_LABELS[g.type]}</span>
             </div>
             <div class="fiche-meta">${g.total} fiche${g.total !== 1 ? 's' : ''} · ${g.validees} validée${g.validees !== 1 ? 's' : ''}${prog && prog.total > 0 ? ` · ${prog.valides}/${prog.total} cours maîtrisés` : ''}</div>

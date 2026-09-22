@@ -268,8 +268,8 @@ function setupGlobalSearch() {
           .map(
             (r) => `
           <a href="${r.href}" class="search-result-item ${r.typeClass}" data-terme="${escapeHtml(term)}">
-            <span class="search-result-title">${r.titre}</span>
-            <span class="search-result-meta">${r.meta}</span>
+            <span class="search-result-title">${escapeHtml(r.titre)}</span>
+            <span class="search-result-meta">${escapeHtml(r.meta)}</span>
             ${r.apercu ? `<span class="search-result-apercu">${r.apercu}</span>` : ''}
           </a>
         `

@@ -1,6 +1,7 @@
 import { getFiches } from '../lib/fiches.js'
 import { getStatsTentatives, deleteTentative, deleteTentativesByMatiere, deleteAllTentatives } from '../lib/cas.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
+import { escapeHtml } from '../lib/escape.js'
 import {
   getAllTentativesQcmStats,
   deleteTentativeQcm,
@@ -269,10 +270,10 @@ export async function renderStats(container) {
             <div class="tab" style="background: ${couleurTab(cas.matiere, cas.type, matiereColorMap)};"></div>
             <div class="fiche-body">
               <div class="fiche-top">
-                <span class="fiche-title voice">${cas.question}</span>
+                <span class="fiche-title voice">${escapeHtml(cas.question)}</span>
                 <span class="type-label">${t.reussi ? 'réussi' : 'raté'}</span>
               </div>
-              <div class="fiche-meta">${cas.matiere} · ${formatDate(t.date_tentative)}</div>
+              <div class="fiche-meta">${escapeHtml(cas.matiere)} · ${formatDate(t.date_tentative)}</div>
             </div>
             <div class="fiche-actions">
               <button class="btn" data-delete-tentative="${t.id}" style="width: auto; color: #C46A5C;">Supprimer</button>
@@ -313,7 +314,7 @@ export async function renderStats(container) {
             <div class="tab" style="background: ${couleurTab(qcm.matieres, null, matiereColorMap)};"></div>
             <div class="fiche-body">
               <div class="fiche-top">
-                <span class="fiche-title voice">${qcm.titre}</span>
+                <span class="fiche-title voice">${escapeHtml(qcm.titre)}</span>
                 <span class="type-label">${taux}% (${t.mode})</span>
               </div>
               <div class="fiche-meta">${(qcm.matieres || []).join(', ')} · ${formatDate(t.date_tentative)} · ${t.score}/${t.score_max}</div>

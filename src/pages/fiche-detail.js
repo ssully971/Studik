@@ -16,6 +16,7 @@ import { renderTagPicker } from './tag-picker.js'
 import { appliquerSurlignageEnAttente } from '../lib/highlight.js'
 import { televerserImage } from '../lib/images.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
+import { escapeHtml } from '../lib/escape.js'
 
 export function renderChamp(label, value) {
   if (!value) return ''
@@ -95,7 +96,7 @@ export async function renderFicheDetail(container, id) {
       <a href="#referentiel" class="breadcrumb">← Référentiel</a>
 
       <div class="detail-header type-${fiche.type}">
-        <h1 class="voice">${fiche.titre}</h1>
+        <h1 class="voice">${escapeHtml(fiche.titre)}</h1>
         <div class="fiche-meta">
           ${fiche.matiere}${fiche.sous_matiere ? ' · ' + fiche.sous_matiere : ''} · <span class="type-label">${fiche.type}</span>
         </div>
@@ -305,7 +306,7 @@ export async function renderFicheDetail(container, id) {
         .slice(0, 6)
 
       resultats.innerHTML = matches.length
-        ? matches.map((f) => `<div class="search-result-inline-item" data-add="${f.id}">${f.titre} <span class="fiche-meta">· ${f.matiere}</span></div>`).join('')
+        ? matches.map((f) => `<div class="search-result-inline-item" data-add="${f.id}">${escapeHtml(f.titre)} <span class="fiche-meta">· ${escapeHtml(f.matiere)}</span></div>`).join('')
         : `<div class="search-result-inline-item empty">Aucun résultat</div>`
       resultats.classList.remove('hidden')
 
@@ -415,7 +416,7 @@ export async function renderFicheDetail(container, id) {
     wrapper.style.display = ''
     select.innerHTML =
       `<option value="">Aucune</option>` +
-      sousMatieresDisponibles.map((s) => `<option value="${s.nom}" ${s.nom === sousMatiereSelectionnee ? 'selected' : ''}>${s.nom}</option>`).join('')
+      sousMatieresDisponibles.map((s) => `<option value="${escapeHtml(s.nom)}" ${s.nom === sousMatiereSelectionnee ? 'selected' : ''}>${escapeHtml(s.nom)}</option>`).join('')
   }
 
   // Un cours est enfant de la sous-matière choisie, ou directement de la matière si elle n'a
@@ -447,13 +448,13 @@ export async function renderFicheDetail(container, id) {
     wrapper.style.display = ''
     select.innerHTML =
       `<option value="">Aucun</option>` +
-      cours.map((c) => `<option value="${c.nom}" ${c.nom === coursSelectionne ? 'selected' : ''}>${c.nom}</option>`).join('')
+      cours.map((c) => `<option value="${escapeHtml(c.nom)}" ${c.nom === coursSelectionne ? 'selected' : ''}>${escapeHtml(c.nom)}</option>`).join('')
   }
 
   try {
     matieresDisponibles = await getMatieres({})
     const matiereSelect = document.getElementById('matiere-select')
-    matiereSelect.innerHTML = matieresDisponibles.map((m) => `<option value="${m.nom}" ${m.nom === fiche.matiere ? 'selected' : ''}>${m.nom}</option>`).join('')
+    matiereSelect.innerHTML = matieresDisponibles.map((m) => `<option value="${escapeHtml(m.nom)}" ${m.nom === fiche.matiere ? 'selected' : ''}>${escapeHtml(m.nom)}</option>`).join('')
     await chargerSousMatieres(fiche.matiere, fiche.sous_matiere)
     await chargerCours(fiche.matiere, fiche.sous_matiere, fiche.cours)
     matiereSelect.addEventListener('change', async () => {
