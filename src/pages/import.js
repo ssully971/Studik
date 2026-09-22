@@ -510,7 +510,8 @@ async function renderModePrompts(container) {
     <div class="settings-card" style="margin-bottom: 24px;">
       <h3 class="voice">Tags de référence</h3>
       <p class="settings-desc">Ta liste fermée de tags, à copier dans le champ "Tags autorisés" des prompts. Clique un tag pour lui associer une ou plusieurs périodes (📍 = tag scopé) ; laisse-le sans période pour qu'il s'applique partout.</p>
-      <div id="tags-chips" class="tags" style="margin-bottom: 12px;"></div>
+      <input type="text" id="tags-recherche" class="search-input" placeholder="Rechercher un tag…" style="margin-bottom: 10px;" />
+      <div id="tags-chips" class="tags" style="margin-bottom: 12px; max-height: 220px; overflow-y: auto;"></div>
       <div class="import-actions">
         <input type="text" id="nouveau-tag-input" class="search-input" placeholder="Nouveau tag…" style="max-width: 200px; margin-bottom: 0;" />
         <button id="ajouter-tag-btn" class="btn" style="width: auto;">Ajouter</button>
@@ -627,19 +628,25 @@ async function renderModePrompts(container) {
     return p.semestre ? `${p.annee} · ${p.semestre}` : p.annee
   }
 
+  let termeTags = ''
+
   function renderTags() {
     const chipsEl = document.getElementById('tags-chips')
+    const tagsAffiches = termeTags ? tags.filter((t) => t.nom.toLowerCase().includes(termeTags)) : tags
+
     chipsEl.innerHTML = tags.length
-      ? tags
-          .map(
-            (t) => `
+      ? tagsAffiches.length
+        ? tagsAffiches
+            .map(
+              (t) => `
         <span class="tag" data-edit="${t.nom}" style="cursor: pointer;">
           ${t.nom}${t.perimetre && t.perimetre.length ? ' 📍' : ''}
           <button class="tag-remove-btn" data-remove="${t.nom}" title="Supprimer ce tag">×</button>
         </span>
       `
-          )
-          .join('')
+            )
+            .join('')
+        : `<p class="empty-note" style="padding: 0;">Aucun tag ne correspond à "${escapeHtml(termeTags)}".</p>`
       : `<p class="empty-note" style="padding: 0;">Aucun tag pour l'instant.</p>`
 
     chipsEl.querySelectorAll('[data-remove]').forEach((btn) => {
@@ -662,6 +669,11 @@ async function renderModePrompts(container) {
   }
 
   renderTags()
+
+  document.getElementById('tags-recherche').addEventListener('input', (e) => {
+    termeTags = e.target.value.trim().toLowerCase()
+    renderTags()
+  })
 
   const perimetreOverlay = document.getElementById('perimetre-modal-overlay')
   document.getElementById('perimetre-modal-close').addEventListener('click', () => perimetreOverlay.classList.add('hidden'))
