@@ -96,21 +96,59 @@ body {
   font-family: "IBM Plex Sans", system-ui, sans-serif;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-  /* Fond d'écran personnalisé optionnel (#parametres, voir lib/fond.js appliquerFond) : posé
-     directement en arrière-plan de body plutôt que via un élément séparé — un calque distinct
-     portant l'image, même sans flou CSS, empêchait le texte sans carte opaque derrière lui
-     (titres de page, accroche de l'accueil) de s'afficher, un souci de composition contourné en
-     évitant ce calque séparé. Sans fond choisi, background-image reste vide : identique à avant. */
-  background-size: cover, cover;
-  background-position: center, center;
+}
+
+/* Fond d'écran personnalisé optionnel (#parametres, voir lib/fond.js) : couche dédiée, enfant
+   direct de <body> (créée par lib/fond.js, jamais détruite par un render*() qui ne touche que
+   #app/#content), dimensionnée UNIQUEMENT sur le viewport — jamais sur le document. `inset: 0`
+   fixe les 4 côtés au viewport (recalculé nativement par le navigateur au resize/rotation, pas
+   besoin de JS) ; la hauteur en dvh (repli vh pour les navigateurs qui ne la supportent pas)
+   double cette contrainte pour rester robuste même là où `inset` seul serait mal supporté. Un
+   calque séparé avait déjà été essayé avant (voir historique) et rendait invisible le texte sans
+   carte opaque derrière lui, faute de z-index explicite — ambiguïté de pile de superposition
+   résolue ici par `z-index: -1` explicite, qui place la couche sous TOUT le contenu normal.
+   `pointer-events: none` : ne doit jamais intercepter un clic/tap destiné au contenu au-dessus.
+   Le flou (`filter`) et l'assombrissement (dégradé dans `background-image`) sont appliqués en
+   JS par lib/fond.js -> calculerStyleFond, jamais ici (valeurs dynamiques par utilisateur). */
+#wallpaper-layer {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100dvh;
+  z-index: -1;
+  pointer-events: none;
   background-repeat: no-repeat, no-repeat;
-  transition: background-image 0.3s ease;
+  transition: filter 0.15s ease;
 }
 
 .fond-galerie {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.fond-focal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 28px);
+  grid-template-rows: repeat(3, 28px);
+  gap: 4px;
+}
+
+.fond-focal-point {
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.fond-focal-point:hover {
+  border-color: var(--text-dim);
+}
+
+.fond-focal-point.actif {
+  background: var(--text);
+  border-color: var(--text);
 }
 
 .fond-vignette {
@@ -538,6 +576,7 @@ a {
   top: 0;
   background: rgba(0, 0, 0, 0.92);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 10;
   color: var(--text);
 }
@@ -1265,6 +1304,7 @@ a.tag:hover,
     right: 0;
     background: rgba(0, 0, 0, 0.95);
     backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     border-top: 1px solid var(--hairline);
     justify-content: space-around;
     align-items: center;
@@ -2101,12 +2141,12 @@ a.tag:hover,
 
   body {
     background: #ffffff !important;
-    background-image: none !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
     color-adjust: exact;
   }
 
+  #wallpaper-layer,
   .topbar,
   .mobile-tabbar,
   .fiche-sidebar,

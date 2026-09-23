@@ -15,7 +15,22 @@ import {
 import { getCheckins, deleteAllCheckins, restaurerCheckins } from '../lib/checkins.js'
 import { getTagsAvecPerimetre, restaurerTags } from '../lib/tags.js'
 import { getTheme, setTheme } from '../lib/theme.js'
-import { getFond, setFond, getFlou, setFlou, getHistoriqueFonds, ajouterAuHistorique, retirerDeLHistorique, calculerLuminance } from '../lib/fond.js'
+import {
+  getFond,
+  setFond,
+  getReglagesBruts,
+  resoudreReglages,
+  getParAppareil,
+  setParAppareil,
+  setMode,
+  setFocal,
+  setAssombrissement,
+  setFlou,
+  getHistoriqueFonds,
+  ajouterAuHistorique,
+  retirerDeLHistorique,
+  calculerLuminance,
+} from '../lib/fond.js'
 import { getGlass, setGlass } from '../lib/glass.js'
 import { televerserImage, supprimerImage } from '../lib/images.js'
 import { synchroniserDonnees } from '../lib/sync.js'
@@ -53,6 +68,17 @@ function setStatus(id, message, type) {
 
 const CLE_DERNIERE_SAUVEGARDE = 'studik_derniere_sauvegarde'
 
+// Quel profil (commun/mobile/desktop) l'écran Paramètres affiche/modifie en ce moment — état
+// d'affichage local à cette page, pas persisté (le profil réellement appliqué à l'écran dépend
+// de contexteAppareil(), pas de ce choix d'édition).
+let cibleEditionFond = 'commun'
+
+const FOCAL_POINTS = [
+  [0, 0], [50, 0], [100, 0],
+  [0, 50], [50, 50], [100, 50],
+  [0, 100], [50, 100], [100, 100],
+]
+
 function formatDerniereSauvegarde(iso) {
   if (!iso) return "Aucune sauvegarde effectuée depuis cet appareil."
   const jours = Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
@@ -88,7 +114,7 @@ export async function renderParametres(container) {
 
         <div class="settings-card">
           <h3 class="voice">Fond d'écran</h3>
-          <p class="settings-desc">Une image personnelle derrière l'interface, floutée pour rester lisible. N'importe quel format convient — elle est automatiquement recadrée pour couvrir l'écran ; une image assez grande et plutôt horizontale rend le mieux.</p>
+          <p class="settings-desc">Une image personnelle derrière l'interface. N'importe quel format convient — choisis comment elle s'affiche ci-dessous une fois mise en ligne.</p>
           <p class="settings-desc">${getFond() ? 'Un fond personnalisé est actif.' : 'Fond uni par défaut (noir ou blanc selon le thème).'}</p>
           <div class="import-actions">
             <label class="btn" style="width: auto; cursor: pointer;">
@@ -99,10 +125,60 @@ export async function renderParametres(container) {
             ${statusHTML('fond-status')}
           </div>
 
-          <div style="margin-top: 14px;">
-            <label id="fond-flou-label" style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Niveau de flou (${getFlou()}px)</label>
-            <input type="range" id="fond-flou-input" min="0" max="40" step="2" value="${getFlou()}" style="width: 100%;" />
+          ${
+            getFond()
+              ? (() => {
+                  const reglagesBruts = getReglagesBruts()
+                  const parAppareil = reglagesBruts.parAppareil
+                  const cible = parAppareil ? cibleEditionFond : 'commun'
+                  const r = resoudreReglages({ ...reglagesBruts, parAppareil: cible !== 'commun' }, cible)
+                  return `
+          <div style="margin-top: 18px;">
+            <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 6px;">Affichage du fond d'écran</label>
+
+            <label class="checkbox-label" style="width: auto; margin-bottom: 10px;">
+              <input type="checkbox" id="fond-par-appareil-checkbox" ${parAppareil ? 'checked' : ''} />
+              <span>Réglages séparés téléphone / ordinateur</span>
+            </label>
+
+            ${
+              parAppareil
+                ? `
+            <div class="filters" id="fond-cible-filters" style="margin-bottom: 12px;">
+              <button class="filter-btn ${cible === 'commun' ? 'active' : ''}" data-cible="commun">Commun</button>
+              <button class="filter-btn ${cible === 'mobile' ? 'active' : ''}" data-cible="mobile">Téléphone</button>
+              <button class="filter-btn ${cible === 'desktop' ? 'active' : ''}" data-cible="desktop">Ordinateur</button>
+            </div>
+            `
+                : ''
+            }
+
+            <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Mode</label>
+            <select id="fond-mode-select" class="periode-select" style="width: 100%; margin-bottom: 14px;">
+              <option value="cover" ${r.mode === 'cover' ? 'selected' : ''}>Remplir</option>
+              <option value="contain" ${r.mode === 'contain' ? 'selected' : ''}>Ajuster (fond noir autour)</option>
+              <option value="centre" ${r.mode === 'centre' ? 'selected' : ''}>Centré (taille d'origine)</option>
+            </select>
+
+            <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Point focal</label>
+            <p class="settings-desc" style="margin-top: 0; margin-bottom: 6px;">Utile quand une image paysage est recadrée sur un écran portrait (mode Remplir).</p>
+            <div class="fond-focal-grid" id="fond-focal-grid">
+              ${FOCAL_POINTS.map(
+                ([x, y]) =>
+                  `<button type="button" class="fond-focal-point ${x === r.focal.x && y === r.focal.y ? 'actif' : ''}" data-focal-x="${x}" data-focal-y="${y}" aria-label="Point focal ${x},${y}"></button>`
+              ).join('')}
+            </div>
+
+            <label id="fond-flou-label" style="font-size: 11px; color: var(--text-faint); display: block; margin: 14px 0 4px;">Flou (${r.flou}px${r.flou === 0 ? ' — net' : ''})</label>
+            <input type="range" id="fond-flou-input" min="0" max="20" step="1" value="${r.flou}" style="width: 100%;" />
+
+            <label id="fond-assombrissement-label" style="font-size: 11px; color: var(--text-faint); display: block; margin: 14px 0 4px;">Assombrissement (${r.assombrissement}%)</label>
+            <input type="range" id="fond-assombrissement-input" min="0" max="100" step="5" value="${r.assombrissement}" style="width: 100%;" />
           </div>
+          `
+                })()
+              : ''
+          }
 
           <div style="margin-top: 14px;">
             <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Style de l'interface</label>
@@ -242,15 +318,53 @@ export async function renderParametres(container) {
     })
   }
 
+  const cibleActuelle = () => (getParAppareil() ? cibleEditionFond : 'commun')
+
+  const fondParAppareilCheckbox = document.getElementById('fond-par-appareil-checkbox')
+  if (fondParAppareilCheckbox) {
+    fondParAppareilCheckbox.addEventListener('change', (e) => {
+      setParAppareil(e.target.checked)
+      cibleEditionFond = 'commun'
+      renderParametres(container)
+    })
+  }
+
+  document.getElementById('fond-cible-filters')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-cible]')
+    if (!btn) return
+    cibleEditionFond = btn.dataset.cible
+    renderParametres(container)
+  })
+
+  document.getElementById('fond-mode-select')?.addEventListener('change', (e) => {
+    setMode(e.target.value, cibleActuelle())
+  })
+
+  document.getElementById('fond-focal-grid')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-focal-x]')
+    if (!btn) return
+    setFocal({ x: parseInt(btn.dataset.focalX, 10), y: parseInt(btn.dataset.focalY, 10) }, cibleActuelle())
+    renderParametres(container)
+  })
+
   const fondFlouInput = document.getElementById('fond-flou-input')
   let flouDebounce = null
-  fondFlouInput.addEventListener('input', (e) => {
+  fondFlouInput?.addEventListener('input', (e) => {
     const valeur = parseInt(e.target.value, 10)
-    document.getElementById('fond-flou-label').textContent = `Niveau de flou (${valeur}px)`
-    // Chaque changement refait le flou de l'image (canvas), pas juste un filtre CSS instantané
-    // — un léger débounce évite de relancer ce travail à chaque pixel de glissement du curseur.
+    document.getElementById('fond-flou-label').textContent = `Flou (${valeur}px${valeur === 0 ? ' — net' : ''})`
+    // filter: blur() en CSS est instantané, mais un léger débounce évite de réécrire le style
+    // à chaque pixel de glissement du curseur — cohérence avec le curseur d'assombrissement.
     clearTimeout(flouDebounce)
-    flouDebounce = setTimeout(() => setFlou(valeur), 120)
+    flouDebounce = setTimeout(() => setFlou(valeur, cibleActuelle()), 120)
+  })
+
+  const fondAssombrissementInput = document.getElementById('fond-assombrissement-input')
+  let assombrissementDebounce = null
+  fondAssombrissementInput?.addEventListener('input', (e) => {
+    const valeur = parseInt(e.target.value, 10)
+    document.getElementById('fond-assombrissement-label').textContent = `Assombrissement (${valeur}%)`
+    clearTimeout(assombrissementDebounce)
+    assombrissementDebounce = setTimeout(() => setAssombrissement(valeur, cibleActuelle()), 120)
   })
 
   document.getElementById('glass-off-btn').addEventListener('click', () => {
