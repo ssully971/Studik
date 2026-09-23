@@ -39,26 +39,15 @@ body {
   font-family: "IBM Plex Sans", system-ui, sans-serif;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-}
-
-/* Fond d'écran personnalisé optionnel (#parametres) : posé derrière tout le reste (avant #app
-   dans le DOM, donc peint en premier), flouté et assombri pour rester reconnaissable sans nuire
-   à la lisibilité du contenu par-dessus. Sans classe "actif", ne montre que le noir/blanc du
-   thème (body.background ci-dessus) exactement comme avant cette fonctionnalité. */
-#wallpaper {
-  position: fixed;
-  inset: -40px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  filter: blur(28px);
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  pointer-events: none;
-}
-
-#wallpaper.actif {
-  opacity: 0.55;
+  /* Fond d'écran personnalisé optionnel (#parametres, voir lib/fond.js appliquerFond) : posé
+     directement en arrière-plan de body plutôt que via un élément séparé — un calque distinct
+     portant l'image, même sans flou CSS, empêchait le texte sans carte opaque derrière lui
+     (titres de page, accroche de l'accueil) de s'afficher, un souci de composition contourné en
+     évitant ce calque séparé. Sans fond choisi, background-image reste vide : identique à avant. */
+  background-size: cover, cover;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  transition: background-image 0.3s ease;
 }
 
 .fond-galerie {

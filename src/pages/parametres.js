@@ -15,7 +15,7 @@ import {
 import { getCheckins, deleteAllCheckins, restaurerCheckins } from '../lib/checkins.js'
 import { getTagsAvecPerimetre, restaurerTags } from '../lib/tags.js'
 import { getTheme, setTheme } from '../lib/theme.js'
-import { getFond, setFond, getFlou, setFlou, getHistoriqueFonds, ajouterAuHistorique, retirerDeLHistorique } from '../lib/fond.js'
+import { getFond, setFond, getFlou, setFlou, getHistoriqueFonds, ajouterAuHistorique, retirerDeLHistorique, calculerLuminance } from '../lib/fond.js'
 import { televerserImage, supprimerImage } from '../lib/images.js'
 import { synchroniserDonnees } from '../lib/sync.js'
 import { escapeHtml } from '../lib/escape.js'
@@ -112,7 +112,7 @@ export async function renderParametres(container) {
               ${getHistoriqueFonds()
                 .map(
                   (f) => `
-                <div class="fond-vignette ${f.url === getFond() ? 'actif' : ''}" style="background-image: url('${escapeHtml(f.url)}');" data-fond-choisir="${escapeHtml(f.url)}">
+                <div class="fond-vignette ${f.url === getFond()?.url ? 'actif' : ''}" style="background-image: url('${escapeHtml(f.url)}');" data-fond-choisir="${escapeHtml(f.url)}" data-fond-luminance="${f.luminance ?? 128}">
                   <button type="button" class="fond-vignette-supprimer" data-fond-supprimer="${escapeHtml(f.url)}" title="Supprimer définitivement">✕</button>
                 </div>
               `
@@ -207,8 +207,9 @@ export async function renderParametres(container) {
     setStatus('fond-status', 'Compression et envoi…', '')
     try {
       const url = await televerserImage(file)
-      const evincee = ajouterAuHistorique(url)
-      setFond(url)
+      const luminance = await calculerLuminance(url)
+      const evincee = ajouterAuHistorique(url, luminance)
+      setFond(url, luminance)
       if (evincee) {
         try {
           await supprimerImage(evincee)
@@ -232,16 +233,20 @@ export async function renderParametres(container) {
   }
 
   const fondFlouInput = document.getElementById('fond-flou-input')
+  let flouDebounce = null
   fondFlouInput.addEventListener('input', (e) => {
     const valeur = parseInt(e.target.value, 10)
-    setFlou(valeur)
     document.getElementById('fond-flou-label').textContent = `Niveau de flou (${valeur}px)`
+    // Chaque changement refait le flou de l'image (canvas), pas juste un filtre CSS instantané
+    // — un léger débounce évite de relancer ce travail à chaque pixel de glissement du curseur.
+    clearTimeout(flouDebounce)
+    flouDebounce = setTimeout(() => setFlou(valeur), 120)
   })
 
   document.querySelectorAll('[data-fond-choisir]').forEach((el) => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('[data-fond-supprimer]')) return
-      setFond(el.dataset.fondChoisir)
+      setFond(el.dataset.fondChoisir, parseFloat(el.dataset.fondLuminance))
       renderParametres(container)
     })
   })
@@ -254,7 +259,7 @@ export async function renderParametres(container) {
       try {
         await supprimerImage(url)
         retirerDeLHistorique(url)
-        if (getFond() === url) setFond(null)
+        if (getFond()?.url === url) setFond(null)
         renderParametres(container)
       } catch (err) {
         setStatus('fond-status', 'Erreur : ' + err.message, 'error')
