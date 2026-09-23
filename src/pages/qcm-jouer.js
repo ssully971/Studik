@@ -25,7 +25,7 @@ export async function renderQcmJouer(container, qcmId) {
   try {
     qcm = await getQcmById(qcmId)
   } catch (err) {
-    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${err.message}</p></div>`
+    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${escapeHtml(err.message)}</p></div>`
     return
   }
 
@@ -205,7 +205,7 @@ function renderQuestion(container, qcm, mode, state) {
 
       <div class="cas-card">
         <p class="cas-situation">${escapeHtml(q.enonce)}</p>
-        ${q.image ? `<div class="qcm-question-image"><img src="${q.image}" alt="" /></div>` : ''}
+        ${q.image ? `<div class="qcm-question-image"><img src="${escapeHtml(q.image)}" alt="" /></div>` : ''}
 
         <div class="checkbox-group" id="items-group">
           ${q.items

@@ -14,7 +14,7 @@ export async function renderQcmDetail(container, id) {
   try {
     qcm = await getQcmById(id)
   } catch (err) {
-    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${err.message}</p></div>`
+    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${escapeHtml(err.message)}</p></div>`
     return
   }
 
@@ -87,7 +87,7 @@ export async function renderQcmDetail(container, id) {
 
           ${
             q.image
-              ? `<div class="qcm-question-image"><img src="${q.image}" alt="" /></div>
+              ? `<div class="qcm-question-image"><img src="${escapeHtml(q.image)}" alt="" /></div>
                  <div class="import-actions" style="margin-top: 0;">
                    <button class="btn" data-supprimer-image="${i}" style="width: auto; color: #C46A5C;">Supprimer l'image</button>
                  </div>`

@@ -111,7 +111,7 @@ async function renderActives(container) {
   try {
     ;[tentatives, tentativesQcm] = await Promise.all([getTentativesRatees(), getQcmTentativesARevoir()])
   } catch (err) {
-    container.innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+    container.innerHTML = `<p class="empty-note">Erreur : ${escapeHtml(err.message)}</p>`
     return
   }
 
@@ -516,7 +516,7 @@ async function renderArchive(container) {
   try {
     ;[tentatives, tentativesQcm] = await Promise.all([getTentativesRevues(), getQcmTentativesRevues()])
   } catch (err) {
-    container.innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+    container.innerHTML = `<p class="empty-note">Erreur : ${escapeHtml(err.message)}</p>`
     return
   }
 

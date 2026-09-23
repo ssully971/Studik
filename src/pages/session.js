@@ -15,12 +15,15 @@ function melanger(array) {
 
 export async function renderSession(container) {
   container.innerHTML = `<div class="wrap"><div id="session-content"></div></div>`
-  container.addEventListener('click', (e) => {
+  const content = document.getElementById('session-content')
+  // Écouteur posé sur #session-content (recréé à chaque rendu de cette page, donc jamais
+  // accumulé) plutôt que sur `container` (#content, persistant sur toute la session).
+  content.addEventListener('click', (e) => {
     const btn = e.target.closest('.img-toggle-btn')
     if (!btn) return
     btn.nextElementSibling?.classList.toggle('hidden')
   })
-  renderChoixTaille(document.getElementById('session-content'))
+  renderChoixTaille(content)
 }
 
 function renderChoixTaille(content) {
@@ -48,7 +51,7 @@ async function demarrerSession(content, taille) {
   try {
     ;[fiches, tentatives] = await Promise.all([getFichesARevoir({}), getTentativesRatees()])
   } catch (err) {
-    content.innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+    content.innerHTML = `<p class="empty-note">Erreur : ${escapeHtml(err.message)}</p>`
     return
   }
 
@@ -150,7 +153,7 @@ async function demarrerSession(content, taille) {
     try {
       cas = await getCasById(tentative.cas_id)
     } catch (err) {
-      document.getElementById('session-cas-container').innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+      document.getElementById('session-cas-container').innerHTML = `<p class="empty-note">Erreur : ${escapeHtml(err.message)}</p>`
       return
     }
 

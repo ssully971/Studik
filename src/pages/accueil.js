@@ -118,7 +118,9 @@ export async function renderAccueil(container) {
     if (e.target.closest('button, a')) return
     streakCard.classList.toggle('ouvert')
   })
-  document.addEventListener('click', (e) => {
+  // Écouteur posé sur `.wrap` (recréé à chaque rendu de cette page, donc jamais accumulé)
+  // plutôt que sur `document` (persistant sur toute la session).
+  container.querySelector('.wrap').addEventListener('click', (e) => {
     if (!streakCard.contains(e.target)) streakCard.classList.remove('ouvert')
   })
 
@@ -268,6 +270,6 @@ export async function renderAccueil(container) {
       window.location.hash = '#erreurs'
     })
   } catch (err) {
-    document.getElementById('matieres-list').innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+    document.getElementById('matieres-list').innerHTML = `<p class="empty-note">Erreur : ${escapeHtml(err.message)}</p>`
   }
 }

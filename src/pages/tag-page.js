@@ -18,7 +18,7 @@ export async function renderTagPage(container, nomEncode) {
   try {
     ;[fiches, cas, qcm] = await Promise.all([getFiches({}), getAllCas(), getAllQcm({})])
   } catch (err) {
-    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${err.message}</p></div>`
+    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${escapeHtml(err.message)}</p></div>`
     return
   }
 

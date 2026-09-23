@@ -156,7 +156,7 @@ async function renderPratique(container, casId) {
             tags: filtreTags.length ? filtreTags : undefined,
           })
     } catch (err) {
-      casContainer.innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+      casContainer.innerHTML = `<p class="empty-note">Erreur : ${escapeHtml(err.message)}</p>`
       return
     }
 
@@ -354,7 +354,7 @@ async function renderBibliotheque(container) {
   try {
     allCas = await getAllCas()
   } catch (err) {
-    container.innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+    container.innerHTML = `<p class="empty-note">Erreur : ${escapeHtml(err.message)}</p>`
     return
   }
 

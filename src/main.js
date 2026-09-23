@@ -9,6 +9,7 @@ import { getMatieres } from './lib/matieres.js'
 import { getAllCas, texteRechercheCas } from './lib/cas.js'
 import { getAllQcm, texteRechercheQcm } from './lib/qcm.js'
 import { definirTermeRecherche } from './lib/highlight.js'
+import { escapeHtml } from './lib/escape.js'
 import { renderAccueil } from './pages/accueil.js'
 import { renderReferentiel } from './pages/referentiel.js'
 import { renderImport } from './pages/import.js'
@@ -191,10 +192,6 @@ async function ensureSearchCache() {
   })
   searchCache = { fiches, cas, qcm, periodeParMatiere }
   return searchCache
-}
-
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 function extraireApercu(texteRecherche, titre, terme) {

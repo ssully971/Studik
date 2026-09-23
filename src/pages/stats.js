@@ -40,7 +40,7 @@ export async function renderStats(container) {
       getMatieres({}),
     ])
   } catch (err) {
-    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${err.message}</p></div>`
+    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${escapeHtml(err.message)}</p></div>`
     return
   }
 

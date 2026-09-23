@@ -305,7 +305,7 @@ export async function renderReferentiel(container) {
       allFiches = periodes.length > 0 ? await getFiches({ periodes, inclureArchivees }) : await getFiches({ inclureArchivees })
       applyFilters()
     } catch (err) {
-      document.getElementById('fiches-list').innerHTML = `<p class="empty-note">Erreur de chargement : ${err.message}</p>`
+      document.getElementById('fiches-list').innerHTML = `<p class="empty-note">Erreur de chargement : ${escapeHtml(err.message)}</p>`
     }
   }
 

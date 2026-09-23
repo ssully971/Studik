@@ -77,7 +77,7 @@ export async function renderFicheDetail(container, id) {
   try {
     ;[fiche, toutesLesFiches] = await Promise.all([getFicheById(id), getFiches({})])
   } catch (err) {
-    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${err.message}</p></div>`
+    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${escapeHtml(err.message)}</p></div>`
     return
   }
 

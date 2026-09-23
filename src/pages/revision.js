@@ -159,7 +159,7 @@ export async function renderRevision(container) {
       fiches = periodes.length > 0 ? await getFichesARevoir({ periodes }) : await getFichesARevoir({})
       applyFilter()
     } catch (err) {
-      document.getElementById('revision-list').innerHTML = `<p class="empty-note">Erreur de chargement : ${err.message}</p>`
+      document.getElementById('revision-list').innerHTML = `<p class="empty-note">Erreur de chargement : ${escapeHtml(err.message)}</p>`
     }
   }
 

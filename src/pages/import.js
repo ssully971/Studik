@@ -5,6 +5,7 @@ import { insertQcm, getAllQcmIds } from '../lib/qcm.js'
 import { getTags, getTagsAvecPerimetre, ajouterTag, supprimerTag, modifierPerimetreTag } from '../lib/tags.js'
 import { getPeriodesDisponibles } from '../lib/periode.js'
 import { slugify } from '../lib/slug.js'
+import { escapeHtml } from '../lib/escape.js'
 import promptContexteMaitre from '../data/prompts/prompt-contexte-maitre.md?raw'
 import promptClinique from '../data/prompts/prompt-fiche-clinique.md?raw'
 import promptMecanisme from '../data/prompts/prompt-fiche-mecanisme.md?raw'
@@ -149,7 +150,7 @@ function renderModeImport(container) {
     try {
       parsed = JSON.parse(raw)
     } catch (err) {
-      resultEl.innerHTML = `<p class="import-status error">JSON invalide : ${err.message}</p>`
+      resultEl.innerHTML = `<p class="import-status error">JSON invalide : ${escapeHtml(err.message)}</p>`
       return
     }
 
@@ -168,7 +169,7 @@ function renderModeImport(container) {
 
     const doublons = findDuplicateIds(items)
     if (doublons.length > 0) {
-      resultEl.innerHTML = `<p class="import-status error">Doublon(s) d'id dans ce lot : ${doublons.join(', ')}. Corrige avant de réimporter.</p>`
+      resultEl.innerHTML = `<p class="import-status error">Doublon(s) d'id dans ce lot : ${escapeHtml(doublons.join(', '))}. Corrige avant de réimporter.</p>`
       return
     }
 
@@ -178,7 +179,7 @@ function renderModeImport(container) {
       else if (target === 'cas') existingIds = await getAllCasIds()
       else existingIds = await getAllQcmIds()
     } catch (err) {
-      resultEl.innerHTML = `<p class="import-status error">Erreur lors de la vérification des ids existants : ${err.message}</p>`
+      resultEl.innerHTML = `<p class="import-status error">Erreur lors de la vérification des ids existants : ${escapeHtml(err.message)}</p>`
       return
     }
 
@@ -477,13 +478,13 @@ function renderModeImport(container) {
       }
 
       if (avertissements.length > 0) {
-        html += `<div class="import-warnings"><p style="margin-bottom: 6px; font-size: 13px; color: var(--mecanisme);">${avertissements.length} avertissement${avertissements.length !== 1 ? 's' : ''} (import non bloqué) :</p><ul class="detail-list">${avertissements.map((a) => `<li>${a}</li>`).join('')}</ul></div>`
+        html += `<div class="import-warnings"><p style="margin-bottom: 6px; font-size: 13px; color: var(--mecanisme);">${avertissements.length} avertissement${avertissements.length !== 1 ? 's' : ''} (import non bloqué) :</p><ul class="detail-list">${avertissements.map((a) => `<li>${escapeHtml(a)}</li>`).join('')}</ul></div>`
       }
 
       resultEl.innerHTML = html
       document.getElementById('json-input').value = ''
     } catch (err) {
-      resultEl.innerHTML = `<p class="import-status error">Erreur : ${err.message}</p>`
+      resultEl.innerHTML = `<p class="import-status error">Erreur : ${escapeHtml(err.message)}</p>`
     }
   })
 }
@@ -498,12 +499,6 @@ const PROMPTS = [
   { id: 'cas', titre: "Cas d'entraînement", contenu: promptCas },
   { id: 'qcm', titre: 'QCM', contenu: promptQcm },
 ]
-
-function escapeHtml(str) {
-  const div = document.createElement('div')
-  div.textContent = str
-  return div.innerHTML
-}
 
 async function renderModePrompts(container) {
   container.innerHTML = `
@@ -613,7 +608,7 @@ async function renderModePrompts(container) {
     try {
       tags = (await getTags()).map((nom) => ({ nom, perimetre: null }))
     } catch (err) {
-      document.getElementById('tags-chips').innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+      document.getElementById('tags-chips').innerHTML = `<p class="empty-note">Erreur : ${escapeHtml(err.message)}</p>`
     }
   }
 

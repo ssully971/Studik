@@ -1,4 +1,5 @@
 import { ajouterCapture, getCapturesNonTraitees, marquerCaptureTraitee, supprimerCapture } from '../lib/captures.js'
+import { escapeHtml } from '../lib/escape.js'
 
 function formatDate(iso) {
   const d = new Date(iso)
@@ -59,7 +60,7 @@ export async function renderCapture(container) {
     try {
       captures = await getCapturesNonTraitees()
     } catch (err) {
-      listEl.innerHTML = `<p class="empty-note">Erreur : ${err.message}</p>`
+      listEl.innerHTML = `<p class="empty-note">Erreur : ${escapeHtml(err.message)}</p>`
       return
     }
 

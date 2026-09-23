@@ -1,4 +1,5 @@
 import { getQuestionsRateesParScope, scoreQuestion } from '../lib/qcm.js'
+import { escapeHtml } from '../lib/escape.js'
 
 const CLE_SCOPE_RETRY = 'studik_retry_scope'
 
@@ -48,14 +49,14 @@ export async function renderQcmRetrySession(container) {
   try {
     questions = await getQuestionsRateesParScope(scope.criteres)
   } catch (err) {
-    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${err.message}</p></div>`
+    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${escapeHtml(err.message)}</p></div>`
     return
   }
 
   if (questions.length === 0) {
     container.innerHTML = `
       <div class="wrap">
-        <div class="section-head"><h2 class="voice">Questions ratées — ${scope.label}</h2></div>
+        <div class="section-head"><h2 class="voice">Questions ratées — ${escapeHtml(scope.label)}</h2></div>
         <p class="empty-note">Aucune question ratée pour ce périmètre.</p>
         <a href="#erreurs" class="btn primary" style="width: auto;">Retour au carnet d'erreurs</a>
       </div>
@@ -79,14 +80,14 @@ export async function renderQcmRetrySession(container) {
     container.innerHTML = `
       <div class="wrap">
         <div class="section-head">
-          <h2 class="voice">Questions ratées — ${scope.label}</h2>
+          <h2 class="voice">Questions ratées — ${escapeHtml(scope.label)}</h2>
           <span class="count">${index + 1} / ${file.length}</span>
         </div>
 
         <div class="cas-card">
-          <div class="cas-meta-row">${qcmTitre}</div>
-          <p class="cas-situation">${q.enonce}</p>
-          ${q.image ? `<div class="qcm-question-image"><img src="${q.image}" alt="" /></div>` : ''}
+          <div class="cas-meta-row">${escapeHtml(qcmTitre)}</div>
+          <p class="cas-situation">${escapeHtml(q.enonce)}</p>
+          ${q.image ? `<div class="qcm-question-image"><img src="${escapeHtml(q.image)}" alt="" /></div>` : ''}
 
           <div class="checkbox-group" id="items-group">
             ${q.items
@@ -94,7 +95,7 @@ export async function renderQcmRetrySession(container) {
                 (item, i) => `
               <label class="checkbox-label" data-item="${i}">
                 <input type="checkbox" data-index="${i}" />
-                <span>${item.texte}</span>
+                <span>${escapeHtml(item.texte)}</span>
               </label>
             `
               )
@@ -149,7 +150,7 @@ export async function renderQcmRetrySession(container) {
                 classe = 'item-explication-wrong'
                 symbole = '✘ erreur'
               }
-              return `<li class="${classe}"><span class="item-explication-symbole">${symbole}</span> <strong>${item.texte}</strong>${explication ? ` — ${explication}` : ''}</li>`
+              return `<li class="${classe}"><span class="item-explication-symbole">${symbole}</span> <strong>${escapeHtml(item.texte)}</strong>${explication ? ` — ${escapeHtml(explication)}` : ''}</li>`
             })
             .join('')}
         </ul>
@@ -171,7 +172,7 @@ export async function renderQcmRetrySession(container) {
     const total = scores.reduce((s, p) => s + p, 0)
     container.innerHTML = `
       <div class="wrap">
-        <div class="section-head"><h2 class="voice">Session terminée — ${scope.label}</h2></div>
+        <div class="section-head"><h2 class="voice">Session terminée — ${escapeHtml(scope.label)}</h2></div>
         <p class="settings-desc">${total} / ${file.length} points sur ${file.length} question${file.length !== 1 ? 's' : ''} rejouées.</p>
         <p class="settings-desc">Ce mode ne crée pas de nouvelle tentative permanente — retente ce périmètre autant de fois que tu veux depuis le carnet d'erreurs.</p>
         <a href="#erreurs" class="btn primary" style="width: auto;">Retour au carnet d'erreurs</a>
