@@ -9,7 +9,7 @@ import {
   deleteTentativeQcm,
   questionsRateesDeLaTentative,
 } from '../lib/qcm.js'
-import { getMatieres, buildMatiereColorMap, couleurTab } from '../lib/matieres.js'
+import { getMatieres, buildMatiereColorMap, couleurTab, getTousLesCoursAplatis } from '../lib/matieres.js'
 import { renderTagFilters } from './tag-filter.js'
 import { renderTagPicker } from './tag-picker.js'
 import { definirScopeRetry } from './qcm-retry-session.js'
@@ -126,6 +126,7 @@ async function renderActives(container) {
     <input type="text" id="search-input" class="search-input" placeholder="Rechercher dans les erreurs (matière, question, titre)…" />
 
     <div class="filters" id="filters-row">
+      <select id="cours-filter" class="periode-select"></select>
       <select id="tri-select" class="periode-select">
         <option value="recent">Plus récent</option>
         <option value="ancien">Plus ancien</option>
@@ -151,6 +152,7 @@ async function renderActives(container) {
   let limiteCas = PAGE_SIZE
   let limiteQcm = PAGE_SIZE
   let activeTags = []
+  let activeCours = ''
   let tri = 'recent'
 
   function trier(list, matiereDe) {
@@ -170,7 +172,8 @@ async function renderActives(container) {
         if (!cas) return false
         const matchesTerme = !terme || cas.question.toLowerCase().includes(terme) || cas.matiere.toLowerCase().includes(terme)
         const matchesTags = activeTags.length === 0 || activeTags.some((tag) => (cas.tags || []).includes(tag))
-        return matchesTerme && matchesTags
+        const matchesCours = !activeCours || cas.cours === activeCours
+        return matchesTerme && matchesTags && matchesCours
       }),
       (t) => t.cas_cliniques.matiere
     )
@@ -184,7 +187,8 @@ async function renderActives(container) {
           qcm.titre.toLowerCase().includes(terme) ||
           (qcm.matieres || []).some((m) => m.toLowerCase().includes(terme))
         const matchesTags = activeTags.length === 0 || activeTags.some((tag) => (qcm.tags || []).includes(tag))
-        return matchesTerme && matchesTags
+        const matchesCours = !activeCours || qcm.cours === activeCours
+        return matchesTerme && matchesTags && matchesCours
       }),
       (t) => (t.qcm.matieres || []).join(', ')
     )
@@ -208,6 +212,21 @@ async function renderActives(container) {
     tri = e.target.value
     applyFiltre()
   })
+
+  try {
+    const tousLesCours = await getTousLesCoursAplatis()
+    const coursSelect = document.getElementById('cours-filter')
+    coursSelect.innerHTML =
+      `<option value="">Tous cours</option>` + tousLesCours.map((c) => `<option value="${escapeHtml(c.nom)}">${escapeHtml(c.chemin)}</option>`).join('')
+    coursSelect.addEventListener('change', (e) => {
+      activeCours = e.target.value
+      limiteCas = PAGE_SIZE
+      limiteQcm = PAGE_SIZE
+      applyFiltre()
+    })
+  } catch {
+    // silencieux : le filtre cours reste optionnel
+  }
 
   await renderTagFilters(document.getElementById('tag-filters'), {
     selected: activeTags,
@@ -508,10 +527,19 @@ async function renderArchive(container) {
     matiereColorMap = {}
   }
 
-  document.getElementById('erreurs-count').textContent = `${tentatives.length + tentativesQcm.length} au total`
-
   container.innerHTML = `
     <p class="settings-desc" style="margin-bottom: 16px;">Erreurs déjà marquées comme revues. Elles restent ici tant que tu ne les supprimes pas toi-même, ou jusqu'à une nouvelle tentative réussie.</p>
+
+    <input type="text" id="archive-search-input" class="search-input" placeholder="Rechercher dans l'archive (matière, question, titre)…" />
+
+    <div class="filters" id="archive-filters-row">
+      <select id="archive-cours-filter" class="periode-select"></select>
+      <select id="archive-tri-select" class="periode-select">
+        <option value="recent">Plus récent</option>
+        <option value="ancien">Plus ancien</option>
+        <option value="matiere">Matière (A→Z)</option>
+      </select>
+    </div>
 
     <div class="section-head" style="margin-top: 8px; border-bottom: none; padding-bottom: 0;">
       <h3 class="voice" style="font-size: 15px;">Cas cliniques</h3>
@@ -524,103 +552,169 @@ async function renderArchive(container) {
     <div id="archive-qcm-list" class="fiches-list"></div>
   `
 
-  const casListEl = document.getElementById('archive-cas-list')
-  casListEl.innerHTML = tentatives.length
-    ? tentatives
-        .map(
-          (t) => `
-      <div class="fiche-row type-${t.cas_cliniques.type}">
-        <div class="tab" style="background: ${couleurTab(t.cas_cliniques.matiere, t.cas_cliniques.type, matiereColorMap)};"></div>
-        <div class="fiche-body">
-          <div class="fiche-top">
-            <span class="fiche-title voice">${t.cas_cliniques.question}</span>
-            <span class="type-label">${TYPE_LABELS[t.cas_cliniques.type]}</span>
-          </div>
-          <div class="fiche-meta">${t.cas_cliniques.matiere} · ratée le ${formatDate(t.date_tentative)}</div>
-          <div class="import-actions" style="margin-top: 10px;">
-            <a href="#entrainement/${t.cas_cliniques.id}" class="btn primary" style="width: auto;">Rejouer le cas</a>
-            <button class="btn" data-restaurer="${t.id}" style="width: auto;">Remettre dans les erreurs actives</button>
-            <button class="btn" data-supprimer="${t.id}" style="width: auto; color: #C46A5C;">Supprimer</button>
+  let activeCours = ''
+  let tri = 'recent'
+
+  function trier(list, matiereDe) {
+    const copie = [...list]
+    if (tri === 'recent') copie.sort((a, b) => new Date(b.date_tentative) - new Date(a.date_tentative))
+    else if (tri === 'ancien') copie.sort((a, b) => new Date(a.date_tentative) - new Date(b.date_tentative))
+    else if (tri === 'matiere') copie.sort((a, b) => matiereDe(a).localeCompare(matiereDe(b)))
+    return copie
+  }
+
+  function applyFiltre() {
+    const terme = document.getElementById('archive-search-input').value.toLowerCase()
+
+    const casFiltres = trier(
+      tentatives.filter((t) => {
+        const cas = t.cas_cliniques
+        if (!cas) return false
+        const matchesTerme = !terme || cas.question.toLowerCase().includes(terme) || cas.matiere.toLowerCase().includes(terme)
+        const matchesCours = !activeCours || cas.cours === activeCours
+        return matchesTerme && matchesCours
+      }),
+      (t) => t.cas_cliniques.matiere
+    )
+
+    const qcmFiltres = trier(
+      tentativesQcm.filter((t) => {
+        const qcm = t.qcm
+        if (!qcm) return false
+        const matchesTerme = !terme || qcm.titre.toLowerCase().includes(terme) || (qcm.matieres || []).some((m) => m.toLowerCase().includes(terme))
+        const matchesCours = !activeCours || qcm.cours === activeCours
+        return matchesTerme && matchesCours
+      }),
+      (t) => (t.qcm.matieres || []).join(', ')
+    )
+
+    document.getElementById('erreurs-count').textContent = `${casFiltres.length + qcmFiltres.length} au total`
+    renderListCas(casFiltres)
+    renderListQcm(qcmFiltres)
+  }
+
+  document.getElementById('archive-search-input').addEventListener('input', applyFiltre)
+  document.getElementById('archive-tri-select').addEventListener('change', (e) => {
+    tri = e.target.value
+    applyFiltre()
+  })
+
+  try {
+    const tousLesCours = await getTousLesCoursAplatis()
+    const coursSelect = document.getElementById('archive-cours-filter')
+    coursSelect.innerHTML =
+      `<option value="">Tous cours</option>` + tousLesCours.map((c) => `<option value="${escapeHtml(c.nom)}">${escapeHtml(c.chemin)}</option>`).join('')
+    coursSelect.addEventListener('change', (e) => {
+      activeCours = e.target.value
+      applyFiltre()
+    })
+  } catch {
+    // silencieux : le filtre cours reste optionnel
+  }
+
+  function renderListCas(list) {
+    const casListEl = document.getElementById('archive-cas-list')
+    casListEl.innerHTML = list.length
+      ? list
+          .map(
+            (t) => `
+        <div class="fiche-row type-${t.cas_cliniques.type}">
+          <div class="tab" style="background: ${couleurTab(t.cas_cliniques.matiere, t.cas_cliniques.type, matiereColorMap)};"></div>
+          <div class="fiche-body">
+            <div class="fiche-top">
+              <span class="fiche-title voice">${escapeHtml(t.cas_cliniques.question)}</span>
+              <span class="type-label">${TYPE_LABELS[t.cas_cliniques.type]}</span>
+            </div>
+            <div class="fiche-meta">${escapeHtml(t.cas_cliniques.matiere)} · ratée le ${formatDate(t.date_tentative)}</div>
+            <div class="import-actions" style="margin-top: 10px;">
+              <a href="#entrainement/${t.cas_cliniques.id}" class="btn primary" style="width: auto;">Rejouer le cas</a>
+              <button class="btn" data-restaurer="${t.id}" style="width: auto;">Remettre dans les erreurs actives</button>
+              <button class="btn" data-supprimer="${t.id}" style="width: auto; color: #C46A5C;">Supprimer</button>
+            </div>
           </div>
         </div>
-      </div>
-    `
-        )
-        .join('')
-    : `<p class="empty-note">Aucune erreur archivée pour l'instant.</p>`
+      `
+          )
+          .join('')
+      : `<p class="empty-note">Aucune erreur archivée ne correspond.</p>`
 
-  casListEl.querySelectorAll('[data-supprimer]').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      if (!(await demanderConfirmation('Supprimer définitivement cette entrée archivée ?'))) return
-      try {
-        await deleteTentative(btn.dataset.supprimer)
-        tentatives = tentatives.filter((t) => t.id !== btn.dataset.supprimer)
-        renderArchive(container)
-      } catch (err) {
-        alert('Erreur : ' + err.message)
-      }
+    casListEl.querySelectorAll('[data-supprimer]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!(await demanderConfirmation('Supprimer définitivement cette entrée archivée ?'))) return
+        try {
+          await deleteTentative(btn.dataset.supprimer)
+          tentatives = tentatives.filter((t) => t.id !== btn.dataset.supprimer)
+          applyFiltre()
+        } catch (err) {
+          alert('Erreur : ' + err.message)
+        }
+      })
     })
-  })
 
-  casListEl.querySelectorAll('[data-restaurer]').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      try {
-        await marquerCommeNonRevu(btn.dataset.restaurer)
-        tentatives = tentatives.filter((t) => t.id !== btn.dataset.restaurer)
-        renderArchive(container)
-      } catch (err) {
-        alert('Erreur : ' + err.message)
-      }
+    casListEl.querySelectorAll('[data-restaurer]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          await marquerCommeNonRevu(btn.dataset.restaurer)
+          tentatives = tentatives.filter((t) => t.id !== btn.dataset.restaurer)
+          applyFiltre()
+        } catch (err) {
+          alert('Erreur : ' + err.message)
+        }
+      })
     })
-  })
+  }
 
-  const qcmListEl = document.getElementById('archive-qcm-list')
-  qcmListEl.innerHTML = tentativesQcm.length
-    ? tentativesQcm
-        .map((t) => {
-          const taux = t.score_max > 0 ? Math.round((t.score / t.score_max) * 100) : 0
-          return `
-      <div class="fiche-row">
-        <div class="tab" style="background: ${couleurTab(t.qcm.matieres, null, matiereColorMap)};"></div>
-        <div class="fiche-body">
-          <div class="fiche-top">
-            <span class="fiche-title voice">${t.qcm.titre}</span>
-            <span class="type-label">${taux}%</span>
-          </div>
-          <div class="fiche-meta">${(t.qcm.matieres || []).join(', ')} · fait le ${formatDate(t.date_tentative)} · ${t.score}/${t.score_max} (${t.mode})</div>
-          <div class="import-actions" style="margin-top: 10px;">
-            <button class="btn" data-restaurer-qcm="${t.id}" style="width: auto;">Remettre dans les erreurs actives</button>
-            <button class="btn" data-supprimer-qcm="${t.id}" style="width: auto; color: #C46A5C;">Supprimer</button>
+  function renderListQcm(list) {
+    const qcmListEl = document.getElementById('archive-qcm-list')
+    qcmListEl.innerHTML = list.length
+      ? list
+          .map((t) => {
+            const taux = t.score_max > 0 ? Math.round((t.score / t.score_max) * 100) : 0
+            return `
+        <div class="fiche-row">
+          <div class="tab" style="background: ${couleurTab(t.qcm.matieres, null, matiereColorMap)};"></div>
+          <div class="fiche-body">
+            <div class="fiche-top">
+              <span class="fiche-title voice">${escapeHtml(t.qcm.titre)}</span>
+              <span class="type-label">${taux}%</span>
+            </div>
+            <div class="fiche-meta">${escapeHtml((t.qcm.matieres || []).join(', '))} · fait le ${formatDate(t.date_tentative)} · ${t.score}/${t.score_max} (${t.mode})</div>
+            <div class="import-actions" style="margin-top: 10px;">
+              <button class="btn" data-restaurer-qcm="${t.id}" style="width: auto;">Remettre dans les erreurs actives</button>
+              <button class="btn" data-supprimer-qcm="${t.id}" style="width: auto; color: #C46A5C;">Supprimer</button>
+            </div>
           </div>
         </div>
-      </div>
-    `
-        })
-        .join('')
-    : `<p class="empty-note">Aucun QCM archivé pour l'instant.</p>`
+      `
+          })
+          .join('')
+      : `<p class="empty-note">Aucun QCM archivé ne correspond.</p>`
 
-  qcmListEl.querySelectorAll('[data-supprimer-qcm]').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      if (!(await demanderConfirmation('Supprimer définitivement cette entrée archivée ?'))) return
-      try {
-        await deleteTentativeQcm(btn.dataset.supprimerQcm)
-        tentativesQcm = tentativesQcm.filter((t) => t.id !== btn.dataset.supprimerQcm)
-        renderArchive(container)
-      } catch (err) {
-        alert('Erreur : ' + err.message)
-      }
+    qcmListEl.querySelectorAll('[data-supprimer-qcm]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!(await demanderConfirmation('Supprimer définitivement cette entrée archivée ?'))) return
+        try {
+          await deleteTentativeQcm(btn.dataset.supprimerQcm)
+          tentativesQcm = tentativesQcm.filter((t) => t.id !== btn.dataset.supprimerQcm)
+          applyFiltre()
+        } catch (err) {
+          alert('Erreur : ' + err.message)
+        }
+      })
     })
-  })
 
-  qcmListEl.querySelectorAll('[data-restaurer-qcm]').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      try {
-        await marquerTentativeQcmNonRevue(btn.dataset.restaurerQcm)
-        tentativesQcm = tentativesQcm.filter((t) => t.id !== btn.dataset.restaurerQcm)
-        renderArchive(container)
-      } catch (err) {
-        alert('Erreur : ' + err.message)
-      }
+    qcmListEl.querySelectorAll('[data-restaurer-qcm]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          await marquerTentativeQcmNonRevue(btn.dataset.restaurerQcm)
+          tentativesQcm = tentativesQcm.filter((t) => t.id !== btn.dataset.restaurerQcm)
+          applyFiltre()
+        } catch (err) {
+          alert('Erreur : ' + err.message)
+        }
+      })
     })
-  })
+  }
+
+  applyFiltre()
 }

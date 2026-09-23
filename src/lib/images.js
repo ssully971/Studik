@@ -67,6 +67,12 @@ export async function televerserImage(file) {
 
 export async function supprimerImage(url) {
   const nomFichier = url.split('/').pop()
-  const { error } = await supabase.storage.from(BUCKET).remove([nomFichier])
+  const { data, error } = await supabase.storage.from(BUCKET).remove([nomFichier])
   if (error) throw error
+  // Supabase ne renvoie pas toujours une erreur quand la policy RLS du bucket interdit la
+  // suppression : la requête "réussit" silencieusement sans rien supprimer (data vide). Sans
+  // cette vérification explicite, l'image reste orpheline dans le stockage sans qu'on le sache.
+  if (!data || data.length === 0) {
+    throw new Error("Le fichier n'a pas pu être supprimé du stockage (policy RLS manquante pour la suppression sur ce bucket).")
+  }
 }

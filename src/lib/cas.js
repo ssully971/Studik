@@ -9,10 +9,11 @@ export const GABARITS_CAS = {
   structure: { itemsKey: 'elements', resultKey: 'identification', itemsLabel: 'Éléments', resultLabel: 'À identifier' },
 }
 
-export async function getCasAleatoire({ matiere, niveau, tags } = {}) {
+export async function getCasAleatoire({ matiere, cours, niveau, tags } = {}) {
   let query = supabase.from('cas_cliniques').select('*').neq('statut', 'archive')
 
   if (matiere) query = query.eq('matiere', matiere)
+  if (cours) query = query.eq('cours', cours)
   if (niveau) query = query.eq('niveau', niveau)
   if (tags && tags.length > 0) query = query.overlaps('tags', tags)
 

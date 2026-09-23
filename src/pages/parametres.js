@@ -15,7 +15,10 @@ import {
 import { getCheckins, deleteAllCheckins, restaurerCheckins } from '../lib/checkins.js'
 import { getTagsAvecPerimetre, restaurerTags } from '../lib/tags.js'
 import { getTheme, setTheme } from '../lib/theme.js'
+import { getFond, setFond, getFlou, setFlou, getHistoriqueFonds, ajouterAuHistorique, retirerDeLHistorique } from '../lib/fond.js'
+import { televerserImage, supprimerImage } from '../lib/images.js'
 import { synchroniserDonnees } from '../lib/sync.js'
+import { escapeHtml } from '../lib/escape.js'
 
 // Insère les matières parents avant leurs enfants (parent_id référence une autre ligne de la
 // même table) : un ordre quelconque ferait échouer la contrainte de clé étrangère à la restauration.
@@ -80,6 +83,46 @@ export async function renderParametres(container) {
             <button id="theme-dark-btn" class="btn${getTheme() === 'dark' ? ' primary' : ''}" style="width: auto;">Sombre</button>
             <button id="theme-light-btn" class="btn${getTheme() === 'light' ? ' primary' : ''}" style="width: auto;">Clair</button>
           </div>
+        </div>
+
+        <div class="settings-card">
+          <h3 class="voice">Fond d'écran</h3>
+          <p class="settings-desc">Une image personnelle derrière l'interface, floutée pour rester lisible. N'importe quel format convient — elle est automatiquement recadrée pour couvrir l'écran ; une image assez grande et plutôt horizontale rend le mieux.</p>
+          <p class="settings-desc">${getFond() ? 'Un fond personnalisé est actif.' : 'Fond uni par défaut (noir ou blanc selon le thème).'}</p>
+          <div class="import-actions">
+            <label class="btn" style="width: auto; cursor: pointer;">
+              Choisir une image
+              <input type="file" id="fond-input" accept="image/*" style="display: none;" />
+            </label>
+            ${getFond() ? `<button id="fond-reset-btn" class="btn" style="width: auto;">Revenir au fond uni</button>` : ''}
+            ${statusHTML('fond-status')}
+          </div>
+
+          <div style="margin-top: 14px;">
+            <label id="fond-flou-label" style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Niveau de flou (${getFlou()}px)</label>
+            <input type="range" id="fond-flou-input" min="0" max="40" step="2" value="${getFlou()}" style="width: 100%;" />
+          </div>
+
+          ${
+            getHistoriqueFonds().length > 0
+              ? `
+          <div style="margin-top: 16px;">
+            <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 6px;">Fonds déjà mis en ligne — clique pour réutiliser, ✕ pour supprimer définitivement</label>
+            <div class="fond-galerie">
+              ${getHistoriqueFonds()
+                .map(
+                  (f) => `
+                <div class="fond-vignette ${f.url === getFond() ? 'actif' : ''}" style="background-image: url('${escapeHtml(f.url)}');" data-fond-choisir="${escapeHtml(f.url)}">
+                  <button type="button" class="fond-vignette-supprimer" data-fond-supprimer="${escapeHtml(f.url)}" title="Supprimer définitivement">✕</button>
+                </div>
+              `
+                )
+                .join('')}
+            </div>
+          </div>
+          `
+              : ''
+          }
         </div>
 
         <div class="settings-card">
@@ -156,6 +199,67 @@ export async function renderParametres(container) {
   document.getElementById('theme-light-btn').addEventListener('click', () => {
     setTheme('light')
     renderParametres(container)
+  })
+
+  document.getElementById('fond-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setStatus('fond-status', 'Compression et envoi…', '')
+    try {
+      const url = await televerserImage(file)
+      const evincee = ajouterAuHistorique(url)
+      setFond(url)
+      if (evincee) {
+        try {
+          await supprimerImage(evincee)
+        } catch {
+          // silencieux : l'image évincée de l'historique devient juste orpheline dans le stockage
+        }
+      }
+      renderParametres(container)
+    } catch (err) {
+      setStatus('fond-status', 'Erreur : ' + err.message, 'error')
+      e.target.value = ''
+    }
+  })
+
+  const fondResetBtn = document.getElementById('fond-reset-btn')
+  if (fondResetBtn) {
+    fondResetBtn.addEventListener('click', () => {
+      setFond(null)
+      renderParametres(container)
+    })
+  }
+
+  const fondFlouInput = document.getElementById('fond-flou-input')
+  fondFlouInput.addEventListener('input', (e) => {
+    const valeur = parseInt(e.target.value, 10)
+    setFlou(valeur)
+    document.getElementById('fond-flou-label').textContent = `Niveau de flou (${valeur}px)`
+  })
+
+  document.querySelectorAll('[data-fond-choisir]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-fond-supprimer]')) return
+      setFond(el.dataset.fondChoisir)
+      renderParametres(container)
+    })
+  })
+
+  document.querySelectorAll('[data-fond-supprimer]').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const url = btn.dataset.fondSupprimer
+      if (!(await demanderConfirmation('Supprimer définitivement ce fond d’écran du stockage ? Cette action est irréversible.'))) return
+      try {
+        await supprimerImage(url)
+        retirerDeLHistorique(url)
+        if (getFond() === url) setFond(null)
+        renderParametres(container)
+      } catch (err) {
+        setStatus('fond-status', 'Erreur : ' + err.message, 'error')
+      }
+    })
   })
 
   document.getElementById('save-pseudo-btn').addEventListener('click', async () => {

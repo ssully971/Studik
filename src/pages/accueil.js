@@ -46,8 +46,15 @@ function getSalutation() {
   return heure >= 5 && heure < 18 ? 'Bonjour' : 'Bonsoir'
 }
 
-function groupByMatiere(fiches) {
+// Part de TOUTES les matières (racines de l'arbre, filtré par période comme dans
+// #organisation) plutôt que des seules matières qui ont au moins une fiche — sinon le compteur
+// "Matières" de l'accueil ne correspond pas à celui d'Organisation, ce qui donne l'impression
+// (à tort) que les deux pages ne sont pas synchronisées.
+function groupByMatiere(racines, fiches) {
   const groups = {}
+  racines.forEach((r) => {
+    groups[r.nom] = { matiere: r.nom, type: r.type, total: 0, validees: 0 }
+  })
   fiches.forEach((f) => {
     if (!groups[f.matiere]) {
       groups[f.matiere] = { matiere: f.matiere, type: f.type, total: 0, validees: 0 }
@@ -175,7 +182,7 @@ export async function renderAccueil(container) {
       progressionParMatiere[racine.nom] = compterCours(racine, 0)
     })
 
-    const groupsTries = groupByMatiere(fiches).sort(
+    const groupsTries = groupByMatiere(arbre, fiches).sort(
       (a, b) => (ordreParMatiere[a.matiere] ?? 0) - (ordreParMatiere[b.matiere] ?? 0)
     )
     const LIMITE_MATIERES = 6

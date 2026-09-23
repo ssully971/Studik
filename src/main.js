@@ -1,5 +1,6 @@
 import './styles/main.css'
 import { appliquerTheme } from './lib/theme.js'
+import { appliquerFond } from './lib/fond.js'
 import { login, logout, getCurrentUser, onAuthChange } from './lib/auth.js'
 import { getPeriodeActuelle, setPeriodeActuelle, getPeriodesDisponibles } from './lib/periode.js'
 import { getFiches, texteRechercheFiche } from './lib/fiches.js'
@@ -406,6 +407,7 @@ function setupRaccourcisClavier() {
 
 async function init() {
   appliquerTheme()
+  appliquerFond()
   let currentUserId = undefined
 
   function handleUser(user) {

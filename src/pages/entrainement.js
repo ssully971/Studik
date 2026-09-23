@@ -9,6 +9,7 @@ import { escapeHtml } from '../lib/escape.js'
 import { renderCoursAttachPicker } from './cours-attach-picker.js'
 
 let filtreMatiere = ''
+let filtreCoursPratique = ''
 let filtreNiveau = ''
 let filtreTags = []
 let modeActuel = 'pratique'
@@ -78,6 +79,7 @@ async function renderPratique(container, casId) {
   container.innerHTML = `
     <div class="filters" id="entrainement-filters">
       <select id="filtre-matiere" class="periode-select"></select>
+      <select id="filtre-cours-pratique" class="periode-select"></select>
       <select id="filtre-niveau" class="periode-select">
         <option value="">Tous niveaux</option>
         <option value="1">Niveau 1</option>
@@ -109,6 +111,19 @@ async function renderPratique(container, casId) {
     filtreMatiere = e.target.value
   })
 
+  try {
+    const tousLesCours = await getTousLesCoursAplatis()
+    const coursSelect = document.getElementById('filtre-cours-pratique')
+    coursSelect.innerHTML =
+      `<option value="">Tous cours</option>` +
+      tousLesCours.map((c) => `<option value="${escapeHtml(c.nom)}" ${filtreCoursPratique === c.nom ? 'selected' : ''}>${escapeHtml(c.chemin)}</option>`).join('')
+    coursSelect.addEventListener('change', (e) => {
+      filtreCoursPratique = e.target.value
+    })
+  } catch {
+    // silencieux : le filtre cours reste optionnel
+  }
+
   document.getElementById('filtre-niveau').addEventListener('change', (e) => {
     filtreNiveau = e.target.value
   })
@@ -136,6 +151,7 @@ async function renderPratique(container, casId) {
         ? await getCasById(id)
         : await getCasAleatoire({
             matiere: filtreMatiere || undefined,
+            cours: filtreCoursPratique || undefined,
             niveau: filtreNiveau ? parseInt(filtreNiveau, 10) : undefined,
             tags: filtreTags.length ? filtreTags : undefined,
           })

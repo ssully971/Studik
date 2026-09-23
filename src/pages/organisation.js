@@ -66,6 +66,8 @@ function optionsEmplacementsGroupees(emplacements) {
 // vide, ce qui donnait l'impression que "toute la page se rafraîchit".
 let expandedIds = new Set()
 let terme = ''
+let triOrganisation = 'defaut'
+let filtresTypeActifs = new Set(['fiches', 'cas', 'qcm'])
 
 export async function renderOrganisation(container) {
   container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
@@ -243,6 +245,17 @@ export async function renderOrganisation(container) {
       <div id="org-orphelins"></div>
 
       <input type="text" id="org-recherche" class="search-input" placeholder="Rechercher une matière, un cours, une fiche, un cas, un QCM…" />
+
+      <div class="filters" style="margin-bottom: 10px;">
+        <button type="button" class="filter-btn" data-org-filtre-type="fiches">Fiches</button>
+        <button type="button" class="filter-btn" data-org-filtre-type="cas">Cas</button>
+        <button type="button" class="filter-btn" data-org-filtre-type="qcm">QCM</button>
+        <select id="org-tri-select" class="periode-select">
+          <option value="defaut">Ordre personnalisé</option>
+          <option value="alpha-asc">Alphabétique A→Z</option>
+          <option value="alpha-desc">Alphabétique Z→A</option>
+        </select>
+      </div>
 
       <div id="org-tree" class="org-tree"></div>
     </div>
@@ -967,12 +980,16 @@ export async function renderOrganisation(container) {
           await cascaderRenommage(modeCourant.noeud, profondeurCourante, nom)
         }
       } else {
-        const id = slugify(nom)
-        const idsExistants = await getAllMatiereIds()
-        if (idsExistants.includes(id)) {
-          statusEl.textContent = `Un élément avec l'id "${id}" existe déjà.`
-          statusEl.className = 'import-status error'
-          return
+        // Deux sous-matières ou deux cours peuvent parfaitement porter le même nom (dans des
+        // matières différentes, ou même la même) : seul l'id technique doit rester unique, donc
+        // on le désambiguïse automatiquement (-2, -3…) plutôt que de bloquer la création.
+        const base = slugify(nom)
+        const idsExistants = new Set(await getAllMatiereIds())
+        let id = base
+        let suffixe = 2
+        while (idsExistants.has(id)) {
+          id = `${base}-${suffixe}`
+          suffixe++
         }
         const estRacine = modeCourant.type === 'creer-racine'
         const champs = estRacine
@@ -1125,9 +1142,19 @@ export async function renderOrganisation(container) {
     return `<div class="org-content-row">${lien}<button type="button" class="org-action-btn" data-apercu-type="${item._type}" data-apercu-id="${item.id}" title="Aperçu">👁</button><button type="button" class="org-item-assign-btn" data-assigner-type="${item._type}" data-assigner-id="${item.id}" title="Déplacer / attacher ailleurs">⇄</button></div>`
   }
 
+  // Trie appliqué à la fois aux noeuds (matières/sous-matières/cours) et au contenu (fiches/cas/
+  // QCM) : "défaut" laisse l'ordre existant (ordre_affichage / ordre de création) tel quel.
+  function trierParNom(liste, nomDe) {
+    if (triOrganisation === 'defaut') return liste
+    const copie = [...liste].sort((a, b) => nomDe(a).localeCompare(nomDe(b)))
+    if (triOrganisation === 'alpha-desc') copie.reverse()
+    return copie
+  }
+
   function groupeContenu(items, type, titre) {
     if (items.length === 0) return ''
-    const itemsTypes = items.map((i) => ({ ...i, _type: type }))
+    const itemsTries = trierParNom(items, (i) => (type === 'cas' ? i.question : i.titre))
+    const itemsTypes = itemsTries.map((i) => ({ ...i, _type: type }))
     const apercu = itemsTypes.slice(0, LIMITE_APERCU)
     let voirPlus = ''
     if (itemsTypes.length > LIMITE_APERCU) {
@@ -1141,9 +1168,9 @@ export async function renderOrganisation(container) {
 
   function blocContenu(contenu) {
     return `
-      ${groupeContenu(contenu.fiches, 'fiches', 'Fiches')}
-      ${groupeContenu(contenu.cas, 'cas', 'Cas')}
-      ${groupeContenu(contenu.qcm, 'qcm', 'QCM')}
+      ${filtresTypeActifs.has('fiches') ? groupeContenu(contenu.fiches, 'fiches', 'Fiches') : ''}
+      ${filtresTypeActifs.has('cas') ? groupeContenu(contenu.cas, 'cas', 'Cas') : ''}
+      ${filtresTypeActifs.has('qcm') ? groupeContenu(contenu.qcm, 'qcm', 'QCM') : ''}
     `
   }
 
@@ -1218,7 +1245,9 @@ export async function renderOrganisation(container) {
               ? `<div class="org-nonclasse"><span class="org-nonclasse-label">Directement dans « ${escapeHtml(noeud.nom)} » (${totalNonClasse}) — sans cours précis</span>${blocContenu(nonClasse)}</div>`
               : ''
           }
-          ${noeud.enfants.map((e) => rendreNoeud(e, profondeur + 1, racineNom, sousMatierePourEnfants)).join('')}
+          ${trierParNom(noeud.enfants, (e) => e.nom)
+            .map((e) => rendreNoeud(e, profondeur + 1, racineNom, sousMatierePourEnfants))
+            .join('')}
         </div>
       </div>
     `
@@ -1227,7 +1256,7 @@ export async function renderOrganisation(container) {
   function render() {
     popupListes = {}
     popupCompteur = 0
-    const racinesVisibles = terme ? arbre.filter((r) => noeudCorrespond(r, r.nom, null, 0, [])) : arbre
+    const racinesVisibles = trierParNom(terme ? arbre.filter((r) => noeudCorrespond(r, r.nom, null, 0, [])) : arbre, (r) => r.nom)
 
     document.getElementById('org-count').textContent = `${arbre.length} matière${arbre.length !== 1 ? 's' : ''}`
 
@@ -1341,6 +1370,23 @@ export async function renderOrganisation(container) {
   document.getElementById('org-recherche').addEventListener('input', (e) => {
     terme = e.target.value.trim().toLowerCase()
     if (terme) expandedIds = new Set()
+    render()
+  })
+
+  document.querySelectorAll('[data-org-filtre-type]').forEach((btn) => {
+    btn.classList.toggle('active', filtresTypeActifs.has(btn.dataset.orgFiltreType))
+    btn.addEventListener('click', () => {
+      const t = btn.dataset.orgFiltreType
+      if (filtresTypeActifs.has(t)) filtresTypeActifs.delete(t)
+      else filtresTypeActifs.add(t)
+      btn.classList.toggle('active', filtresTypeActifs.has(t))
+      render()
+    })
+  })
+
+  document.getElementById('org-tri-select').value = triOrganisation
+  document.getElementById('org-tri-select').addEventListener('change', (e) => {
+    triOrganisation = e.target.value
     render()
   })
 
