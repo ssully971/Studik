@@ -72,8 +72,18 @@ Chaque nouvelle table doit recevoir un `grant select, insert, update, delete on 
 
 ## Tests
 
-- `npm test` (vitest, mode `run`) — pour l'instant uniquement des fonctions pures, pas de jsdom/DOM : `lib/scoring.js`, `lib/escape.js`, `lib/richtext.js`.
+- `npm test` (vitest, mode `run`) — pour l'instant uniquement des fonctions pures, pas de jsdom/DOM : `lib/scoring.js`, `lib/escape.js`, `lib/richtext.js`, `lib/import-schemas.js`.
 - Échappement HTML : une seule source, `src/lib/escape.js` (`escapeHtml`, échappe `& < > " '`). Ne pas recréer de copie locale — `main.js`, `import.js` et `richtext.js` en avaient chacun une auparavant, désormais tous importent depuis `lib/escape.js`.
+
+## Validation à l'import (`#import`)
+
+- `src/lib/import-schemas.js` (zod) valide la forme de chaque élément collé dans `#import`, après les contrôles existants (id présent, doublons, résolution des ids déjà en base) et avant tout effet de bord (création de tags/matières/sous-matières/cours, insertion) — tout-ou-rien : une seule erreur bloque tout le lot, rien n'est inséré. `zod` est en dépendance de prod mais chargé par `await import(...)` seulement au clic sur "Importer", pour ne pas alourdir le bundle principal (vérifié : chunk séparé `import-schemas-*.js` au build).
+- Un id déjà existant = mise à jour partielle (`upsertPartiel`, non modifié, toujours séquentiel et non atomique) : tous les champs deviennent optionnels mais restent validés s'ils sont présents (`ficheSchema(false)`/`casSchema(false)`/`qcmSchema(false)` vs `(true)` pour un nouvel élément).
+- `contenu_structure` (fiches) et `reponse_attendue` (cas) sont validés selon le type/gabarit — `reponse_attendue` partage sa définition de gabarit (`GABARITS_CAS`) avec `lib/cas.js`, donc jamais de divergence possible avec l'affichage.
+- Écarts trouvés entre les prompts (`src/data/prompts/*.md`) et le code, non tranchés, à trancher par Sullivan :
+  - `prompt-matieres.md` existe mais `#import` n'a **aucune cible "matières"** (seulement fiches/cas/qcm) — ce prompt n'est donc branché sur aucun chemin d'import direct.
+  - `pathologies_associees` n'apparaît que dans `prompt-fiche-clinique.md`, mais `fiche-detail.js` l'affiche pour les 3 types sans distinction — le schéma l'accepte en optionnel pour les 3 types plutôt que de le refuser pour mécanisme/structure.
+  - `q.image` (image d'une question QCM, ajoutée après coup via l'upload dans `#qcm/:id`) n'apparaît dans aucun prompt — accepté en optionnel par le schéma.
 
 ## Build & déploiement
 

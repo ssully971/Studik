@@ -26,12 +26,6 @@ function findDuplicateIds(items) {
   return Array.from(duplicates)
 }
 
-const REQUIRED_FIELDS = {
-  fiches: ['id', 'matiere', 'type', 'titre'],
-  cas: ['id', 'matiere', 'type', 'niveau', 'question'],
-  qcm: ['id', 'titre', 'questions'],
-}
-
 function detecterTypeImport(item) {
   if (!item || typeof item !== 'object') return null
   if (Array.isArray(item.questions)) return 'qcm'
@@ -187,25 +181,23 @@ function renderModeImport(container) {
     const nouveaux = items.filter((i) => !existingSet.has(i.id)).length
     const misesAJour = items.length - nouveaux
 
-    // Un id déjà existant est une mise à jour partielle (upsert) : seuls les champs présents
-    // sont écrasés, donc seuls les NOUVEAUX éléments doivent respecter tous les champs obligatoires.
-    const requiredFields = REQUIRED_FIELDS[target]
-    const incompleteIndex = items.findIndex(
-      (item) => !existingSet.has(item.id) && requiredFields.some((f) => item[f] === undefined || item[f] === null || item[f] === '')
-    )
-    if (incompleteIndex !== -1) {
-      resultEl.innerHTML = `<p class="import-status error">Élément n°${incompleteIndex + 1} incomplet — champs obligatoires pour un nouvel élément : ${requiredFields.join(', ')}.</p>`
+    // Validation de forme (zod, chargé dynamiquement pour ne pas alourdir le bundle principal) :
+    // remplace les anciens contrôles maison sur les champs obligatoires et sur "questions" non
+    // vide, qui ne vérifiaient que la présence des champs, pas leur forme (enums, tableaux
+    // d'objets, contenu_structure/reponse_attendue selon le type). Tout-ou-rien : si un seul
+    // élément échoue, rien n'est inséré, avant tout effet de bord (tags, matières, cours créés).
+    const { validerImport } = await import('../lib/import-schemas.js')
+    const erreursValidation = validerImport(target, items, existingSet)
+    if (erreursValidation.length > 0) {
+      const MAX_ERREURS_AFFICHEES = 10
+      const affichees = erreursValidation.slice(0, MAX_ERREURS_AFFICHEES)
+      const reste = erreursValidation.length - affichees.length
+      resultEl.innerHTML = `
+        <p class="import-status error">${erreursValidation.length} erreur${erreursValidation.length !== 1 ? 's' : ''} de validation — rien n'a été importé :</p>
+        <ul class="detail-list">${affichees.map((e) => `<li>${escapeHtml(e)}</li>`).join('')}</ul>
+        ${reste > 0 ? `<p class="import-status error">… et ${reste} autre${reste !== 1 ? 's' : ''}.</p>` : ''}
+      `
       return
-    }
-
-    if (target === 'qcm') {
-      const sansQuestions = items.findIndex(
-        (q) => !existingSet.has(q.id) && (!Array.isArray(q.questions) || q.questions.length === 0)
-      )
-      if (sansQuestions !== -1) {
-        resultEl.innerHTML = `<p class="import-status error">QCM n°${sansQuestions + 1} : le tableau "questions" doit contenir au moins une question.</p>`
-        return
-      }
     }
 
     const avertissements = []
