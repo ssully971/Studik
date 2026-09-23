@@ -47,6 +47,16 @@ export async function insertFiches(fichesArray) {
   return upsertPartiel('fiches', fichesArray)
 }
 
+// Résout des ids vers {id, titre} en un seul aller-retour — pour afficher des liens vers des
+// fiches liées (ex. résumé de fin de QCM) sans un getFicheById par id. Les ids introuvables
+// (fiche supprimée depuis) sont simplement absents du résultat, pas signalés en erreur.
+export async function getFichesByIds(ids) {
+  if (!ids || ids.length === 0) return []
+  const { data, error } = await supabase.from('fiches').select('id, titre').in('id', ids)
+  if (error) throw error
+  return data
+}
+
 export async function updateNotesPerso(id, notesPerso) {
   const { error } = await supabase.from('fiches').update({ notes_perso: notesPerso }).eq('id', id)
   if (error) throw error

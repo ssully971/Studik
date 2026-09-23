@@ -1,5 +1,7 @@
 import { getQcmById, enregistrerTentativeQcm, scoreQuestion, scoreQcm } from '../lib/qcm.js'
 import { getProgressionByQcmId, sauvegarderProgression, supprimerProgression } from '../lib/qcm-progression.js'
+import { getFichesByIds } from '../lib/fiches.js'
+import { definirScopeRetry } from './qcm-retry-session.js'
 import { escapeHtml } from '../lib/escape.js'
 
 let timerInterval = null
@@ -324,6 +326,7 @@ async function terminerQcm(container, qcm, mode, state) {
   const { score, scoreMax } = scoreQcm(qcm.questions, state.reponses)
   const dureeUtilisee = mode === 'concours' ? qcm.duree_minutes * 60 - Math.max(0, Math.round((state.dateFinPrevue - Date.now()) / 1000)) : null
 
+  let tentativeEnregistree = false
   try {
     await enregistrerTentativeQcm({
       qcmId: qcm.id,
@@ -333,6 +336,7 @@ async function terminerQcm(container, qcm, mode, state) {
       reponses: state.reponses,
       dureeUtiliseeSecondes: dureeUtilisee,
     })
+    tentativeEnregistree = true
   } catch (err) {
     console.error('Erreur enregistrement tentative QCM', err)
   }
@@ -341,6 +345,18 @@ async function terminerQcm(container, qcm, mode, state) {
     await supprimerProgression(qcm.id)
   } catch (err) {
     console.error('Erreur suppression progression QCM', err)
+  }
+
+  const scoresParQuestion = qcm.questions.map((q, i) => scoreQuestion(q.items, state.reponses[i]))
+  const questionsRateesCount = scoresParQuestion.filter((pts) => pts < 1).length
+
+  let fichesLiees = []
+  if (qcm.fiches_liees && qcm.fiches_liees.length > 0) {
+    try {
+      fichesLiees = await getFichesByIds(qcm.fiches_liees)
+    } catch {
+      fichesLiees = []
+    }
   }
 
   container.innerHTML = `
@@ -357,6 +373,28 @@ async function terminerQcm(container, qcm, mode, state) {
         </div>
       </div>
 
+      ${
+        questionsRateesCount > 0 && tentativeEnregistree
+          ? `
+        <div class="cas-card" style="margin-bottom: 20px;">
+          <p class="cas-situation">${questionsRateesCount} question${questionsRateesCount !== 1 ? 's' : ''} à revoir.</p>
+          <button id="refaire-erreurs-btn" class="btn primary" style="width: auto;">Refaire mes erreurs</button>
+        </div>
+      `
+          : ''
+      }
+
+      ${
+        fichesLiees.length > 0
+          ? `
+        <div class="cas-card" style="margin-bottom: 20px;">
+          <p class="cas-situation">Fiches liées à ce QCM :</p>
+          <div class="tags">${fichesLiees.map((f) => `<a href="#fiche/${encodeURIComponent(f.id)}" class="tag">${escapeHtml(f.titre)}</a>`).join('')}</div>
+        </div>
+      `
+          : ''
+      }
+
       <div id="correction-detail"></div>
 
       <div class="import-actions" style="margin-top: 20px;">
@@ -366,11 +404,19 @@ async function terminerQcm(container, qcm, mode, state) {
     </div>
   `
 
+  const refaireErreursBtn = document.getElementById('refaire-erreurs-btn')
+  if (refaireErreursBtn) {
+    refaireErreursBtn.addEventListener('click', () => {
+      definirScopeRetry({ criteres: { qcmId: qcm.id }, label: qcm.titre })
+      window.location.hash = '#qcm-retry-session'
+    })
+  }
+
   const detailEl = document.getElementById('correction-detail')
   detailEl.innerHTML = qcm.questions
     .map((q, i) => {
       const reponsesQuestion = state.reponses[i]
-      const pts = scoreQuestion(q.items, reponsesQuestion)
+      const pts = scoresParQuestion[i]
       return `
       <div class="detail-section">
         <h3 class="voice">Question ${i + 1} — ${pts} pt${pts !== 1 ? 's' : ''}</h3>

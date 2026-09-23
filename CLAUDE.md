@@ -61,6 +61,7 @@ Chaque nouvelle table doit recevoir un `grant select, insert, update, delete on 
 - Les liens entre fiches (`pre_requis`/`consequences`) et vers des fiches (`fiches_liees` sur cas/QCM) sortent **toujours vides** des prompts d'import — Sullivan les ajoute lui-même ensuite via l'interface (recherche live sur la page détail d'une fiche).
 - Sur `#fiche/:id`, layout en 2 colonnes sur desktop (≥860px) avec une sidebar à onglets (Liens/Notes perso/Gestion), empilé en une colonne sur mobile.
 - Les 3 gabarits de correction pour l'entraînement (clinique: signes/pathologies, mécanisme: evenements/consequences, structure: elements/identification) sont définis dans `GABARITS` en haut de `entrainement.js` et repris dans `carnet-erreurs.js`.
+- Le résumé de fin de QCM (`terminerQcm` dans `qcm-jouer.js`) propose "Refaire mes erreurs" (visible seulement si au moins une question a un score < 1 ET que l'enregistrement de la tentative a réussi) via `definirScopeRetry({criteres:{qcmId}}, ...)` + `#qcm-retry-session` — même mécanisme que les boutons de retry de `carnet-erreurs.js`, à garder cohérent si l'un des deux change. Il affiche aussi les fiches liées (`qcm.fiches_liees`) si non vide, via `getFichesByIds` (lib/fiches.js, résout un tableau d'ids en `{id, titre}` en un seul aller-retour, ids introuvables silencieusement absents).
 
 ## Pièges déjà rencontrés (à ne pas refaire)
 
