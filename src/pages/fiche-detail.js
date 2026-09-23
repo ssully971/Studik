@@ -233,6 +233,20 @@ export async function renderFicheDetail(container, id) {
           </div>
         </div>
       </div>
+
+      <div class="signalement-erreur" style="margin-top: 24px; text-align: center;">
+        <button id="signaler-erreur-toggle" class="btn" style="width: auto; color: var(--text-faint); font-size: 12px; margin: 0 auto;">
+          ${fiche.a_corriger ? 'Signalement enregistré — modifier' : 'Signaler une erreur'}
+        </button>
+        <div id="signalement-panel" class="hidden" style="margin-top: 10px; text-align: left; max-width: 480px; margin-left: auto; margin-right: auto;">
+          <textarea id="note-correction-input" class="notes-textarea" placeholder="Note optionnelle : quel est le problème ?" style="min-height: 60px;">${escapeHtml(fiche.note_correction || '')}</textarea>
+          <div class="import-actions" style="margin-top: 8px;">
+            <button id="enregistrer-signalement-btn" class="btn primary" style="width: auto;">Enregistrer le signalement</button>
+            <button id="copier-signalement-btn" class="btn ${fiche.a_corriger ? '' : 'hidden'}" style="width: auto;">Copier pour Claude</button>
+            <span id="signalement-status" class="import-status"></span>
+          </div>
+        </div>
+      </div>
     </div>
   `
 
@@ -482,6 +496,56 @@ export async function renderFicheDetail(container, id) {
   }
 
   renderCoursAttachPicker(document.getElementById('cours-attach-picker'), { type: 'fiche', id: fiche.id })
+
+  // --- Signalement "à corriger" --- n'affecte pas le statut (une fiche peut être a_revoir ET
+  // à corriger en même temps) : colonnes a_corriger/note_correction dédiées.
+  const signalerToggle = document.getElementById('signaler-erreur-toggle')
+  const signalementPanel = document.getElementById('signalement-panel')
+  const copierSignalementBtn = document.getElementById('copier-signalement-btn')
+  const signalementStatus = document.getElementById('signalement-status')
+
+  signalerToggle.addEventListener('click', () => {
+    signalementPanel.classList.toggle('hidden')
+  })
+
+  document.getElementById('enregistrer-signalement-btn').addEventListener('click', async () => {
+    const note = document.getElementById('note-correction-input').value.trim()
+    signalementStatus.textContent = ''
+    try {
+      await updateFiche(fiche.id, { a_corriger: true, note_correction: note || null })
+      fiche.a_corriger = true
+      fiche.note_correction = note
+      signalementStatus.textContent = 'Signalement enregistré.'
+      signalementStatus.className = 'import-status success'
+      copierSignalementBtn.classList.remove('hidden')
+      signalerToggle.textContent = 'Signalement enregistré — modifier'
+    } catch (err) {
+      signalementStatus.textContent = 'Erreur : ' + err.message
+      signalementStatus.className = 'import-status error'
+    }
+  })
+
+  copierSignalementBtn.addEventListener('click', async () => {
+    const note = document.getElementById('note-correction-input').value.trim()
+    const texte = note ? `[Studik] fiche ${fiche.id} — ${fiche.titre} — ${note}` : `[Studik] fiche ${fiche.id} — ${fiche.titre}`
+    try {
+      await navigator.clipboard.writeText(texte)
+      signalementStatus.textContent = 'Copié !'
+      signalementStatus.className = 'import-status success'
+    } catch {
+      // Repli : sélectionne le texte dans un champ temporaire pour que Sullivan puisse le
+      // copier lui-même (Ctrl/Cmd+C) si l'API Clipboard est indisponible ou refusée.
+      const temp = document.createElement('textarea')
+      temp.value = texte
+      temp.style.position = 'fixed'
+      temp.style.left = '-9999px'
+      document.body.appendChild(temp)
+      temp.focus()
+      temp.select()
+      signalementStatus.textContent = 'Copie automatique indisponible — texte sélectionné, copie-le avec Ctrl/Cmd+C.'
+      signalementStatus.className = 'import-status'
+    }
+  })
 
   document.getElementById('archiver-btn').addEventListener('click', async () => {
     if (!(await demanderConfirmation(`Archiver la fiche "${fiche.titre}" ?`))) return

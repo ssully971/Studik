@@ -29,6 +29,10 @@ export async function renderReferentiel(container) {
         <button class="filter-btn" data-type="structure">Structure</button>
       </div>
 
+      <div class="filters" id="corriger-filter">
+        <button class="filter-btn" id="filtre-a-corriger-btn">À corriger</button>
+      </div>
+
       <div class="filters" id="tri-filters">
         <select id="matiere-filter" class="periode-select"></select>
         <select id="sous-matiere-filter" class="periode-select"></select>
@@ -64,6 +68,7 @@ export async function renderReferentiel(container) {
   let activeCours = ''
   let activeTags = []
   let activeTri = 'recent'
+  let activeACorrigerSeulement = false
   let inclureArchivees = false
   let matiereColorMap = {}
   let matieresTop = []
@@ -87,7 +92,8 @@ export async function renderReferentiel(container) {
       const matchesCours = !activeCours || f.cours === activeCours
       const matchesSearch = !searchTerm || texteRechercheFiche(f).includes(searchTerm)
       const matchesTags = activeTags.length === 0 || activeTags.some((t) => (f.tags || []).includes(t))
-      return matchesType && matchesMatiere && matchesSousMatiere && matchesCours && matchesSearch && matchesTags
+      const matchesACorrger = !activeACorrigerSeulement || f.a_corriger
+      return matchesType && matchesMatiere && matchesSousMatiere && matchesCours && matchesSearch && matchesTags && matchesACorrger
     })
     currentFiltered = filtered
     document.getElementById('fiche-count').textContent = `${filtered.length} fiche${filtered.length !== 1 ? 's' : ''}`
@@ -202,6 +208,12 @@ export async function renderReferentiel(container) {
     document.querySelectorAll('#type-filters .filter-btn').forEach((b) => b.classList.remove('active'))
     btn.classList.add('active')
     activeType = btn.dataset.type
+    applyFilters()
+  })
+
+  document.getElementById('filtre-a-corriger-btn').addEventListener('click', (e) => {
+    activeACorrigerSeulement = !activeACorrigerSeulement
+    e.target.classList.toggle('active', activeACorrigerSeulement)
     applyFilters()
   })
 

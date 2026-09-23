@@ -1842,6 +1842,11 @@ a.tag:hover,
   display: none;
 }
 
+#signalement-panel.hidden,
+#copier-signalement-btn.hidden {
+  display: none;
+}
+
 @media (min-width: 860px) {
   .fiche-layout {
     display: grid;
