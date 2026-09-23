@@ -1819,23 +1819,26 @@ a.tag:hover,
   display: none;
 }
 
-.img-toggle-content img {
-  max-width: 100%;
-  border-radius: 6px;
-  border: 1px solid var(--hairline);
-}
-
 .qcm-question-image {
   margin: 10px 0;
   position: relative;
-  display: inline-block;
+  display: block;
 }
 
+/* Système d'affichage unique pour toute image pédagogique intégrée au contenu (image de
+   question QCM et image de fiche via [[img:...]]) : "la plus grande taille raisonnable possible
+   dans l'espace disponible", jamais agrandie au-delà de sa taille naturelle, jamais déformée
+   (le ratio suit toujours width, height:auto le calcule), jamais recadrée (aucun object-fit,
+   aucune hauteur de conteneur imposée). Le même bloc de règles s'applique aux deux classes plutôt
+   que deux jeux de règles proches mais distincts qui pourraient diverger avec le temps. */
+.img-toggle-content img,
 .qcm-question-image img {
+  display: block;
   max-width: 100%;
+  width: auto;
+  height: auto;
   border-radius: 6px;
   border: 1px solid var(--hairline);
-  display: block;
 }
 
 .sidebar-panel.hidden {

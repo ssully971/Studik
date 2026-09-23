@@ -1,64 +1,88 @@
 import { supabase } from './supabase.js'
 
 const BUCKET = 'studik-images'
-const TAILLE_MAX_OCTETS = 500 * 1024
 
-function compresserImage(file) {
+// Plus grand côté (largeur OU hauteur, selon l'orientation) au-delà duquel l'image est
+// redimensionnée — une seule fois, jamais itérativement. En-dessous, la résolution d'origine
+// est conservée intégralement. Choisi généreux (la plupart des captures d'écran iPhone/iPad/
+// moniteur externe ne sont pas concernées) car la qualité prime sur la taille de fichier pour
+// une application de travail médical : un texte de capture doit rester lisible.
+const PLUS_GRAND_COTE_MAX = 3000
+
+// PNG/GIF source = très probablement une capture d'écran, un tableau ou un schéma (aplats de
+// couleur, texte fin) : ré-encoder en JPEG y créerait des artefacts de bloc autour des contours
+// nets, illisibles sur du petit texte. On reste dans un format SANS PERTE (PNG) pour ce cas.
+function estProbablementGraphique(file) {
+  return file.type === 'image/png' || file.type === 'image/gif'
+}
+
+function chargerImage(file) {
   return new Promise((resolve, reject) => {
-    const img = new Image()
     const url = URL.createObjectURL(file)
-
+    const img = new Image()
     img.onload = () => {
       URL.revokeObjectURL(url)
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-
-      function essayer(largeur, qualite, tentative) {
-        const hauteur = Math.round((img.height * largeur) / img.width)
-        canvas.width = largeur
-        canvas.height = hauteur
-        ctx.clearRect(0, 0, largeur, hauteur)
-        ctx.drawImage(img, 0, 0, largeur, hauteur)
-
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error("Impossible de traiter l'image."))
-              return
-            }
-            if (blob.size <= TAILLE_MAX_OCTETS || tentative >= 8) {
-              resolve(blob)
-            } else if (tentative % 2 === 0) {
-              essayer(largeur, qualite * 0.7, tentative + 1)
-            } else {
-              essayer(Math.round(largeur * 0.8), qualite, tentative + 1)
-            }
-          },
-          'image/jpeg',
-          qualite
-        )
-      }
-
-      essayer(Math.min(img.width, 1600), 0.82, 0)
+      resolve(img)
     }
-
     img.onerror = () => {
       URL.revokeObjectURL(url)
       reject(new Error("Impossible de charger l'image."))
     }
-
     img.src = url
   })
 }
 
-export async function televerserImage(file) {
-  const blob = await compresserImage(file)
-  if (blob.size > TAILLE_MAX_OCTETS) {
-    throw new Error(`Image trop lourde même après compression (${Math.round(blob.size / 1024)} Ko, limite 500 Ko).`)
+function canvasVersBlob(canvas, type, qualite) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) reject(new Error("Impossible de traiter l'image."))
+      else resolve(blob)
+    }, type, qualite)
+  })
+}
+
+// Un seul passage : redimensionne au plus une fois (jamais de boucle "si toujours trop lourd,
+// réessaie en pire qualité"), garde le ratio d'origine exact, choisit un format adapté au
+// contenu plutôt que d'imposer JPEG à tout. Ne jamais recadrer : drawImage couvre toujours la
+// totalité de l'image source dans un canvas aux mêmes proportions.
+async function compresserImage(file) {
+  const img = await chargerImage(file)
+
+  const plusGrandCote = Math.max(img.width, img.height)
+  const echelle = plusGrandCote > PLUS_GRAND_COTE_MAX ? PLUS_GRAND_COTE_MAX / plusGrandCote : 1
+  const largeur = Math.max(1, Math.round(img.width * echelle))
+  const hauteur = Math.max(1, Math.round(img.height * echelle))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = largeur
+  canvas.height = hauteur
+  canvas.getContext('2d').drawImage(img, 0, 0, largeur, hauteur)
+
+  if (estProbablementGraphique(file)) {
+    return canvasVersBlob(canvas, 'image/png')
   }
 
-  const nomFichier = `${crypto.randomUUID()}.jpg`
-  const { error } = await supabase.storage.from(BUCKET).upload(nomFichier, blob, { contentType: 'image/jpeg' })
+  // Photo : WebP à qualité élevée si le navigateur sait vraiment l'encoder — vérifié sur le
+  // type MIME réel du blob renvoyé plutôt que supposé, certaines versions de Safari acceptent
+  // l'appel sans erreur mais retombent silencieusement sur un autre format. Sinon JPEG qualité
+  // 0.92 (contre 0.82 avant), sans jamais redescendre plus bas.
+  const blobWebp = await canvasVersBlob(canvas, 'image/webp', 0.92)
+  if (blobWebp.type === 'image/webp') return blobWebp
+  return canvasVersBlob(canvas, 'image/jpeg', 0.92)
+}
+
+const EXTENSION_PAR_TYPE = {
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/jpeg': 'jpg',
+}
+
+export async function televerserImage(file) {
+  const blob = await compresserImage(file)
+  const extension = EXTENSION_PAR_TYPE[blob.type] || 'jpg'
+  const nomFichier = `${crypto.randomUUID()}.${extension}`
+
+  const { error } = await supabase.storage.from(BUCKET).upload(nomFichier, blob, { contentType: blob.type })
   if (error) throw error
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(nomFichier)

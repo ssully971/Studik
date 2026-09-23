@@ -100,6 +100,14 @@ Chaque nouvelle table doit recevoir un `grant select, insert, update, delete on 
   - `pathologies_associees` n'apparaît que dans `prompt-fiche-clinique.md`, mais `fiche-detail.js` l'affiche pour les 3 types sans distinction — le schéma l'accepte en optionnel pour les 3 types plutôt que de le refuser pour mécanisme/structure.
   - `q.image` (image d'une question QCM, ajoutée après coup via l'upload dans `#qcm/:id`) n'apparaît dans aucun prompt — accepté en optionnel par le schéma.
 
+## Images (upload, stockage, affichage)
+
+- `src/lib/images.js` est le SEUL point d'upload (`televerserImage`), utilisé par le fond d'écran (`parametres.js`), les images de fiche (`[[img:...]]`, `fiche-detail.js`) et les images de question QCM (`qcm-detail.js`) — toute évolution du pipeline de compression s'applique aux trois d'un coup.
+- Compression en **un seul passage, jamais itératif** : redimensionnement au plus une fois si le plus grand côté dépasse `PLUS_GRAND_COTE_MAX` (3000px — la plupart des captures d'écran réelles ne sont pas concernées), aucune deuxième passe si le résultat est "encore trop lourd". La qualité prime sur la taille de fichier (pas de plafond en octets) : une capture de cours/QCM doit rester lisible.
+- Format choisi selon le type source, jamais JPEG systématique : PNG (source PNG/GIF — quasi tous les screenshots/tableaux/schémas) reste **sans perte**, pour ne jamais flouter du texte fin. JPEG/HEIC (photos) passent en WebP qualité 0.92 si le navigateur l'encode réellement (vérifié sur `blob.type`, jamais supposé — certaines versions de Safari acceptent l'appel sans erreur mais retombent sur un autre format), sinon JPEG 0.92.
+- Affichage : une seule feuille de règles CSS partagée entre `.qcm-question-image img` (QCM) et `.img-toggle-content img` (fiches) — `display:block; max-width:100%; width:auto; height:auto`, jamais de `object-fit`/`max-height`/recadrage. Une image plus petite que son conteneur n'est jamais agrandie ; une image plus grande est limitée à la largeur disponible, la hauteur suit le ratio.
+- Pas de transformation d'image côté Supabase (fonctionnalité payante, disponibilité non confirmée sur ce projet) : un seul fichier stocké par image, pas de variante "originale" séparée d'une variante "affichage".
+
 ## Build & déploiement
 
 - `npm run dev` en local, `npm test` puis `npm run build` pour vérifier avant de pousser.
