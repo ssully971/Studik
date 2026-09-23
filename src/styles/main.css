@@ -101,11 +101,16 @@ body {
 /* Fond d'écran personnalisé optionnel (#parametres, voir lib/fond.js) : couche dédiée, enfant
    direct de <body> (créée par lib/fond.js, jamais détruite par un render*() qui ne touche que
    #app/#content), dimensionnée UNIQUEMENT sur le viewport — jamais sur le document. `inset: 0`
-   fixe les 4 côtés au viewport (recalculé nativement par le navigateur au resize/rotation, pas
-   besoin de JS) ; la hauteur en dvh (repli vh pour les navigateurs qui ne la supportent pas)
-   double cette contrainte pour rester robuste même là où `inset` seul serait mal supporté. Un
-   calque séparé avait déjà été essayé avant (voir historique) et rendait invisible le texte sans
-   carte opaque derrière lui, faute de z-index explicite — ambiguïté de pile de superposition
+   fixe les 4 côtés au viewport, recalculé nativement par le navigateur au resize/rotation (pas
+   besoin de JS), et sert aussi à faire déborder la couche au-delà du viewport quand du flou est
+   appliqué (JS met alors `inset` en négatif — voir calculerStyleFond dans lib/fond.js) : PAS de
+   `height: 100dvh` séparée en plus — testé, une hauteur explicite gagne sur la hauteur induite
+   par `top`/`bottom` à 0, donc annule silencieusement le débord vertical (le débord horizontal
+   fonctionnait, pas le vertical) alors que `inset` seul seul donne un débord symétrique sur les
+   4 côtés. `position: fixed` avec `inset` est déjà positionné par rapport au viewport visuel réel
+   (jamais le problème historique propre à l'unité `vh`, pas un souci de positionnement fixe).
+   Un calque séparé avait déjà été essayé avant (voir historique) et rendait invisible le texte
+   sans carte opaque derrière lui, faute de z-index explicite — ambiguïté de pile de superposition
    résolue ici par `z-index: -1` explicite, qui place la couche sous TOUT le contenu normal.
    `pointer-events: none` : ne doit jamais intercepter un clic/tap destiné au contenu au-dessus.
    Le flou (`filter`) et l'assombrissement (dégradé dans `background-image`) sont appliqués en
@@ -113,8 +118,6 @@ body {
 #wallpaper-layer {
   position: fixed;
   inset: 0;
-  height: 100vh;
-  height: 100dvh;
   z-index: -1;
   pointer-events: none;
   background-repeat: no-repeat, no-repeat;

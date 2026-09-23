@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/src/styles/main.css" />
+<style>
+  .texte-sans-carte { padding: 24px; }
+  .texte-sans-carte h1 { font-size: 28px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+  <main class="app-shell">
+    <div class="texte-sans-carte">
+      <p class="kicker" id="texte-nu">Texte SANS carte opaque derrière — doit rester lisible</p>
+      <h1 class="voice">Titre bien visible</h1>
+    </div>
+    <div class="settings-card" style="margin: 24px;">
+      <h3 class="voice">Carte opaque</h3>
+      <p class="settings-desc">Texte dans une carte — était déjà visible avant, doit le rester.</p>
+    </div>
+  </main>
+  <script type="module">
+    // Reproduit exactement la formule de src/lib/fond.js#calculerStyleFond (déjà testée par
+    // 15 tests vitest indépendants sur la fonction réelle) SANS importer le module complet, pour
+    // éviter la chaîne d'imports fond.js -> preferences.js -> supabase.js (@supabase/supabase-js,
+    // un identifiant nu que seul un bundler sait résoudre — inutile ici, et Vite est trop lourd
+    // en mémoire pour tourner en même temps que Playwright dans cet environnement contraint).
+    // Sert uniquement à vérifier le MÉCANISME CSS (position: fixed + z-index négatif + filter:
+    // blur() + inset négatif) sur un vrai moteur de rendu, notamment WebKit.
+    const params = new URLSearchParams(window.location.search)
+    const mode = params.get('mode') || 'cover'
+    const flou = Math.max(0, Math.min(40, parseInt(params.get('flou') || '8', 10)))
+    const focalX = parseInt(params.get('focalX') || '50', 10)
+    const focalY = parseInt(params.get('focalY') || '50', 10)
+    const img = params.get('img') || '/scripts/fixtures/img-paysage.png'
+    const assombrissement = parseInt(params.get('assombrissement') || '55', 10)
+    const theme = params.get('theme') || 'dark'
+    document.documentElement.setAttribute('data-theme', theme)
+
+    const TAILLE_PAR_MODE = { cover: 'cover', contain: 'contain', centre: 'auto' }
+    const taille = TAILLE_PAR_MODE[mode] || 'cover'
+    const inkHex = theme === 'light' ? '#FBFAF7' : '#000000'
+    const n = parseInt(inkHex.replace('#', ''), 16)
+    const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+    const opacite = Math.min(1, Math.max(0, assombrissement / 100))
+    const voile = `rgba(${r}, ${g}, ${b}, ${opacite})`
+    const debord = flou > 0 ? Math.round(flou * 2) : 0
+
+    const el = document.createElement('div')
+    el.id = 'wallpaper-layer'
+    document.body.prepend(el)
+    el.style.backgroundImage = `linear-gradient(${voile}, ${voile}), url("${img}")`
+    el.style.backgroundSize = `${taille}, ${taille}`
+    el.style.backgroundPosition = `${focalX}% ${focalY}%, ${focalX}% ${focalY}%`
+    el.style.backgroundRepeat = 'no-repeat, no-repeat'
+    el.style.backgroundColor = mode === 'contain' ? '#000000' : 'transparent'
+    el.style.filter = flou > 0 ? `blur(${flou}px)` : 'none'
+    el.style.inset = `${-debord}px`
+
+    window.__pretACapturer = true
+  </script>
+</body>
+</html>

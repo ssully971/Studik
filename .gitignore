@@ -141,3 +141,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Images de test générées par scripts/verifier-fond-ecran.mjs (Playwright) et ses captures
+scripts/fixtures/*.png
+scripts/fixtures/captures/
