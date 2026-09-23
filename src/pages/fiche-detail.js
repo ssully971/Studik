@@ -53,8 +53,8 @@ function renderLienSection(champ, titreSection, liste, titresParId) {
     .map(
       (id) => `
       <div class="lien-item">
-        <span>${titresParId[id] || id}</span>
-        <button class="lien-remove" data-remove="${champ}" data-id="${id}">×</button>
+        <span>${escapeHtml(titresParId[id] || id)}</span>
+        <button class="lien-remove" data-remove="${champ}" data-id="${escapeHtml(id)}">×</button>
       </div>
     `
     )
@@ -62,7 +62,7 @@ function renderLienSection(champ, titreSection, liste, titresParId) {
 
   return `
     <div style="margin-bottom: 18px;">
-      <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 6px;">${titreSection}</label>
+      <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 6px;">${escapeHtml(titreSection)}</label>
       <div class="liens-list" id="liens-${champ}">${items || '<p class="empty-note" style="padding: 4px 0;">Aucun</p>'}</div>
       <input type="text" class="search-input" id="recherche-${champ}" placeholder="Chercher une fiche à ajouter…" style="margin-top: 8px; margin-bottom: 0;" />
       <div class="search-results-inline hidden" id="resultats-${champ}"></div>
@@ -96,12 +96,12 @@ export async function renderFicheDetail(container, id) {
     <div class="wrap">
       <a href="#referentiel" class="breadcrumb">← Référentiel</a>
 
-      <div class="detail-header type-${fiche.type}">
+      <div class="detail-header type-${escapeHtml(fiche.type)}">
         <h1 class="voice">${escapeHtml(fiche.titre)}</h1>
         <div class="fiche-meta">
-          ${fiche.matiere}${fiche.sous_matiere ? ' · ' + fiche.sous_matiere : ''} · <span class="type-label">${fiche.type}</span>
+          ${escapeHtml(fiche.matiere)}${fiche.sous_matiere ? ' · ' + escapeHtml(fiche.sous_matiere) : ''} · <span class="type-label">${escapeHtml(fiche.type)}</span>
         </div>
-        ${fiche.tags.length ? `<div class="tags">${fiche.tags.map((t) => `<a href="#tag/${encodeURIComponent(t)}" class="tag">${t}</a>`).join('')}</div>` : ''}
+        ${fiche.tags.length ? `<div class="tags">${fiche.tags.map((t) => `<a href="#tag/${encodeURIComponent(t)}" class="tag">${escapeHtml(t)}</a>`).join('')}</div>` : ''}
       </div>
 
       <div class="fiche-layout">
@@ -276,8 +276,8 @@ export async function renderFicheDetail(container, id) {
           .map(
             (id) => `
         <div class="lien-item">
-          <span>${titresParId[id] || id}</span>
-          <button class="lien-remove" data-remove="${champ}" data-id="${id}">×</button>
+          <span>${escapeHtml(titresParId[id] || id)}</span>
+          <button class="lien-remove" data-remove="${champ}" data-id="${escapeHtml(id)}">×</button>
         </div>
       `
           )
