@@ -119,20 +119,26 @@ export async function calculerLuminance(url) {
 // "Cuit" le flou dans l'image (canvas 2D, filtre blur natif) plutôt que de compter sur un
 // filtre CSS en direct sur un calque séparé — voir la note en tête de fichier. Réduit d'abord
 // l'image pour rester rapide : un fond flouté n'a de toute façon pas besoin de pleine résolution.
+//
+// Le canvas exporté garde TOUJOURS la même taille (largeur × hauteur), quel que soit le niveau
+// de flou : le débord servant à éviter un liseré transparent sur les bords (le flou "mange" du
+// transparent au-delà du cadre dessiné) est une marge fixe dessinée hors-cadre, jamais ajoutée
+// à la taille du canvas lui-même. Un bug précédent faisait grandir le canvas avec le niveau de
+// flou, ce que `background-size: cover` traduisait en zoom progressif de l'image affichée.
 async function genererImageFloutee(url, flouPx) {
   const img = await chargerImage(url)
   const largeurMax = 900
   const echelle = Math.min(1, largeurMax / img.width)
   const largeur = Math.max(1, Math.round(img.width * echelle))
   const hauteur = Math.max(1, Math.round(img.height * echelle))
-  const marge = Math.ceil(flouPx * 1.5)
+  const debord = 60 // couvre le niveau de flou maximum du curseur (40px)
 
   const canvas = document.createElement('canvas')
-  canvas.width = largeur + marge * 2
-  canvas.height = hauteur + marge * 2
+  canvas.width = largeur
+  canvas.height = hauteur
   const ctx = canvas.getContext('2d')
   ctx.filter = flouPx > 0 ? `blur(${flouPx}px)` : 'none'
-  ctx.drawImage(img, marge, marge, largeur, hauteur)
+  ctx.drawImage(img, -debord, -debord, largeur + debord * 2, hauteur + debord * 2)
   return canvas.toDataURL('image/jpeg', 0.85)
 }
 

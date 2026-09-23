@@ -16,6 +16,7 @@ import { getCheckins, deleteAllCheckins, restaurerCheckins } from '../lib/checki
 import { getTagsAvecPerimetre, restaurerTags } from '../lib/tags.js'
 import { getTheme, setTheme } from '../lib/theme.js'
 import { getFond, setFond, getFlou, setFlou, getHistoriqueFonds, ajouterAuHistorique, retirerDeLHistorique, calculerLuminance } from '../lib/fond.js'
+import { getGlass, setGlass } from '../lib/glass.js'
 import { televerserImage, supprimerImage } from '../lib/images.js'
 import { synchroniserDonnees } from '../lib/sync.js'
 import { escapeHtml } from '../lib/escape.js'
@@ -101,6 +102,15 @@ export async function renderParametres(container) {
           <div style="margin-top: 14px;">
             <label id="fond-flou-label" style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Niveau de flou (${getFlou()}px)</label>
             <input type="range" id="fond-flou-input" min="0" max="40" step="2" value="${getFlou()}" style="width: 100%;" />
+          </div>
+
+          <div style="margin-top: 14px;">
+            <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Style de l'interface</label>
+            <div class="import-actions" style="margin: 0;">
+              <button id="glass-off-btn" class="btn${getGlass() ? '' : ' primary'}" style="width: auto;">Cartes pleines</button>
+              <button id="glass-on-btn" class="btn${getGlass() ? ' primary' : ''}" style="width: auto;">Verre dépoli (Liquid Glass)</button>
+            </div>
+            <p class="settings-desc" style="margin-top: 6px; margin-bottom: 0;">En verre dépoli, les cartes deviennent translucides et laissent voir le fond d'écran à travers elles — plus intéressant avec un fond personnalisé qu'avec le fond uni.</p>
           </div>
 
           ${
@@ -241,6 +251,16 @@ export async function renderParametres(container) {
     // — un léger débounce évite de relancer ce travail à chaque pixel de glissement du curseur.
     clearTimeout(flouDebounce)
     flouDebounce = setTimeout(() => setFlou(valeur), 120)
+  })
+
+  document.getElementById('glass-off-btn').addEventListener('click', () => {
+    setGlass(false)
+    renderParametres(container)
+  })
+
+  document.getElementById('glass-on-btn').addEventListener('click', () => {
+    setGlass(true)
+    renderParametres(container)
   })
 
   document.querySelectorAll('[data-fond-choisir]').forEach((el) => {

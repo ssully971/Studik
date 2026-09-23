@@ -1,6 +1,8 @@
 :root {
   --ink: #000000;
+  --ink-rgb: 0, 0, 0;
   --surface: #0D0D0D;
+  --surface-rgb: 13, 13, 13;
   --surface-2: #141414;
   --hairline: #232323;
 
@@ -18,13 +20,68 @@
 
 :root[data-theme="light"] {
   --ink: #FBFAF7;
+  --ink-rgb: 251, 250, 247;
   --surface: #FFFFFF;
+  --surface-rgb: 255, 255, 255;
   --surface-2: #F1EFE9;
   --hairline: #DEDACE;
 
   --text: #17140F;
   --text-dim: #5B6169;
   --text-faint: #8A8F94;
+}
+
+/* Style "verre dépoli" (façon Liquid Glass, #parametres) : les cartes/panneaux deviennent
+   translucides et flous plutôt que des surfaces pleines, laissant voir le fond d'écran à
+   travers elles. Redéfinit juste --surface/--surface-2 en rgba (tout ce qui les utilise déjà
+   devient donc translucide sans toucher à chaque règle individuellement) ; le flou "givré" et
+   le liseré ne sont ajoutés qu'aux grands panneaux (cartes, modales...), pas aux petits
+   contrôles (champs, boutons), pour rester lisible et ne pas surcharger le rendu. */
+:root[data-glass="on"] {
+  --surface: rgba(var(--surface-rgb), 0.55);
+  --surface-2: rgba(var(--surface-rgb), 0.42);
+}
+
+[data-glass="on"] .settings-card,
+[data-glass="on"] .fiche-row,
+[data-glass="on"] .modal-panel,
+[data-glass="on"] .cas-card,
+[data-glass="on"] .detail-section,
+[data-glass="on"] .dropdown-panel,
+[data-glass="on"] .search-results,
+[data-glass="on"] .search-results-inline,
+[data-glass="on"] .login-card {
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-glass="on"] .now-cell {
+  background: rgba(var(--ink-rgb), 0.45);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* .now-grid peint un fond plein derrière ses cellules pour simuler un trait de séparation de
+   1px dans les interstices de la grille (voir .now-grid plus bas) : sous verre dépoli, ce fond
+   plein masquerait totalement l'effet de transparence de .now-cell (le flou n'aurait alors
+   qu'un aplat opaque à flouter, jamais le fond d'écran) — chaque cellule garde de toute façon
+   sa propre bordure en verre dépoli, donc la séparation reste visible sans ce fond. */
+[data-glass="on"] .now-grid {
+  background: transparent;
+}
+
+[data-glass="on"] .topbar {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+}
+
+[data-glass="on"] .mobile-tabbar {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
 }
 
 * {
