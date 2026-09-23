@@ -103,7 +103,7 @@ export async function renderQcmRetrySession(container) {
           </div>
 
           <div class="import-actions" id="question-actions">
-            <button id="valider-btn" class="btn primary" style="width: auto;">Valider cette question</button>
+            <button id="valider-btn" class="btn primary" style="width: auto;">Valider cette question <kbd class="kbd-hint">Espace</kbd></button>
           </div>
           <div id="correction-question" class="correction hidden"></div>
         </div>
@@ -158,8 +158,8 @@ export async function renderQcmRetrySession(container) {
 
       document.getElementById('question-actions').innerHTML =
         index === file.length - 1
-          ? `<button id="suivant-btn" class="btn primary" style="width: auto;">Voir le résumé</button>`
-          : `<button id="suivant-btn" class="btn primary" style="width: auto;">Question suivante</button>`
+          ? `<button id="suivant-btn" class="btn primary" style="width: auto;">Voir le résumé <kbd class="kbd-hint">↵</kbd></button>`
+          : `<button id="suivant-btn" class="btn primary" style="width: auto;">Question suivante <kbd class="kbd-hint">↵</kbd></button>`
 
       document.getElementById('suivant-btn').addEventListener('click', () => {
         index++

@@ -201,7 +201,7 @@ export function renderCas(container, cas, { onAutreCas, onValide } = {}) {
       </div>
 
       <div class="import-actions">
-        <button id="valider-btn" class="btn primary" style="width: auto;">Valider mes réponses</button>
+        <button id="valider-btn" class="btn primary" style="width: auto;">Valider mes réponses <kbd class="kbd-hint">Espace</kbd></button>
       </div>
 
       <div id="correction" class="correction hidden"></div>

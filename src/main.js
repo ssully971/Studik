@@ -10,6 +10,7 @@ import { getAllCas, texteRechercheCas } from './lib/cas.js'
 import { getAllQcm, texteRechercheQcm } from './lib/qcm.js'
 import { definirTermeRecherche } from './lib/highlight.js'
 import { escapeHtml } from './lib/escape.js'
+import { resoudreRaccourci, tableAide } from './lib/raccourcis.js'
 import { renderAccueil } from './pages/accueil.js'
 import { renderReferentiel } from './pages/referentiel.js'
 import { renderImport } from './pages/import.js'
@@ -355,51 +356,167 @@ function router() {
   }
 }
 
+// --- Raccourcis clavier ---
+// Un seul listener (ci-dessous) qui calcule le contexte courant puis délègue la décision à
+// resoudreRaccourci (lib/raccourcis.js, fonction pure et testée). Chaque action retournée agit
+// ensuite par .click() sur un élément DOM stable ou par navigation de hash — jamais en
+// dupliquant la logique interne d'une page. Voir lib/raccourcis.js pour le détail des touches.
+
+const TYPES_SAISIE = ['text', 'email', 'password', 'search', 'number']
+const IDS_BOUTONS_SURVEILLES = ['valider-btn', 'suivant-btn', 'precedent-btn', 'finir-btn', 'refaire-erreurs-btn', 'revu-bien-btn', 'revu-pas-bien-btn']
+
+let sequenceRaccourciEnAttente = null
+let aideOverlay = null
+
+function estActivable(id) {
+  const el = document.getElementById(id)
+  return Boolean(el) && !el.disabled
+}
+
+function calculerElementsPresents() {
+  const presents = IDS_BOUTONS_SURVEILLES.filter(estActivable)
+
+  if (document.querySelector('.modal-overlay:not(.hidden)')) presents.push('modal-ouvert')
+
+  for (let n = 1; n <= 5; n++) {
+    const cb = document.querySelector(`#items-group input[data-index="${n - 1}"]`)
+    if (cb && !cb.disabled) presents.push(`item-${n}`)
+  }
+
+  if (document.querySelectorAll('#content .fiche-row').length > 0) presents.push('lignes')
+  if (document.querySelector('#content .fiche-row.kbd-focus')) presents.push('ligne-focalisee')
+
+  return presents
+}
+
+function focusRecherche() {
+  const search = document.getElementById('search-input') || document.getElementById('global-search-input')
+  search?.focus()
+}
+
+function echapParDefaut(goBack) {
+  document.getElementById('menu-dropdown')?.classList.add('hidden')
+  document.getElementById('global-search-results')?.classList.add('hidden')
+  document.getElementById('search-wrapper')?.classList.remove('mobile-open')
+  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur()
+  if (goBack) window.history.back()
+}
+
+function cocherItem(index) {
+  document.querySelector(`#items-group input[data-index="${index}"]`)?.click()
+}
+
+function deplacerFocusListe(direction) {
+  const lignes = Array.from(document.querySelectorAll('#content .fiche-row'))
+  if (lignes.length === 0) return
+  const indexActuel = lignes.findIndex((l) => l.classList.contains('kbd-focus'))
+  const prochainIndex = indexActuel === -1 ? (direction > 0 ? 0 : lignes.length - 1) : Math.min(lignes.length - 1, Math.max(0, indexActuel + direction))
+  if (indexActuel !== -1) lignes[indexActuel].classList.remove('kbd-focus')
+  lignes[prochainIndex].classList.add('kbd-focus')
+  lignes[prochainIndex].scrollIntoView({ block: 'nearest' })
+}
+
+function ouvrirLigneFocalisee() {
+  const ligne = document.querySelector('#content .fiche-row.kbd-focus')
+  if (!ligne) return
+  const cible = ligne.querySelector('[data-open]')
+  if (cible) cible.click()
+  else ligne.click()
+}
+
+function afficherAide() {
+  if (!aideOverlay) {
+    aideOverlay = document.createElement('div')
+    aideOverlay.id = 'aide-clavier-overlay'
+    aideOverlay.className = 'modal-overlay hidden'
+    aideOverlay.innerHTML = `
+      <div class="modal-panel">
+        <div class="modal-header">
+          <span class="voice">Raccourcis clavier</span>
+          <button id="aide-clavier-fermer" class="btn" style="width: auto;">Fermer</button>
+        </div>
+        <ul class="detail-list">
+          ${tableAide()
+            .map((r) => `<li><kbd class="kbd-hint">${escapeHtml(r.touches)}</kbd> ${escapeHtml(r.description)}</li>`)
+            .join('')}
+        </ul>
+      </div>
+    `
+    document.body.appendChild(aideOverlay)
+    aideOverlay.addEventListener('click', (e) => {
+      if (e.target === aideOverlay) aideOverlay.classList.add('hidden')
+    })
+    document.getElementById('aide-clavier-fermer').addEventListener('click', () => aideOverlay.classList.add('hidden'))
+  }
+  aideOverlay.classList.toggle('hidden')
+}
+
+function executerRaccourci(action) {
+  switch (action.type) {
+    case 'navigate':
+      window.location.hash = action.hash
+      break
+    case 'click':
+      document.getElementById(action.id)?.click()
+      break
+    case 'focus-search':
+      focusRecherche()
+      break
+    case 'help':
+      afficherAide()
+      break
+    case 'close-modal':
+      document.querySelector('.modal-overlay:not(.hidden)')?.classList.add('hidden')
+      break
+    case 'escape-default':
+      echapParDefaut(action.goBack)
+      break
+    case 'toggle-item':
+      cocherItem(action.index)
+      break
+    case 'focus-move':
+      deplacerFocusListe(action.direction)
+      break
+    case 'open-focused-row':
+      ouvrirLigneFocalisee()
+      break
+    case 'sequence-start':
+      sequenceRaccourciEnAttente = { expireAt: action.expireAt }
+      break
+    case 'clear-sequence':
+      sequenceRaccourciEnAttente = null
+      break
+  }
+  if (action.clearSequence) sequenceRaccourciEnAttente = null
+}
+
 function setupRaccourcisClavier() {
   document.addEventListener('keydown', (e) => {
-    const tag = document.activeElement?.tagName
-    const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
-    const dropdown = document.getElementById('menu-dropdown')
-    const searchResults = document.getElementById('global-search-results')
+    const hash = window.location.hash.replace('#', '') || 'accueil'
+    const route = hash.split('/')[0]
 
-    if (e.key === 'Escape') {
-      if (dropdown) dropdown.classList.add('hidden')
-      if (searchResults) searchResults.classList.add('hidden')
-      document.getElementById('search-wrapper')?.classList.remove('mobile-open')
-      if (isTyping) document.activeElement.blur()
-      return
-    }
+    const el = document.activeElement
+    const tag = el?.tagName
+    const estCaseOuRadio = tag === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio')
+    const estChampTexte = tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable || (tag === 'INPUT' && TYPES_SAISIE.includes(el.type))
 
-    if (isTyping) return
+    const action = resoudreRaccourci({
+      route,
+      key: e.key,
+      ctrl: e.ctrlKey,
+      meta: e.metaKey,
+      alt: e.altKey,
+      isComposing: e.isComposing,
+      typeCible: estChampTexte ? 'texte' : null,
+      caseACocherFocalisee: estCaseOuRadio,
+      elementsPresents: calculerElementsPresents(),
+      sequenceEnAttente: sequenceRaccourciEnAttente,
+      maintenant: Date.now(),
+    })
 
-    if (e.key === '/') {
-      const search = document.getElementById('search-input') || document.getElementById('global-search-input')
-      if (search) {
-        e.preventDefault()
-        search.focus()
-      }
-      return
-    }
-
-    if (e.key.toLowerCase() === 'n') {
-      e.preventDefault()
-      window.location.hash = '#entrainement'
-      return
-    }
-
-    if (e.key.toLowerCase() === 'r') {
-      e.preventDefault()
-      window.location.hash = '#revision'
-      return
-    }
-
-    if (e.key === ' ') {
-      const validerBtn = document.getElementById('valider-btn')
-      if (validerBtn && !validerBtn.disabled) {
-        e.preventDefault()
-        validerBtn.click()
-      }
-    }
+    if (!action) return
+    e.preventDefault()
+    executerRaccourci(action)
   })
 }
 

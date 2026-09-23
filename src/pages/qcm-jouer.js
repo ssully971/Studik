@@ -244,16 +244,16 @@ function renderQuestion(container, qcm, mode, state) {
 
     if (mode === 'entrainement') {
       if (!estCorrigee) {
-        html += `<button id="valider-btn" class="btn primary" style="width: auto;">Valider cette question</button>`
+        html += `<button id="valider-btn" class="btn primary" style="width: auto;">Valider cette question <kbd class="kbd-hint">Espace</kbd></button>`
       } else {
         html += estDerniere
-          ? `<button id="finir-btn" class="btn primary" style="width: auto;">Voir le résumé</button>`
-          : `<button id="suivant-btn" class="btn primary" style="width: auto;">Question suivante</button>`
+          ? `<button id="finir-btn" class="btn primary" style="width: auto;">Voir le résumé <kbd class="kbd-hint">↵</kbd></button>`
+          : `<button id="suivant-btn" class="btn primary" style="width: auto;">Question suivante <kbd class="kbd-hint">↵</kbd></button>`
       }
     } else {
-      if (state.index > 0) html += `<button id="precedent-btn" class="btn" style="width: auto;">Précédent</button>`
-      if (!estDerniere) html += `<button id="suivant-btn" class="btn" style="width: auto;">Suivant</button>`
-      html += `<button id="finir-btn" class="btn primary" style="width: auto;">Terminer le QCM</button>`
+      if (state.index > 0) html += `<button id="precedent-btn" class="btn" style="width: auto;">Précédent <kbd class="kbd-hint">←</kbd></button>`
+      if (!estDerniere) html += `<button id="suivant-btn" class="btn" style="width: auto;">Suivant <kbd class="kbd-hint">→</kbd></button>`
+      html += `<button id="finir-btn" class="btn primary" style="width: auto;">Terminer le QCM <kbd class="kbd-hint">↵</kbd></button>`
     }
 
     actionsEl.innerHTML = html
@@ -378,7 +378,7 @@ async function terminerQcm(container, qcm, mode, state) {
           ? `
         <div class="cas-card" style="margin-bottom: 20px;">
           <p class="cas-situation">${questionsRateesCount} question${questionsRateesCount !== 1 ? 's' : ''} à revoir.</p>
-          <button id="refaire-erreurs-btn" class="btn primary" style="width: auto;">Refaire mes erreurs</button>
+          <button id="refaire-erreurs-btn" class="btn primary" style="width: auto;">Refaire mes erreurs <kbd class="kbd-hint">e</kbd></button>
         </div>
       `
           : ''
