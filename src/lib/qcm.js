@@ -1,5 +1,7 @@
 import { supabase } from './supabase.js'
 import { upsertPartiel } from './upsert.js'
+export { scoreQuestion, scoreQcm, questionsRateesDeLaTentative } from './scoring.js'
+import { questionsRateesDeLaTentative } from './scoring.js'
 
 export async function getAllQcm({ matiere, statut } = {}) {
   let query = supabase.from('qcm').select('*')
@@ -117,16 +119,6 @@ export async function getQcmTentativesARevoir() {
   return dernieres
 }
 
-export function questionsRateesDeLaTentative(qcm, tentative) {
-  const indices = []
-  qcm.questions.forEach((q, i) => {
-    const reponsesQuestion = (tentative.reponses && tentative.reponses[i]) || []
-    const correcte = q.items.every((item, j) => Boolean(reponsesQuestion[j]) === Boolean(item.correct))
-    if (!correcte) indices.push(i)
-  })
-  return indices
-}
-
 // Rassemble les questions ratées (dernière tentative de chaque QCM concerné) selon un
 // périmètre : un QCM précis, une matière, ou un ou plusieurs tags.
 export async function getQuestionsRateesParScope({ qcmId, matiere, tags } = {}) {
@@ -217,28 +209,6 @@ export async function deleteTentativesQcmByMatiere(matiere) {
 
   const { error } = await supabase.from('qcm_tentatives').delete().in('qcm_id', ids)
   if (error) throw error
-}
-
-// --- Notation (barème Outremed) ---
-// Par question : 1 point si 0 erreur, 0,5 point si 1 erreur, 0 point si 2 erreurs ou plus.
-// Une "erreur" = un item où la réponse cochée ne correspond pas à la bonne réponse.
-
-export function scoreQuestion(items, reponsesItem) {
-  let erreurs = 0
-  items.forEach((item, i) => {
-    if (Boolean(reponsesItem[i]) !== Boolean(item.correct)) erreurs++
-  })
-  if (erreurs === 0) return 1
-  if (erreurs === 1) return 0.5
-  return 0
-}
-
-export function scoreQcm(questions, reponses) {
-  let total = 0
-  questions.forEach((q, i) => {
-    total += scoreQuestion(q.items, reponses[i] || [])
-  })
-  return { score: total, scoreMax: questions.length }
 }
 
 export async function getAllQcmRaw() {
