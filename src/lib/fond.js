@@ -1,13 +1,19 @@
+import { lirePreference, ecrirePreference } from './preferences.js'
+
 const CLE_FOND = 'studik_fond'
 const CLE_FLOU = 'studik_fond_flou'
 const CLE_HISTORIQUE = 'studik_fond_historique'
 const FLOU_DEFAUT = 24
 const HISTORIQUE_MAX = 20
 
-// Préférences purement visuelles et locales à l'appareil (même mécanisme que le thème dans
-// lib/theme.js) : les images elles-mêmes vivent dans le bucket Supabase "studik-images" (via
-// lib/images.js), seules leurs URL publiques sont gardées en local — le fond actif (avec sa
+// Préférences visuelles synchronisées entre appareils via la table Supabase "preferences" (voir
+// lib/preferences.js), avec un cache local (localStorage) pour un affichage instantané sans
+// attendre le réseau : les images elles-mêmes vivent dans le bucket Supabase "studik-images"
+// (via lib/images.js), seules leurs URL publiques sont gardées ici — le fond actif (avec sa
 // luminance déjà calculée), le niveau de flou, et l'historique des fonds déjà mis en ligne.
+// Chaque set*/ajouter*/retirer* écrit dans les deux à la fois (le réseau en tâche de fond, sans
+// bloquer l'interface) ; synchroniserDepuisServeur() (appelée à la connexion, voir main.js)
+// rapatrie le cache local à l'état le plus récent connu du serveur.
 //
 // Le fond est posé en arrière-plan de <body> lui-même (background-image + background-attachment:
 // fixed), pas via un élément séparé superposé : un essai avec un div position:fixed/absolute
@@ -15,7 +21,7 @@ const HISTORIQUE_MAX = 20
 // lui (titres de page, accroche de l'accueil) de s'afficher à l'écran malgré un DOM et des
 // styles calculés parfaitement corrects — un souci de composition du navigateur avec un gros
 // calque d'image séparé, contourné en évitant complètement ce calque séparé. Le flou est donc
-// "cuit" dans l'image via canvas plutôt qu'appliqué en direct par un filtre CSS.
+// "cuit" dans l'image plutôt qu'appliqué en direct par un filtre CSS.
 
 export function getFond() {
   try {
@@ -39,8 +45,9 @@ export function setFlou(valeur) {
   try {
     localStorage.setItem(CLE_FLOU, String(valeur))
   } catch {
-    // silencieux : préférence locale, non bloquante
+    // silencieux : le cache local reste secondaire par rapport au serveur
   }
+  ecrirePreference('fond_flou', valeur).catch(() => {})
   appliquerFond()
 }
 
@@ -57,8 +64,9 @@ function setHistoriqueFonds(liste) {
   try {
     localStorage.setItem(CLE_HISTORIQUE, JSON.stringify(liste))
   } catch {
-    // silencieux : préférence locale, non bloquante
+    // silencieux : le cache local reste secondaire par rapport au serveur
   }
+  ecrirePreference('fond_historique', liste).catch(() => {})
 }
 
 // Ajoute une image en tête d'historique (la plus récente d'abord), avec sa luminance déjà
@@ -79,6 +87,29 @@ export function ajouterAuHistorique(url, luminance) {
 
 export function retirerDeLHistorique(url) {
   setHistoriqueFonds(getHistoriqueFonds().filter((f) => f.url !== url))
+}
+
+// Rapatrie l'état connu du serveur dans le cache local, puis réapplique — appelée à la
+// connexion (voir main.js) pour que le fond d'écran suive Sullivan d'un appareil à l'autre.
+// Dégrade en douceur (garde le cache local existant) si hors-ligne ou si la table n'existe pas
+// encore, plutôt que de casser l'affichage du fond.
+export async function synchroniserFondDepuisServeur() {
+  try {
+    const [fond, flou, historique] = await Promise.all([
+      lirePreference('fond'),
+      lirePreference('fond_flou'),
+      lirePreference('fond_historique'),
+    ])
+    if (fond !== undefined) {
+      if (fond) localStorage.setItem(CLE_FOND, JSON.stringify(fond))
+      else localStorage.removeItem(CLE_FOND)
+    }
+    if (flou !== undefined && flou !== null) localStorage.setItem(CLE_FLOU, String(flou))
+    if (historique !== undefined && historique !== null) localStorage.setItem(CLE_HISTORIQUE, JSON.stringify(historique))
+  } catch {
+    // silencieux : hors-ligne ou table absente, on reste sur le cache local existant
+  }
+  await appliquerFond()
 }
 
 function chargerImage(url) {
@@ -116,29 +147,41 @@ export async function calculerLuminance(url) {
   }
 }
 
-// "Cuit" le flou dans l'image (canvas 2D, filtre blur natif) plutôt que de compter sur un
-// filtre CSS en direct sur un calque séparé — voir la note en tête de fichier. Réduit d'abord
-// l'image pour rester rapide : un fond flouté n'a de toute façon pas besoin de pleine résolution.
-//
-// Le canvas exporté garde TOUJOURS la même taille (largeur × hauteur), quel que soit le niveau
-// de flou : le débord servant à éviter un liseré transparent sur les bords (le flou "mange" du
-// transparent au-delà du cadre dessiné) est une marge fixe dessinée hors-cadre, jamais ajoutée
-// à la taille du canvas lui-même. Un bug précédent faisait grandir le canvas avec le niveau de
-// flou, ce que `background-size: cover` traduisait en zoom progressif de l'image affichée.
+// "Cuit" le flou dans l'image plutôt que de compter sur un filtre CSS en direct sur un calque
+// séparé — voir la note en tête de fichier. Le flou est obtenu en réduisant l'image puis en la
+// ré-agrandissant (l'interpolation du navigateur pendant l'agrandissement adoucit le résultat),
+// jamais via CanvasRenderingContext2D.filter : ce dernier n'est pas fiable partout (ne
+// fonctionnait pas du tout sur iPad) alors qu'un simple drawImage mis à l'échelle fonctionne à
+// l'identique sur n'importe quel appareil. L'image source est toujours dessinée pour remplir
+// EXACTEMENT le canvas final (jamais plus grande) : un débord "pour éviter un bord transparent"
+// essayé précédemment zoomait l'image affichée (le canvas restait à la taille de la fenêtre,
+// mais l'image y était dessinée en plus grand, donc rognée) — inutile de toute façon avec cette
+// technique, qui ne produit aucune transparence sur les bords contrairement à un flou gaussien.
 async function genererImageFloutee(url, flouPx) {
   const img = await chargerImage(url)
   const largeurMax = 900
   const echelle = Math.min(1, largeurMax / img.width)
   const largeur = Math.max(1, Math.round(img.width * echelle))
   const hauteur = Math.max(1, Math.round(img.height * echelle))
-  const debord = 60 // couvre le niveau de flou maximum du curseur (40px)
 
   const canvas = document.createElement('canvas')
   canvas.width = largeur
   canvas.height = hauteur
   const ctx = canvas.getContext('2d')
-  ctx.filter = flouPx > 0 ? `blur(${flouPx}px)` : 'none'
-  ctx.drawImage(img, -debord, -debord, largeur + debord * 2, hauteur + debord * 2)
+
+  if (flouPx <= 0) {
+    ctx.drawImage(img, 0, 0, largeur, hauteur)
+  } else {
+    const facteur = 1 + flouPx / 2.5
+    const petiteLargeur = Math.max(1, Math.round(largeur / facteur))
+    const petiteHauteur = Math.max(1, Math.round(hauteur / facteur))
+    const canvasPetit = document.createElement('canvas')
+    canvasPetit.width = petiteLargeur
+    canvasPetit.height = petiteHauteur
+    canvasPetit.getContext('2d').drawImage(img, 0, 0, petiteLargeur, petiteHauteur)
+    ctx.drawImage(canvasPetit, 0, 0, largeur, hauteur)
+  }
+
   return canvas.toDataURL('image/jpeg', 0.85)
 }
 
@@ -199,11 +242,13 @@ export async function appliquerFond() {
 }
 
 export function setFond(url, luminance) {
+  const valeur = url ? { url, luminance } : null
   try {
-    if (url) localStorage.setItem(CLE_FOND, JSON.stringify({ url, luminance }))
+    if (valeur) localStorage.setItem(CLE_FOND, JSON.stringify(valeur))
     else localStorage.removeItem(CLE_FOND)
   } catch {
-    // silencieux : préférence locale, non bloquante
+    // silencieux : le cache local reste secondaire par rapport au serveur
   }
+  ecrirePreference('fond', valeur).catch(() => {})
   appliquerFond()
 }

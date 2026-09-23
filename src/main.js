@@ -1,7 +1,7 @@
 import './styles/main.css'
 import { appliquerTheme } from './lib/theme.js'
-import { appliquerFond } from './lib/fond.js'
-import { appliquerGlass } from './lib/glass.js'
+import { appliquerFond, synchroniserFondDepuisServeur } from './lib/fond.js'
+import { appliquerGlass, synchroniserGlassDepuisServeur } from './lib/glass.js'
 import { login, logout, getCurrentUser, onAuthChange } from './lib/auth.js'
 import { getPeriodeActuelle, setPeriodeActuelle, getPeriodesDisponibles } from './lib/periode.js'
 import { getFiches, texteRechercheFiche } from './lib/fiches.js'
@@ -418,6 +418,11 @@ async function init() {
     currentUserId = uid
     if (user) {
       renderShell(user)
+      // Rapatrie le fond d'écran / flou / mode verre depuis le serveur pour qu'ils suivent
+      // Sullivan d'un appareil à l'autre — après le premier rendu (déjà peint avec le cache
+      // local) pour ne jamais retarder l'affichage initial sur le réseau.
+      synchroniserFondDepuisServeur()
+      synchroniserGlassDepuisServeur()
     } else {
       renderLogin()
     }
