@@ -36,6 +36,7 @@ src/
 - Trois couleurs de type, utilisées comme code couleur constant partout (onglet coloré sur les listes, bordure de fiche) : clinique = vert `#4EA189`, mécanisme = ocre `#C39A5C`, structure = bleu `#6C8FC2`
 - Typo : **Lora** (titres, classe `.voice`), **IBM Plex Sans** (texte courant), **IBM Plex Mono** (labels techniques, ids, sélecteurs)
 - Composants réutilisés partout : `.fiche-row` (liste avec onglet coloré), `.settings-card` (carte avec bordure), `.btn` / `.btn.primary`, `.periode-select` (petit select stylé), `.modal-overlay`/`.modal-panel` (popup de détail)
+- `@media print` (fin de `main.css`) : pensé pour `#fiche/:id` (impression navigateur, Ctrl+P — indépendant de l'export PDF dédié `lib/pdf.js`, non touché). Redéfinit `--ink`/`--surface`/`--surface-2`/`--hairline`/`--text*` en blanc/noir (mais pas `--clinique`/`--mecanisme`/`--structure`, pour garder la bordure de couleur du type sur `.detail-header`), masque topbar/tabbar mobile/sidebar/boutons/signalement, retire le fond d'écran et les effets verre dépoli, `break-inside: avoid` sur `.detail-header`/`.detail-section`.
 
 ## Modèle de données (Supabase, RLS activée partout, un seul utilisateur)
 

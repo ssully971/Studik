@@ -2078,3 +2078,55 @@ a.tag:hover,
   color: var(--text);
   background: var(--surface-2);
 }
+
+/* Impression — pensé pour #fiche/:id (Ctrl+P depuis le navigateur ; indépendant de l'export PDF
+   dédié de lib/pdf.js, qui reste inchangé). Les variables de couleur sont redéfinies plutôt que
+   chaque règle individuellement : tout ce qui les consomme déjà (cartes, bordures, textes)
+   devient blanc/noir sans dupliquer les sélecteurs. --clinique/--mecanisme/--structure ne sont
+   PAS redéfinies : la bordure de couleur du type (.detail-header.type-*, déjà une simple
+   bordure à l'écran) reste visible telle quelle sur le papier. */
+@media print {
+  :root {
+    --ink: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #ffffff;
+    --hairline: #cccccc;
+    --text: #000000;
+    --text-dim: #222222;
+    --text-faint: #444444;
+  }
+
+  body {
+    background: #ffffff !important;
+    background-image: none !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  .topbar,
+  .mobile-tabbar,
+  .fiche-sidebar,
+  .breadcrumb,
+  .actions-bar,
+  .signalement-erreur,
+  .import-actions,
+  .btn {
+    display: none !important;
+  }
+
+  .fiche-layout {
+    display: block !important;
+  }
+
+  * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .detail-header,
+  .detail-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
