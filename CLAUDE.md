@@ -46,7 +46,7 @@ Trois "types" génériques transversaux à tout le contenu : `clinique` / `mecan
 - **cas_cliniques** : `id, type, matiere, niveau (1-3), fiches_liees, enonce (jsonb: situation+elements), question, reponse_attendue (jsonb, forme différente par type), statut, date_creation`.
 - **tentatives** (essais de cas cliniques) : `id, cas_id, reussi, reponse_donnee, a_revoir, date_tentative`.
 - **qcm** : `id, titre, matieres (array, un QCM peut couvrir plusieurs matières), questions (jsonb: [{enonce, items:[{texte,correct,explication}], explication}]), duree_minutes, fiches_liees, statut, date_creation`.
-- **qcm_tentatives** : `id, qcm_id, mode (entrainement/concours), score, score_max, reponses (jsonb), duree_utilisee_secondes, a_revoir, date_tentative`. Barème identique à Outremed : 1 pt si 0 erreur sur la question, 0,5 pt si 1 erreur, 0 pt si 2+ erreurs (voir `scoreQuestion`/`scoreQcm` dans `lib/qcm.js`).
+- **qcm_tentatives** : `id, qcm_id, mode (entrainement/concours), score, score_max, reponses (jsonb), duree_utilisee_secondes, a_revoir, date_tentative`. Barème identique à Outremed : 1 pt si 0 erreur sur la question, 0,5 pt si 1 erreur, 0 pt si 2+ erreurs (voir `scoreQuestion`/`scoreQcm`/`questionsRateesDeLaTentative`, fonctions pures dans `lib/scoring.js`, ré-exportées par `lib/qcm.js` pour ne pas casser les imports existants). Comportements actuels non modifiés mais notables : `scoreQuestion([], ...)` renvoie 1 (aucun item = aucune erreur possible) ; `scoreQuestion(items, undefined)` lève une exception (pas de garde).
 - **captures** : `id, texte, traitee, date_creation` — notes rapides à trier plus tard.
 - **checkins** : `jour` (date, clé primaire) — un check-in manuel par jour pour le streak (volontaire, pas automatique).
 - **tags_reference** : `nom` (clé primaire) — liste de tags fermée que Sullivan gère lui-même, affichée sur la page Prompts pour copier dans ses prompts d'import.
@@ -68,9 +68,15 @@ Chaque nouvelle table doit recevoir un `grant select, insert, update, delete on 
 - Dans `main.js`, `currentUserId` doit être initialisé à `undefined`, jamais à `null` — sinon le premier appel de `handleUser(null)` (utilisateur déconnecté) est confondu avec "aucun changement" et l'écran de connexion ne s'affiche jamais (écran noir).
 - Avant de remplacer un fichier entier, vérifier qu'on a bien la version réelle et complète (idéalement en lisant le fichier depuis le disque plutôt que de reconstruire de mémoire) — plusieurs régressions ont eu lieu en redonnant un fichier "complet" qui ne l'était pas.
 - Les grilles CSS ont besoin de `min-width: 0` sur leurs enfants dès qu'elles contiennent des champs/texte qui pourraient forcer un débordement (rencontré sur la grille d'édition des matières et sur `.fiche-layout`).
+- **Ne jamais faire `container.addEventListener(...)` ou `document.addEventListener(...)` à l'intérieur d'une fonction `render*()` de page** sans y réfléchir : `container` (souvent `#content`) et `document` sont persistants sur toute la session, alors que `render*()` est rappelée à chaque navigation vers cette page — l'écouteur s'accumule à chaque visite au lieu d'être remplacé. Rencontré dans `session.js`, `fiche-detail.js` (×2), `accueil.js` et `tag-filter.js` (composant partagé par 5 pages). Corrections possibles : (a) attacher l'écouteur à un élément recréé à chaque rendu (ex. le `.wrap` de la page) quand la portée du clic peut se limiter à cet élément, ou (b) si l'écouteur doit rester sur `document` (fermer un menu au clic n'importe où sur la page), dédoublonner en gardant la référence de la fonction et en faisant `removeEventListener` avant de la reposer (voir `tag-filter.js`).
+
+## Tests
+
+- `npm test` (vitest, mode `run`) — pour l'instant uniquement des fonctions pures, pas de jsdom/DOM : `lib/scoring.js`, `lib/escape.js`, `lib/richtext.js`.
+- Échappement HTML : une seule source, `src/lib/escape.js` (`escapeHtml`, échappe `& < > " '`). Ne pas recréer de copie locale — `main.js`, `import.js` et `richtext.js` en avaient chacun une auparavant, désormais tous importent depuis `lib/escape.js`.
 
 ## Build & déploiement
 
-- `npm run dev` en local, `npm run build` pour vérifier avant de pousser.
+- `npm run dev` en local, `npm test` puis `npm run build` pour vérifier avant de pousser.
 - Le repo GitHub public est relié à Vercel : chaque push sur `main` redéploie automatiquement.
 - Pas de variables d'environnement utilisées (les clés Supabase sont en dur dans `src/lib/supabase.js`), c'est un choix assumé pour ce projet, pas un oubli.

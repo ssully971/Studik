@@ -2,6 +2,12 @@ import { getTags } from '../lib/tags.js'
 
 // Menu déroulant compact et recherchable pour filtrer par tag(s) — composant partagé par
 // toutes les pages qui filtrent par tag (référentiel, entraînement, QCM, révision, erreurs).
+// `container` est recréé à chaque rendu de page hôte, mais l'écouteur "clic en dehors" doit
+// rester sur `document` (le clic à fermer peut tomber n'importe où sur la page). Pour ne pas
+// l'accumuler à chaque nouvel appel, on retire l'écouteur précédemment posé par ce module avant
+// d'en reposer un nouveau (dédoublonnage par référence de fonction plutôt que par élément).
+let ecouteurExterieurActuel = null
+
 export async function renderTagFilters(container, { selected = [], onChange, tousLesTags } = {}) {
   let tags = tousLesTags
   if (!tags) {
@@ -88,10 +94,12 @@ export async function renderTagFilters(container, { selected = [], onChange, tou
 
   render()
 
-  document.addEventListener('click', () => {
+  if (ecouteurExterieurActuel) document.removeEventListener('click', ecouteurExterieurActuel)
+  ecouteurExterieurActuel = () => {
     if (ouvert) {
       ouvert = false
       render()
     }
-  })
+  }
+  document.addEventListener('click', ecouteurExterieurActuel)
 }

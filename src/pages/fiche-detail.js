@@ -238,7 +238,11 @@ export async function renderFicheDetail(container, id) {
 
   appliquerSurlignageEnAttente(container)
 
-  container.addEventListener('click', (e) => {
+  // Écouteurs posés sur `wrap` (recréé à chaque rendu de cette page, donc jamais accumulé)
+  // plutôt que sur `container` (#content, persistant sur toute la session) ou `document`.
+  const wrap = container.querySelector('.wrap')
+
+  wrap.addEventListener('click', (e) => {
     const btn = e.target.closest('.img-toggle-btn')
     if (!btn) return
     btn.nextElementSibling?.classList.toggle('hidden')
@@ -334,7 +338,7 @@ export async function renderFicheDetail(container, id) {
       })
     })
 
-    document.addEventListener('click', (e) => {
+    wrap.addEventListener('click', (e) => {
       if (!input.contains(e.target) && !resultats.contains(e.target)) {
         resultats.classList.add('hidden')
       }
