@@ -2176,3 +2176,145 @@ a.tag:hover,
     page-break-inside: avoid;
   }
 }
+
+/* --- Loader "Feuillet" : écran affiché pendant le chargement initial de l'app
+   (avant que renderShell/renderLogin ne soit appelé) ou pendant une transition
+   de route un peu longue. Réutilise les tokens déjà définis plus haut dans ce
+   fichier (--clinique, --mecanisme, --structure, --surface, --surface-2,
+   --hairline, --text, --text-dim, --text-faint) : rien à redéfinir ici, donc
+   il suit automatiquement le thème clair/sombre et le mode verre dépoli s'ils
+   sont actifs. */
+
+.loader-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.loader-wrap .card {
+  display: grid;
+  grid-template-columns: 4px 1fr;
+  width: 188px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-left: none;
+}
+
+.loader-wrap .tab {
+  width: 4px;
+  background: var(--clinique);
+  animation: loader-cycle-tab 3.6s ease-in-out infinite;
+}
+
+@keyframes loader-cycle-tab {
+  0%, 22% { background: var(--clinique); }
+  33%, 55% { background: var(--mecanisme); }
+  66%, 88% { background: var(--structure); }
+  100% { background: var(--clinique); }
+}
+
+.loader-wrap .card-body {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.loader-wrap .type-label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  color: var(--clinique);
+  animation: loader-cycle-label 3.6s ease-in-out infinite;
+}
+
+@keyframes loader-cycle-label {
+  0%, 22% { color: var(--clinique); }
+  33%, 55% { color: var(--mecanisme); }
+  66%, 88% { color: var(--structure); }
+  100% { color: var(--clinique); }
+}
+
+.loader-wrap .title-line {
+  height: 9px;
+  width: 86%;
+  background: var(--surface-2);
+  position: relative;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.loader-wrap .card-line {
+  height: 7px;
+  background: var(--surface-2);
+  position: relative;
+  overflow: hidden;
+}
+
+.loader-wrap .card-line.l1 { width: 96%; }
+.loader-wrap .card-line.l2 { width: 64%; }
+
+.loader-wrap .title-line::after,
+.loader-wrap .card-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--text-faint);
+  transform: translateX(-100%);
+  animation: loader-wave 3.6s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+
+.loader-wrap .title-line::after { animation-delay: 0s; }
+.loader-wrap .card-line.l1::after { animation-delay: 0.1s; }
+.loader-wrap .card-line.l2::after { animation-delay: 0.2s; }
+
+@keyframes loader-wave {
+  0% { transform: translateX(-100%); }
+  35%, 50% { transform: translateX(0); }
+  85%, 100% { transform: translateX(100%); }
+}
+
+.loader-wrap .wordmark {
+  font-family: "Lora", Georgia, serif;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  opacity: 0;
+  animation: loader-reveal 0.9s ease-out 0.3s forwards;
+}
+
+.loader-wrap .caption {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  opacity: 0;
+  animation: loader-reveal 0.9s ease-out 0.6s forwards;
+  text-align: center;
+  transition: opacity 0.25s ease;
+}
+
+.loader-wrap .caption::after {
+  content: "";
+  display: inline-block;
+  width: 1.4em;
+  text-align: left;
+  animation: loader-dots 1.4s steps(4, end) infinite;
+}
+
+@keyframes loader-dots {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75% { content: "..."; }
+  100% { content: ""; }
+}
+
+@keyframes loader-reveal {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

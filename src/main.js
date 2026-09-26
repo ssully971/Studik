@@ -11,6 +11,7 @@ import { getAllQcm, texteRechercheQcm } from './lib/qcm.js'
 import { definirTermeRecherche } from './lib/highlight.js'
 import { escapeHtml } from './lib/escape.js'
 import { resoudreRaccourci, tableAide } from './lib/raccourcis.js'
+import { afficherLoader } from './lib/loader.js'
 import { renderAccueil } from './pages/accueil.js'
 import { renderReferentiel } from './pages/referentiel.js'
 import { renderImport } from './pages/import.js'
@@ -542,7 +543,9 @@ async function init() {
     }
   }
 
+  const arreterLoader = afficherLoader(app)
   const user = await getCurrentUser()
+  arreterLoader()
   handleUser(user)
 
   onAuthChange((user) => {
