@@ -808,9 +808,32 @@ a.tag:hover,
   line-height: 1.7;
 }
 
+/* .item-explication-symbole affiche parfois juste un caractère ("✔", "—") et parfois un mot
+   entier ("✘ manqué", "✘ erreur") — une largeur fixe pensée pour un seul caractère laissait le
+   texte long déborder PAR-DESSUS l'explication qui suit (inline-block avec overflow visible :
+   la boîte garde sa largeur déclarée dans le flux, mais son contenu, plus large, se peint
+   au-delà). Corrigé en flex sur le <li> plutôt qu'en élargissant la largeur fixe (qui aurait
+   juste déplacé le problème à une autre longueur de texte) : le symbole prend sa largeur
+   naturelle sans jamais se couper au milieu (`white-space: nowrap`), le texte (regroupé dans
+   .item-explication-texte, un seul autre enfant flex) prend le reste et enroule ses propres
+   lignes suivantes sous SON texte, jamais sous le symbole. */
+.item-explication-ok,
+.item-explication-missed,
+.item-explication-wrong,
+.item-explication-neutre {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
 .item-explication-symbole {
-  display: inline-block;
-  width: 16px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.item-explication-texte {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .item-explication-ok {

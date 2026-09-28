@@ -54,7 +54,7 @@ function ligneCorrection(texte, correct, coche, explication) {
     classe = 'item-explication-wrong'
     symbole = '✘ erreur'
   }
-  return `<li class="${classe}"><span class="item-explication-symbole">${symbole}</span> <strong>${texte}</strong>${explication ? ` — ${explication}` : ''}</li>`
+  return `<li class="${classe}"><span class="item-explication-symbole">${symbole}</span><span class="item-explication-texte"><strong>${texte}</strong>${explication ? ` — ${explication}` : ''}</span></li>`
 }
 
 export async function renderCarnetErreurs(container) {

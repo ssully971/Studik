@@ -150,7 +150,7 @@ export async function renderQcmRetrySession(container) {
                 classe = 'item-explication-wrong'
                 symbole = '✘ erreur'
               }
-              return `<li class="${classe}"><span class="item-explication-symbole">${symbole}</span> <strong>${escapeHtml(item.texte)}</strong>${explication ? ` — ${escapeHtml(explication)}` : ''}</li>`
+              return `<li class="${classe}"><span class="item-explication-symbole">${symbole}</span><span class="item-explication-texte"><strong>${escapeHtml(item.texte)}</strong>${explication ? ` — ${escapeHtml(explication)}` : ''}</span></li>`
             })
             .join('')}
         </ul>
