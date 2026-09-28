@@ -319,3 +319,16 @@ avec un plafond numérique et une liste de tags en zone de texte (une ligne = un
 principe que les listes une-ligne-un-élément déjà utilisées ailleurs sur le site).
 **Écarté.** Un sélecteur de tags plus élaboré (chips avec ajout/suppression individuels) : la zone
 de texte suffit pour une liste courte gérée par un seul utilisateur.
+
+## Retours de Sullivan après import réel des référentiels R2C (367 items + 356 SDD)
+
+### Bug UX signalé : aucun retour visuel pendant l'import sur `#import`
+**Contexte.** Après avoir collé le JSON des 367 items puis des 356 SDD dans `#import` et cliqué
+sur "Importer", rien ne s'affiche pendant le traitement (le bouton ne change pas d'état, aucun
+spinner/texte de progression) — seul le message final ("tout est validé"/erreur) apparaît, ce qui
+peut faire croire que le clic n'a rien fait sur un lot de cette taille.
+**Statut.** Signalé par Sullivan, explicitement mis de côté pour l'instant ("Garde ça pour le lot
+2") : pas corrigé dans cette session. **Reste à faire** : ajouter un indicateur de chargement
+(désactiver le bouton + libellé "Import en cours..."/spinner) sur `renderModePrompts`/le handler
+de clic d'`#import` (`src/pages/import.js`), le temps du traitement zod + upsert séquentiel.
+**Écarté (pour l'instant).** Corriger immédiatement : demande explicite de reporter ce point.
