@@ -1,4 +1,5 @@
 import { getCurrentUser, updatePseudo, updatePassword } from '../lib/auth.js'
+import { getCycle, setCycle } from '../lib/cycle.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
 import { getFiches, getAllFichesRaw, insertFiches, deleteAllFiches } from '../lib/fiches.js'
 import { getAllCas, insertCas, deleteAllCas, getStatsTentatives, deleteAllTentatives, restaurerTentatives } from '../lib/cas.js'
@@ -101,6 +102,15 @@ export async function renderParametres(container) {
         <div class="settings-card">
           <h3 class="voice">Compte</h3>
           <p class="settings-desc">Connecté en tant que ${user?.email || ''}</p>
+        </div>
+
+        <div class="settings-card" id="cycle-card">
+          <h3 class="voice">Cycle d'études</h3>
+          <p class="settings-desc">Change l'accueil, la navigation et les filtres entre le référentiel P2 et le mode Externat (EDN/ECOS). L'identité visuelle ne change pas.</p>
+          <div class="import-actions">
+            <button id="cycle-preclinique-btn" class="btn${getCycle() === 'preclinique' ? ' primary' : ''}" style="width: auto;">P2 (préclinique)</button>
+            <button id="cycle-externat-btn" class="btn${getCycle() === 'externat' ? ' primary' : ''}" style="width: auto;">Externat</button>
+          </div>
         </div>
 
         <div class="settings-card">
@@ -276,6 +286,20 @@ export async function renderParametres(container) {
       </div>
     </div>
   `
+
+  document.getElementById('cycle-preclinique-btn').addEventListener('click', async () => {
+    if (getCycle() === 'preclinique') return
+    if (!(await demanderConfirmation('Repasser en mode P2 ? La navigation et l’accueil redeviennent ceux du référentiel P2.'))) return
+    setCycle('preclinique')
+    renderParametres(container)
+  })
+
+  document.getElementById('cycle-externat-btn').addEventListener('click', async () => {
+    if (getCycle() === 'externat') return
+    if (!(await demanderConfirmation('Passer en mode Externat ? La navigation et l’accueil basculent vers le tableau de bord Externat.'))) return
+    setCycle('externat')
+    renderParametres(container)
+  })
 
   document.getElementById('theme-dark-btn').addEventListener('click', () => {
     setTheme('dark')

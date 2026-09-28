@@ -12,6 +12,14 @@ import { definirTermeRecherche } from './lib/highlight.js'
 import { escapeHtml } from './lib/escape.js'
 import { resoudreRaccourci, tableAide } from './lib/raccourcis.js'
 import { afficherLoader } from './lib/loader.js'
+import { getCycle, estExternat, setCycle, onCycleChange, synchroniserCycleDepuisServeur } from './lib/cycle.js'
+import { renderEdnAccueil } from './pages/externat/edn-accueil.js'
+import { renderEdnItems } from './pages/externat/edn-items.js'
+import { renderEdnBanque } from './pages/externat/edn-banque.js'
+import { renderEdnQuestion } from './pages/externat/edn-question.js'
+import { renderEdnDossier } from './pages/externat/edn-dossier.js'
+import { renderEdnZap } from './pages/externat/edn-zap.js'
+import { renderEcosStations } from './pages/externat/ecos-stations.js'
 import { renderAccueil } from './pages/accueil.js'
 import { renderReferentiel } from './pages/referentiel.js'
 import { renderImport } from './pages/import.js'
@@ -31,7 +39,135 @@ import { renderSession } from './pages/session.js'
 import { renderOrganisation } from './pages/organisation.js'
 
 const app = document.getElementById('app')
-const SECONDARY_ROUTES = ['capture', 'import', 'parametres', 'stats', 'organisation']
+const SECONDARY_ROUTES = ['capture', 'import', 'parametres', 'stats', 'organisation', 'edn-items']
+
+// Routes du mode externat (préfixe #edn-... / #ecos-...) : voir lib/cycle.js et §3 de la spec.
+// Une route externat visitée en mode P2 affiche un lien de bascule plutôt qu'une erreur.
+const EDN_ROUTE_HANDLERS = {
+  'edn-accueil': (content) => renderEdnAccueil(content),
+  'edn-items': (content) => renderEdnItems(content),
+  'edn-banque': (content) => renderEdnBanque(content),
+  'edn-question': (content, id) => renderEdnQuestion(content, id),
+  'edn-dossier': (content, id) => renderEdnDossier(content, id),
+  'edn-zap': (content, id) => renderEdnZap(content, id),
+  'ecos-stations': (content) => renderEcosStations(content),
+}
+
+function estRouteExternat(route) {
+  return Object.prototype.hasOwnProperty.call(EDN_ROUTE_HANDLERS, route)
+}
+
+function renderBasculeExternat(content) {
+  content.innerHTML = `
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="voice">Page réservée au mode Externat</h2>
+      </div>
+      <p class="empty-note">Cette page n'existe qu'en mode Externat.</p>
+      <div class="import-actions">
+        <button id="bascule-externat-btn" class="btn primary" style="width: auto;">Passer en mode Externat</button>
+      </div>
+    </div>
+  `
+  document.getElementById('bascule-externat-btn').addEventListener('click', () => {
+    setCycle('externat')
+    router()
+  })
+}
+
+const NAV_P2 = [
+  { hash: '#accueil', route: 'accueil', label: 'Accueil', labelCourt: 'Accueil' },
+  { hash: '#referentiel', route: 'referentiel', label: 'Référentiel', labelCourt: 'Réf.' },
+  { hash: '#entrainement', route: 'entrainement', label: 'Entraînement', labelCourt: 'Cas' },
+  { hash: '#qcm', route: 'qcm', label: 'QCM', labelCourt: null },
+  { hash: '#revision', route: 'revision', label: 'Révision', labelCourt: 'Révision' },
+  { hash: '#erreurs', route: 'erreurs', label: 'Erreurs', labelCourt: null },
+]
+
+const NAV_EXTERNAT = [
+  { hash: '#edn-accueil', route: 'edn-accueil', label: 'Accueil', labelCourt: 'Accueil' },
+  { hash: '#edn-banque', route: 'edn-banque', label: 'Banque', labelCourt: 'Banque' },
+  { hash: '#referentiel', route: 'referentiel', label: 'Référentiel', labelCourt: 'Réf.' },
+  { hash: '#erreurs', route: 'erreurs', label: 'Erreurs', labelCourt: 'Erreurs' },
+  { hash: '#ecos-stations', route: 'ecos-stations', label: 'ECOS', labelCourt: null },
+]
+
+// Liens vers les pages de l'autre mode, ajoutés dans le menu secondaire pour ne jamais les
+// rendre inaccessibles (§3 : "Les pages P2 restent accessibles : le Référentiel de fiches reste
+// utile en externat.").
+const MENU_CROISE_EXTERNAT = [
+  { hash: '#entrainement', label: 'Entraînement (P2)' },
+  { hash: '#qcm', label: 'QCM (P2)' },
+  { hash: '#revision', label: 'Révision (P2)' },
+]
+
+function navDesktopHTML(entries) {
+  return entries.map((e) => `<a href="${e.hash}" data-route="${e.route}">${e.label}</a>`).join('')
+}
+
+function navTabbarHTML(entries) {
+  const principales = entries.slice(0, 4)
+  return (
+    principales.map((e) => `<a href="${e.hash}" data-route="${e.route}">${e.labelCourt || e.label}</a>`).join('') +
+    `<a href="#capture" data-route="capture" class="tabbar-plus">+</a>`
+  )
+}
+
+function menuDropdownHTML(cycle) {
+  const mobileOnlyP2 = `
+    <a href="#qcm" data-route="qcm" class="mobile-only-link">QCM</a>
+    <a href="#erreurs" data-route="erreurs" class="mobile-only-link">Erreurs</a>
+    <div class="dropdown-divider mobile-only-link"></div>
+  `
+  const mobileOnlyExternat = `
+    <a href="#edn-banque" data-route="edn-banque" class="mobile-only-link">Banque</a>
+    <a href="#erreurs" data-route="erreurs" class="mobile-only-link">Erreurs</a>
+    <div class="dropdown-divider mobile-only-link"></div>
+  `
+  const croise =
+    cycle === 'externat'
+      ? MENU_CROISE_EXTERNAT.map((e) => `<a href="${e.hash}">${e.label}</a>`).join('') + `<div class="dropdown-divider"></div>`
+      : ''
+
+  return `
+    ${cycle === 'externat' ? mobileOnlyExternat : mobileOnlyP2}
+    <a href="#edn-items" data-route="edn-items">Items R2C</a>
+    <div class="dropdown-divider"></div>
+    ${croise}
+    <a href="#stats" data-route="stats">Statistiques</a>
+    <a href="#capture" data-route="capture">Capture rapide</a>
+    <a href="#import" data-route="import">Import &amp; prompts</a>
+    <a href="#organisation" data-route="organisation">Organisation</a>
+    <a href="#parametres" data-route="parametres">Paramètres</a>
+    <div class="dropdown-divider"></div>
+    <button id="logout-btn">Se déconnecter</button>
+  `
+}
+
+// Redessine nav desktop / tabbar mobile / menu déroulant / badge selon le cycle courant, sans
+// re-créer toute la coquille (pas de nouveaux écouteurs à reposer : ces liens sont de simples
+// <a href> qui déclenchent hashchange, jamais de listener direct dessus).
+function appliquerNavPourCycle() {
+  const cycle = getCycle()
+  const entries = cycle === 'externat' ? NAV_EXTERNAT : NAV_P2
+
+  const navEl = document.querySelector('header nav')
+  if (navEl) navEl.innerHTML = navDesktopHTML(entries)
+
+  const tabbarEl = document.querySelector('.mobile-tabbar')
+  if (tabbarEl) tabbarEl.innerHTML = navTabbarHTML(entries)
+
+  const dropdown = document.getElementById('menu-dropdown')
+  if (dropdown) {
+    dropdown.innerHTML = menuDropdownHTML(cycle)
+    document.getElementById('logout-btn')?.addEventListener('click', () => logout())
+  }
+
+  const badge = document.getElementById('cycle-badge')
+  if (badge) badge.textContent = cycle === 'externat' ? 'EXTERNAT' : 'P2'
+
+  router()
+}
 
 let searchCache = null
 
@@ -71,16 +207,10 @@ function renderShell(user) {
         <div class="brand-group">
           <img src="/logo-white.png" alt="Studik" class="mark" />
           <div class="brand voice">Studik</div>
+          <button id="cycle-badge" class="cycle-badge" type="button" title="Cycle d'études — clique pour changer"></button>
           <select id="periode-select" class="periode-select"></select>
         </div>
-        <nav>
-          <a href="#accueil" data-route="accueil">Accueil</a>
-          <a href="#referentiel" data-route="referentiel">Référentiel</a>
-          <a href="#entrainement" data-route="entrainement">Entraînement</a>
-          <a href="#qcm" data-route="qcm">QCM</a>
-          <a href="#revision" data-route="revision">Révision</a>
-          <a href="#erreurs" data-route="erreurs">Erreurs</a>
-        </nav>
+        <nav></nav>
         <div class="search-wrapper" id="search-wrapper">
           <input type="text" id="global-search-input" class="global-search-input" placeholder="Rechercher partout…" />
           <div id="global-search-results" class="search-results hidden"></div>
@@ -88,29 +218,12 @@ function renderShell(user) {
         <div class="menu-wrapper">
           <button id="mobile-search-toggle" class="nav-btn mobile-search-toggle" aria-label="Rechercher">🔍</button>
           <button id="menu-toggle" class="nav-btn">Menu ▾</button>
-          <div id="menu-dropdown" class="dropdown-panel hidden">
-            <a href="#qcm" data-route="qcm" class="mobile-only-link">QCM</a>
-            <a href="#erreurs" data-route="erreurs" class="mobile-only-link">Erreurs</a>
-            <div class="dropdown-divider mobile-only-link"></div>
-            <a href="#stats" data-route="stats">Statistiques</a>
-            <a href="#capture" data-route="capture">Capture rapide</a>
-            <a href="#import" data-route="import">Import &amp; prompts</a>
-            <a href="#organisation" data-route="organisation">Organisation</a>
-            <a href="#parametres" data-route="parametres">Paramètres</a>
-            <div class="dropdown-divider"></div>
-            <button id="logout-btn">Se déconnecter</button>
-          </div>
+          <div id="menu-dropdown" class="dropdown-panel hidden"></div>
         </div>
       </div>
     </header>
     <main id="content"></main>
-    <nav class="mobile-tabbar">
-      <a href="#accueil" data-route="accueil">Accueil</a>
-      <a href="#referentiel" data-route="referentiel">Réf.</a>
-      <a href="#entrainement" data-route="entrainement">Cas</a>
-      <a href="#revision" data-route="revision">Révision</a>
-      <a href="#capture" data-route="capture" class="tabbar-plus">+</a>
-    </nav>
+    <nav class="mobile-tabbar"></nav>
   `
 
   const dropdown = document.getElementById('menu-dropdown')
@@ -130,7 +243,11 @@ function renderShell(user) {
     dropdown.classList.add('hidden')
   })
 
-  document.getElementById('logout-btn').addEventListener('click', () => logout())
+  document.getElementById('cycle-badge').addEventListener('click', () => {
+    window.location.hash = '#parametres'
+    router()
+    requestAnimationFrame(() => document.getElementById('cycle-card')?.scrollIntoView({ block: 'start' }))
+  })
 
   const searchWrapper = document.getElementById('search-wrapper')
   document.getElementById('mobile-search-toggle').addEventListener('click', (e) => {
@@ -149,7 +266,7 @@ function renderShell(user) {
 
   setupPeriodeSelector()
   setupGlobalSearch()
-  router()
+  appliquerNavPourCycle()
 }
 
 async function setupPeriodeSelector() {
@@ -352,6 +469,9 @@ function router() {
     renderStats(content)
   } else if (route === 'parametres') {
     renderParametres(content)
+  } else if (estRouteExternat(route)) {
+    if (estExternat()) EDN_ROUTE_HANDLERS[route](content, parts[1])
+    else renderBasculeExternat(content)
   } else {
     content.innerHTML = `<div class="wrap"><p class="voice">Page "${route}" à venir.</p></div>`
   }
@@ -533,11 +653,12 @@ async function init() {
     currentUserId = uid
     if (user) {
       renderShell(user)
-      // Rapatrie le fond d'écran / flou / mode verre depuis le serveur pour qu'ils suivent
-      // Sullivan d'un appareil à l'autre — après le premier rendu (déjà peint avec le cache
-      // local) pour ne jamais retarder l'affichage initial sur le réseau.
+      // Rapatrie le fond d'écran / flou / mode verre / cycle d'études depuis le serveur pour
+      // qu'ils suivent Sullivan d'un appareil à l'autre — après le premier rendu (déjà peint
+      // avec le cache local) pour ne jamais retarder l'affichage initial sur le réseau.
       synchroniserFondDepuisServeur()
       synchroniserGlassDepuisServeur()
+      synchroniserCycleDepuisServeur()
     } else {
       renderLogin()
     }
@@ -554,6 +675,7 @@ async function init() {
 
   window.addEventListener('hashchange', router)
   setupRaccourcisClavier()
+  onCycleChange(() => appliquerNavPourCycle())
 }
 
 init()

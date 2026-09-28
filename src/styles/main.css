@@ -996,6 +996,25 @@ a.tag:hover,
   color: var(--text-dim);
 }
 
+.cycle-badge {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 4px 9px;
+  cursor: pointer;
+  flex-shrink: 0;
+  width: auto;
+}
+
+.cycle-badge:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
 .periode-select {
   background: var(--surface);
   border: 1px solid var(--hairline);
