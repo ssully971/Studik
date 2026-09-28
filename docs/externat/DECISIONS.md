@@ -259,6 +259,19 @@ est strictement identique ; seule la présentation est allégée.
 touché du code P2 stable pour un gain cosmétique, contraire à "zéro régression sur le mode P2" en
 ajoutant un risque évitable.
 
+### Accueil par défaut (hash vide) rendu cycle-aware après un test visuel réel
+**Contexte.** Un aller-retour avec un navigateur réel (captures d'écran demandées après coup par
+Sullivan) a montré qu'une visite sans hash (`http://.../`) atterrissait toujours sur l'accueil P2
+même en mode Externat : `router()` et le raccourci "g h" avaient `'accueil'` codé en dur comme
+route par défaut, indépendamment du cycle.
+**Retenu.** `routeAccueilParDefaut()` (nouveau, `main.js`) renvoie `'edn-accueil'` ou `'accueil'`
+selon `estExternat()`, utilisée à la fois par `router()` (hash vide) et par `executerRaccourci`
+(qui traduit la cible littérale `'#accueil'` de la séquence `g h` — `lib/raccourcis.js` reste pur
+et ignore le cycle par conception, la traduction se fait à la couche qui touche le DOM). Corrigé
+avant la relecture de la PR, pas après.
+**Écarté.** Rendre `SEQUENCE_G`/`resoudreRaccourci` cycle-aware directement : aurait fait
+dépendre un module pur et testé du contexte applicatif, pour un seul cas d'usage.
+
 ### Réglages Externat (plafond SRS, tags d'erreur) dans une carte Paramètres visible seulement en mode Externat
 **Contexte.** §7.1 et §7.4 placent ces réglages "dans Paramètres, section externat" / "modifiable
 dans Paramètres".

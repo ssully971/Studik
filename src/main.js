@@ -418,8 +418,15 @@ function setupGlobalSearch() {
   })
 }
 
+// L'accueil "par défaut" (hash vide) dépend du cycle courant (§3 : "L'accueil devient le tableau
+// de bord externat"). Sans ce garde, une visite hash-less atterrissait toujours sur l'accueil P2
+// même en mode Externat.
+function routeAccueilParDefaut() {
+  return estExternat() ? 'edn-accueil' : 'accueil'
+}
+
 function router() {
-  const hash = window.location.hash.replace('#', '') || 'accueil'
+  const hash = window.location.hash.replace('#', '') || routeAccueilParDefaut()
   const parts = hash.split('/')
   const route = parts[0]
   const content = document.getElementById('content')
@@ -577,7 +584,10 @@ function afficherAide() {
 function executerRaccourci(action) {
   switch (action.type) {
     case 'navigate':
-      window.location.hash = action.hash
+      // "g h" (SEQUENCE_G, lib/raccourcis.js) cible littéralement '#accueil' — un module pur
+      // ignore le cycle courant par conception. Redirigé ici, à la couche qui touche le DOM,
+      // vers l'accueil du cycle courant (§3).
+      window.location.hash = action.hash === '#accueil' ? `#${routeAccueilParDefaut()}` : action.hash
       break
     case 'click':
       document.getElementById(action.id)?.click()
@@ -615,7 +625,7 @@ function executerRaccourci(action) {
 
 function setupRaccourcisClavier() {
   document.addEventListener('keydown', (e) => {
-    const hash = window.location.hash.replace('#', '') || 'accueil'
+    const hash = window.location.hash.replace('#', '') || routeAccueilParDefaut()
     const route = hash.split('/')[0]
 
     const el = document.activeElement
