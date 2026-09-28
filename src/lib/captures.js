@@ -7,13 +7,14 @@ export async function ajouterCapture(texte) {
 }
 
 export async function getCapturesNonTraitees() {
-  const { data, error } = await supabase
-    .from('captures')
-    .select('*')
-    .eq('traitee', false)
-    .order('date_creation', { ascending: false })
-  if (error) throw error
-  return data
+  return paginerTout(() =>
+    supabase
+      .from('captures')
+      .select('*')
+      .eq('traitee', false)
+      .order('date_creation', { ascending: false })
+      .order('id', { ascending: false })
+  )
 }
 
 export async function marquerCaptureTraitee(id) {

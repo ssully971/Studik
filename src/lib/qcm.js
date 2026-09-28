@@ -158,8 +158,9 @@ export async function marquerTentativeQcmNonRevue(id) {
 // SQL direct possible sur un élément de tableau, on relit puis réécrit chaque ligne concernée.
 
 export async function renommerMatiereQcm(ancienNom, nouveauNom) {
-  const { data, error } = await supabase.from('qcm').select('id, matieres').contains('matieres', [ancienNom])
-  if (error) throw error
+  const data = await paginerTout(() =>
+    supabase.from('qcm').select('id, matieres').contains('matieres', [ancienNom]).order('id')
+  )
   for (const q of data) {
     const matieres = q.matieres.map((m) => (m === ancienNom ? nouveauNom : m))
     const { error: err2 } = await supabase.from('qcm').update({ matieres }).eq('id', q.id)

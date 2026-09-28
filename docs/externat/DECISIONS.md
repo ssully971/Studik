@@ -799,6 +799,36 @@ par un test "fumée" temporaire (mock Supabase, 1500 fiches / 1300 checkins, sup
 vérification — pas dans l'historique) que `getAllFichesRaw`/`getFiches`/`getCheckins` renvoient
 bien tout, pas seulement les 1000 premières lignes.
 
+**Second passage d'audit, en fin de tâche (rapport final).** Un audit indépendant de toutes les
+lectures Supabase du projet, demandé pour le rapport final, a signalé 13 fonctions comme
+"classées A mais sans helper". Vérification de chacune plutôt qu'application mécanique :
+
+- **3 vrais oublis, corrigés** : `renommerMatiereQcm` (`lib/qcm.js`) lisait tout `qcm` filtré par
+  `.contains('matieres', [ancienNom])` sans pagination, alors que `deleteTentativesQcmByMatiere`
+  juste en dessous, sur le même filtre, l'avait déjà ; `getCapturesNonTraitees` (`lib/captures.js`)
+  pareil face à `getAllCaptures` du même fichier ; `getActiviteParJour` (`lib/activite.js`,
+  agrégat C pour la heatmap) lisait ses 3 sous-requêtes (tentatives/qcm_tentatives/checkins sur
+  une fenêtre de 140 jours) sans helper — une fenêtre de temps borne la durée, pas le nombre de
+  lignes, un usage intensif soutenu peut quand même dépasser 1000 lignes dedans. Les trois
+  corrigées avec `paginerTout` (voir CLAUDE.md, piège dédié).
+- **10 signalements écartés, déjà des choix B assumés** : `r2c_items`/`r2c_sdd` (référentiel
+  externe fixe, ~367/356 lignes par définition — déjà documenté), `constantes_bio` (même
+  raisonnement, référentiel de constantes biologiques borné), `tags_reference` (liste FERMÉE que
+  Sullivan gère lui-même à la main, voir modèle de données), `qcm_progression.getProgressions`
+  (une ligne par QCM tant qu'il n'est pas fini/abandonné — petit par nature, exactement l'exemple
+  "QCM en cours" déjà donné dans la règle de classification). Ajoutés explicitement à la liste
+  d'exemples B dans CLAUDE.md pour qu'un futur audit ne les re-signale pas sans contexte.
+- **6 cas bornés par un parent, laissés tels quels** : lectures filtrées par une clé étrangère
+  (les tentatives d'UN cas/QCM/station, les questions d'UN dossier, les sous-matières d'UNE
+  matière) — le nombre d'enfants d'une seule entité ne dépasse jamais 1000 en pratique, contexte
+  différent d'une lecture de table entière. Même principe ajouté à la règle de classification.
+
+**Retenu.** Un audit automatisé fondé uniquement sur "y a-t-il un `.limit()`/`.single()` dans le
+code" ne suffit pas à distinguer B "bornée par construction" (qui n'a souvent aucune trace
+syntaxique de sa borne, juste un raisonnement métier) d'un vrai oubli — la classification reste un
+jugement à documenter, pas une règle mécanique. D'où l'ajout des exemples concrets dans CLAUDE.md
+plutôt qu'une re-classification pure code.
+
 ### Sauvegarde/restauration étendue à l'Externat : un module dédié, pas un second système
 
 **Contexte.** Demande explicite : la sauvegarde de Paramètres ne couvrait que le P2. L'étendre à
