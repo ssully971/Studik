@@ -199,8 +199,17 @@ export async function renommerMatiereCas(ancienNom, nouveauNom) {
   if (error) throw error
 }
 
-export async function renommerCoursCas(nomMatiere, ancienNom, nouveauNom) {
-  const { error } = await supabase.from('cas_cliniques').update({ cours: nouveauNom }).eq('matiere', nomMatiere).eq('cours', ancienNom)
+export async function renommerSousMatiereCas(nomMatiere, ancienNom, nouveauNom) {
+  const { error } = await supabase.from('cas_cliniques').update({ sous_matiere: nouveauNom }).eq('matiere', nomMatiere).eq('sous_matiere', ancienNom)
+  if (error) throw error
+}
+
+// sousMatiere = null pour un cours directement rattaché à la matière (pas de couche
+// sous-matière au-dessus) — même signature que renommerCoursFiches (lib/fiches.js).
+export async function renommerCoursCas(nomMatiere, sousMatiere, ancienNom, nouveauNom) {
+  let query = supabase.from('cas_cliniques').update({ cours: nouveauNom }).eq('matiere', nomMatiere).eq('cours', ancienNom)
+  query = sousMatiere ? query.eq('sous_matiere', sousMatiere) : query.is('sous_matiere', null)
+  const { error } = await query
   if (error) throw error
 }
 

@@ -957,3 +957,37 @@ s'affiche pour un cas ciblant une sous-matière sans modifier la ligne en base ;
 ici" depuis la même modale fonctionne toujours et rend l'élément visible sous la sous-matière ;
 aucune régression sur le déplacement d'une fiche vers une sous-matière (fonctionnait déjà,
 continue de fonctionner).
+
+### Retour en arrière : finalement la colonne `sous_matiere`, le message ne suffisait pas
+
+**Contexte.** Après la correction ci-dessus, Sullivan est revenu dessus : "je vois le message
+mais je veux vraiment pouvoir mettre directement dans la sous-matière, par exemple un sujet
+d'annale qui concerne que la sous-matière ou un ED." Le contournement "Attacher aussi ici"
+répondait à la lettre du problème signalé (le clic ne faisait plus rien silencieusement) mais
+pas à l'usage réel : un cas/QCM qui concerne authentiquement toute une sous-matière (pas un
+cours précis) a besoin d'un vrai rattachement principal à ce niveau, pas d'un rattachement
+secondaire en plus d'un rattachement principal resté au niveau matière.
+
+**Retenu.** Migration 002 (`supabase/migrations/002_p2_sous_matiere_cas_qcm.sql`) : ajoute
+`sous_matiere` à `cas_cliniques` et `qcm`, nullable, même sémantique que `fiches.sous_matiere`.
+Support complet dans `organisation.js` : indexation par `cleContenu(matiere, sous_matiere,
+cours)` désormais partagée par les trois types (au lieu d'une clé simplifiée `matiere+cours`
+pour cas/QCM), filtrage "non classé" au niveau matière vs sous-matière, "Déplacer ici" qui
+écrit vraiment `sous_matiere` pour les trois types, cascade de renommage étendue
+(`renommerSousMatiereCas`/`renommerSousMatiereQcm`, nouvelles fonctions ; `renommerCoursCas`/
+`renommerCoursQcm` ont changé de signature pour prendre un paramètre `sousMatiere`, comme
+`renommerCoursFiches`), et `migrerContenuCours` (déplacer un cours vers une autre matière/
+sous-matière) propage aussi `sous_matiere` pour cas/QCM désormais.
+
+**Écarté.** Étendre l'import (`import-schemas.js`/`import.js`) pour accepter `sous_matiere` sur
+les cas/QCM comme sur les fiches, et auto-créer la sous-matière manquante à l'import comme le
+fait déjà le chemin fiches. Contrairement aux fiches, le placement se fait ici après coup via
+Organisation (le besoin exprimé porte sur du contenu déjà importé) ; ajouter l'auto-création à
+l'import aurait élargi le périmètre sans qu'aucun besoin ne le demande, pour un risque réel :
+un `sous_matiere` qui ne correspond à aucun noeud existant rendrait le cas/QCM invisible dans
+l'arbre (aucun noeud sous lequel l'afficher), un mode d'échec silencieux que ce correctif vise
+justement à éliminer. Le champ reste donc accessible uniquement via Organisation, où le
+sélecteur d'emplacement ne propose que des noeuds réels.
+
+Migration à appliquer manuellement dans l'éditeur SQL Supabase (comme la 001) — pas de mécanisme
+d'application automatique dans ce projet. `npm test`/`npm run build` verts.
