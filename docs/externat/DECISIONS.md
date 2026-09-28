@@ -202,4 +202,68 @@ périmètre "moteur" de ce lot sans que Sullivan l'ait demandé. Signalé ici po
 
 ## Lot 4 — Rétention
 
-_(à compléter)_
+### Carnet d'erreurs Externat sans colonne `a_revoir`
+**Contexte.** `edn_tentatives` (§4.3) n'a pas de colonne équivalente à `cas_cliniques.a_revoir` /
+`qcm_tentatives.a_revoir`, et est explicitement append-only ("seuls les tags d'erreur peuvent
+être ajoutés").
+**Retenu.** La section Externat du carnet d'erreurs dérive la liste "à revoir" en mémoire : pour
+chaque `cible`, on garde sa tentative la plus récente et on l'affiche seulement si son score est
+imparfait (même principe que `getTentativesRatees()` côté P2, qui fait déjà ce calcul en dédupliquant
+par `cas_id` — juste sans colonne stockée à mettre à jour). Une nouvelle tentative réussie fait
+disparaître la cible de la liste automatiquement, sans muter une ligne existante.
+**Écarté.** Ajouter une colonne `a_revoir` à `edn_tentatives` : aurait contredit l'invariant
+append-only explicite de la spec, et aurait dupliqué une information déjà déductible.
+
+### Tag d'erreur d'un dossier choisi une seule fois, à la fin, pas question par question
+**Contexte.** §7.4 dit "après une question ratée (s<1)", ce qui pourrait suggérer un tag par
+question, mais un dossier ne produit qu'UNE tentative (`edn_tentatives.tags_erreur` est un seul
+tableau par ligne, décision du lot 3).
+**Retenu.** Dans `#edn-dossier`, si au moins une question du dossier est imparfaite et qu'on est en
+mode entraînement, l'écran de fin (avant l'enregistrement définitif) demande les tags d'erreur une
+seule fois pour tout le dossier, obligatoires comme prévu.
+**Écarté.** Interrompre chaque question ratée individuellement pour choisir un tag : aurait cassé
+le rythme du no-back et ne correspond à aucune colonne existante pour les stocker séparément.
+
+### Mode "session" pour enchaîner plusieurs cibles : un 3e segment de hash, pas un joueur dédié
+**Contexte.** Le tableau de bord (Révisions dues, Série Flash) et le carnet d'erreurs ("Refaire ces
+erreurs") doivent enchaîner plusieurs cibles hétérogènes (questions isolées ET dossiers) sans
+dupliquer tout le moteur de jeu.
+**Retenu.** `pages/externat/edn-session.js` garde une file de cibles en mémoire de module (même
+principe que `qcm-retry-session.js` côté P2) et redirige successivement vers `#edn-question/:id/
+session-<mode>` ou `#edn-dossier/:id/session-<mode>` : `#edn-question`/`#edn-dossier` lisent ce 3e
+segment (`analyserContexteJeu`) pour savoir qu'ils doivent avancer la session au lieu de renvoyer
+vers la Banque, et pour connaître le mode (`entrainement`/`flash`, qui décide si le tag d'erreur
+est obligatoire). Zéro duplication du rendu de question/dossier.
+**Écarté.** Un troisième joueur unifié qui saurait jouer indifféremment une question ou un dossier
+dans un seul écran : plus de code pour un gain d'UX marginal (une transition de page entre deux
+cibles d'une session est un coût négligeable).
+
+### Raccourcis du tableau de bord simplifiés en liens directs
+**Contexte.** §7.2 décrit des "Raccourcis" avec filtres riches (spécialité, item, SDD, rang,
+format, source, tags, "jamais faites", "ratées") pour lancer une série de questions isolées ciblée.
+**Retenu.** Le tableau de bord expose des liens directs vers Banque/ECOS/Erreurs/Items R2C/
+Référentiel ; le filtrage fin se fait dans `#edn-banque` elle-même (qui a déjà spécialité/item/
+statut/tags/suspendues/à corriger). Construire un lanceur de série dédié avec la totalité des
+critères listés aurait représenté une fonctionnalité à part entière.
+**Écarté.** Un composant de lancement de série multi-critères dédié sur l'accueil — noté ici comme
+amélioration possible d'une phase suivante, pas oublié par erreur.
+
+### Carte "Série" simplifiée plutôt que le composant riche de l'accueil P2
+**Contexte.** §7.2 : "Le streak existant reste affiché, avec le même fonctionnement."
+**Retenu.** Le tableau de bord Externat réutilise directement `computeStreak`/`checkinAujourdhui`/
+`getCheckins` (mêmes données, même définition de série) dans une carte simple (texte + bouton),
+plutôt que de dupliquer la carte dépliable avec heatmap de `pages/accueil.js` (qui n'est pas
+exportée en composant réutilisable). Le "même fonctionnement" du streak lui-même (calcul, check-in)
+est strictement identique ; seule la présentation est allégée.
+**Écarté.** Extraire `pages/accueil.js` en composant partagé pour cette seule carte : aurait
+touché du code P2 stable pour un gain cosmétique, contraire à "zéro régression sur le mode P2" en
+ajoutant un risque évitable.
+
+### Réglages Externat (plafond SRS, tags d'erreur) dans une carte Paramètres visible seulement en mode Externat
+**Contexte.** §7.1 et §7.4 placent ces réglages "dans Paramètres, section externat" / "modifiable
+dans Paramètres".
+**Retenu.** Une carte visible uniquement quand `estExternat()` (comme la logique de navigation),
+avec un plafond numérique et une liste de tags en zone de texte (une ligne = un tag, même
+principe que les listes une-ligne-un-élément déjà utilisées ailleurs sur le site).
+**Écarté.** Un sélecteur de tags plus élaboré (chips avec ajout/suppression individuels) : la zone
+de texte suffit pour une liste courte gérée par un seul utilisateur.

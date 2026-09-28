@@ -20,8 +20,17 @@ import promptStructure from '../data/prompts/prompt-fiche-structure.md?raw'
 import promptCas from '../data/prompts/prompt-cas.md?raw'
 import promptQcm from '../data/prompts/prompt-qcm.md?raw'
 import readme from '../data/prompts/README-prompts.md?raw'
+import promptContexteMaitreExternat from '../data/prompts/externat/prompt-contexte-maitre-externat.md?raw'
 import promptR2cItems from '../data/prompts/externat/prompt-r2c-items.md?raw'
 import promptR2cSdd from '../data/prompts/externat/prompt-r2c-sdd.md?raw'
+import promptEdnQi from '../data/prompts/externat/prompt-edn-qi.md?raw'
+import promptEdnZap from '../data/prompts/externat/prompt-edn-zap.md?raw'
+import promptEdnDp from '../data/prompts/externat/prompt-edn-dp.md?raw'
+import promptEdnKfp from '../data/prompts/externat/prompt-edn-kfp.md?raw'
+import promptEdnTcs from '../data/prompts/externat/prompt-edn-tcs.md?raw'
+import promptEdnLca from '../data/prompts/externat/prompt-edn-lca.md?raw'
+import promptEcosStation from '../data/prompts/externat/prompt-ecos-station.md?raw'
+import promptConstantesBio from '../data/prompts/externat/prompt-constantes-bio.md?raw'
 
 let mode = 'import'
 
@@ -595,8 +604,17 @@ const PROMPTS_P2 = [
 // D'autres prompts s'ajoutent ici au lot 4 (edn-dp, edn-kfp, edn-tcs, edn-lca, edn-zap,
 // ecos-station, constantes-bio) — seuls r2c-items/r2c-sdd sont livrés au lot 2 (§8).
 const PROMPTS_EXTERNAT = [
+  { id: 'contexte-maitre-externat', titre: 'Contexte maître Externat (à coller avant les autres)', contenu: promptContexteMaitreExternat },
   { id: 'r2c-items', titre: 'Items R2C (liste officielle)', contenu: promptR2cItems },
   { id: 'r2c-sdd', titre: 'Situations de départ (liste officielle)', contenu: promptR2cSdd },
+  { id: 'edn-qi', titre: 'Questions isolées (QRU/QRM/QRP/QRP_LONG/QROC)', contenu: promptEdnQi },
+  { id: 'edn-zap', titre: 'Question ZAP', contenu: promptEdnZap },
+  { id: 'edn-dp', titre: 'Dossier DP', contenu: promptEdnDp },
+  { id: 'edn-kfp', titre: 'Dossier KFP', contenu: promptEdnKfp },
+  { id: 'edn-tcs', titre: 'Dossier TCS', contenu: promptEdnTcs },
+  { id: 'edn-lca', titre: 'Dossier LCA', contenu: promptEdnLca },
+  { id: 'ecos-station', titre: 'Station ECOS', contenu: promptEcosStation },
+  { id: 'constantes-bio', titre: 'Constantes biologiques', contenu: promptConstantesBio },
 ]
 
 function promptsActuels() {

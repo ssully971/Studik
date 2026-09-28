@@ -4,6 +4,9 @@ import { escapeHtml } from '../../lib/escape.js'
 import { richText, activerInteractionsRichText } from '../../lib/richtext.js'
 import { scoreQuestion, ajusterScoreQroc } from '../../lib/edn-scoring.js'
 import { enregistrerTentative, cibleQuestion } from '../../lib/edn-tentatives.js'
+import { getTagsErreur } from '../../lib/edn-tags-erreur.js'
+import { analyserContexteJeu, avancerSessionExternat } from './edn-session.js'
+import { renderTagsErreurChips, attacherTagsErreurChips } from './tags-erreur-picker.js'
 import {
   ordonnerPropositions,
   reponseInitiale,
@@ -13,10 +16,11 @@ import {
   attacherAjustementQroc,
 } from './question-engine.js'
 
-// Joueur de questions isolées (§5, §8 lot 3). Une question de dossier se joue via #edn-dossier ;
+// Joueur de questions isolées (§5, §8 lot 3/4). Une question de dossier se joue via #edn-dossier ;
 // cette page ne gère que les questions dont dossier_id est null (§4.3 : "on ne révise pas une
-// question de DP hors de son dossier").
-export async function renderEdnQuestion(container, id) {
+// question de DP hors de son dossier"). `contexteSegment` (3e segment de hash) encode le mode de
+// jeu quand la question est lancée depuis une session (#edn-session) — voir edn-session.js.
+export async function renderEdnQuestion(container, id, contexteSegment) {
   container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
 
   let question
@@ -31,8 +35,9 @@ export async function renderEdnQuestion(container, id) {
     return
   }
 
+  const { enSession, mode } = analyserContexteJeu(contexteSegment)
   const propositions = ordonnerPropositions(question)
-  const state = { reponse: reponseInitiale(question.format), score: null, debut: Date.now() }
+  const state = { reponse: reponseInitiale(question.format), score: null, debut: Date.now(), tagsErreur: [] }
 
   container.innerHTML = `
     <div class="wrap">
@@ -58,7 +63,7 @@ export async function renderEdnQuestion(container, id) {
   activerInteractionsRichText(wrap)
   attacherInteractions(wrap, question, state)
 
-  document.getElementById('valider-btn').addEventListener('click', () => {
+  document.getElementById('valider-btn').addEventListener('click', async () => {
     state.score = scoreQuestion(question, state.reponse)
     renderEtVerrouillerCorrection(wrap, question, propositions, state.reponse, state.score)
     if (question.format === 'QROC') {
@@ -66,7 +71,21 @@ export async function renderEdnQuestion(container, id) {
         state.score = ajusterScoreQroc(state.score, ajustement)
       })
     }
-    document.getElementById('question-actions').innerHTML = `<button id="finir-btn" class="btn primary" style="width: auto;">Terminer <kbd class="kbd-hint">↵</kbd></button>`
+
+    const rate = state.score < 1
+    const tagObligatoire = rate && mode === 'entrainement'
+    const tags = rate && mode !== 'examen' ? await getTagsErreur() : []
+
+    document.getElementById('question-actions').innerHTML = `
+      ${tags.length ? `<p class="import-hint">${tagObligatoire ? "Choisis au moins un tag d'erreur avant de continuer." : "Tag d'erreur (optionnel)."}</p>${renderTagsErreurChips(tags)}` : ''}
+      <button id="finir-btn" class="btn primary" style="width: auto;" ${tagObligatoire ? 'disabled' : ''}>Terminer <kbd class="kbd-hint">↵</kbd></button>
+    `
+    if (tags.length) {
+      attacherTagsErreurChips(wrap, (selectionnes) => {
+        state.tagsErreur = selectionnes
+        document.getElementById('finir-btn').disabled = tagObligatoire && selectionnes.length === 0
+      })
+    }
     document.getElementById('finir-btn').addEventListener('click', terminer)
   })
 
@@ -76,16 +95,18 @@ export async function renderEdnQuestion(container, id) {
     try {
       await enregistrerTentative({
         cible: cibleQuestion(question.id),
-        mode: 'entrainement',
+        mode,
         reponses: state.reponse,
         score: state.score,
         scoreMax: 1,
         dureeS: Math.round((Date.now() - state.debut) / 1000),
-        tagsErreur: [],
+        tagsErreur: state.tagsErreur,
+        itemsNumeros: question.items || [],
       })
     } catch (err) {
       console.error('Erreur enregistrement tentative EDN', err)
     }
-    window.location.hash = '#edn-banque'
+    if (enSession) avancerSessionExternat()
+    else window.location.hash = '#edn-banque'
   }
 }

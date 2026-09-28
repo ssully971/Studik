@@ -4,6 +4,9 @@ import { escapeHtml } from '../../lib/escape.js'
 import { richText, activerInteractionsRichText } from '../../lib/richtext.js'
 import { scoreQuestion, ajusterScoreQroc } from '../../lib/edn-scoring.js'
 import { enregistrerTentative, cibleDossier } from '../../lib/edn-tentatives.js'
+import { getTagsErreur } from '../../lib/edn-tags-erreur.js'
+import { analyserContexteJeu, avancerSessionExternat } from './edn-session.js'
+import { renderTagsErreurChips, attacherTagsErreurChips } from './tags-erreur-picker.js'
 import {
   ordonnerPropositions,
   reponseInitiale,
@@ -30,7 +33,7 @@ function renderBarreProgression(index, total) {
 // Joueur de dossiers DP/KFP/TCS (§5.10, §8 lot 3) — règle du "no-back" : une question validée est
 // définitivement verrouillée, aucun bouton "précédent" n'existe jamais sur cette page. LCA (écran
 // partagé) est hors périmètre de ce lot, voir §8 lot 6.
-export async function renderEdnDossier(container, id) {
+export async function renderEdnDossier(container, id, contexteSegment) {
   container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
 
   let dossier
@@ -66,6 +69,8 @@ export async function renderEdnDossier(container, id) {
     return
   }
 
+  const { enSession, mode } = analyserContexteJeu(contexteSegment)
+
   const state = {
     index: 0,
     reponses: questions.map((q) => reponseInitiale(q.format)),
@@ -74,6 +79,7 @@ export async function renderEdnDossier(container, id) {
     debutDossier: Date.now(),
     debutQuestion: Date.now(),
     dureesQuestions: questions.map(() => 0),
+    tagsErreur: [],
   }
 
   let timerInterval = null
@@ -152,8 +158,37 @@ export async function renderEdnDossier(container, id) {
     })
   }
 
+  // Le tag d'erreur (§7.4) se choisit une seule fois pour tout le dossier (une seule tentative
+  // enregistrée à cet échelon, voir DECISIONS.md lot 4), pas question par question.
   async function terminerDossier() {
     clearInterval(timerInterval)
+    const rate = state.scores.some((s) => s < 1)
+    const tagObligatoire = rate && mode === 'entrainement'
+    const tags = rate && mode !== 'examen' ? await getTagsErreur() : []
+
+    if (tags.length > 0) {
+      container.innerHTML = `
+        <div class="wrap">
+          <div class="section-head"><h2 class="voice">Qualifie tes erreurs — ${escapeHtml(dossier.titre)}</h2></div>
+          <p class="import-hint">${tagObligatoire ? "Choisis au moins un tag d'erreur avant de continuer." : "Tag d'erreur (optionnel)."}</p>
+          ${renderTagsErreurChips(tags)}
+          <div class="import-actions" style="margin-top: 16px;">
+            <button id="continuer-btn" class="btn primary" style="width: auto;" ${tagObligatoire ? 'disabled' : ''}>Continuer</button>
+          </div>
+        </div>
+      `
+      const wrap = container.querySelector('.wrap')
+      attacherTagsErreurChips(wrap, (selectionnes) => {
+        state.tagsErreur = selectionnes
+        document.getElementById('continuer-btn').disabled = tagObligatoire && selectionnes.length === 0
+      })
+      document.getElementById('continuer-btn').addEventListener('click', enregistrerEtAfficherResume)
+    } else {
+      await enregistrerEtAfficherResume()
+    }
+  }
+
+  async function enregistrerEtAfficherResume() {
     const score = state.scores.reduce((a, b) => a + b, 0)
     const scoreMax = questions.length
     const dureeS = Math.round((Date.now() - state.debutDossier) / 1000)
@@ -162,17 +197,23 @@ export async function renderEdnDossier(container, id) {
     try {
       await enregistrerTentative({
         cible: cibleDossier(dossier.id),
-        mode: 'entrainement',
+        mode,
         reponses: state.reponses,
         score,
         scoreMax,
         detail: state.scores,
         dureeS,
-        tagsErreur: [],
+        tagsErreur: state.tagsErreur,
+        itemsNumeros: dossier.items || [],
       })
       enregistre = true
     } catch (err) {
       console.error('Erreur enregistrement tentative EDN (dossier)', err)
+    }
+
+    if (enSession) {
+      avancerSessionExternat()
+      return
     }
 
     container.innerHTML = `

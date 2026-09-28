@@ -24,6 +24,14 @@ export async function toggleR2cItemPrioritaire(numero, prioritaire) {
   if (error) throw error
 }
 
+// Numéros d'items marqués "prioritaire" (flag personnel, §7.1) — sert à déterminer si une cible
+// SRS doit suivre la règle des 3 réussites parfaites consécutives.
+export async function getNumerosPrioritaires() {
+  const { data, error } = await supabase.from('r2c_items').select('numero').eq('prioritaire', true)
+  if (error) throw error
+  return new Set(data.map((d) => d.numero))
+}
+
 export async function getR2cSdd() {
   const { data, error } = await supabase.from('r2c_sdd').select('*').order('numero')
   if (error) throw error

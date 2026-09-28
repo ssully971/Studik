@@ -25,9 +25,13 @@ src/
   main.js              — shell (navbar, menu, recherche globale, raccourcis clavier), routeur par hash
   lib/                 — toute la logique d'accès aux données (un fichier par domaine)
   pages/               — une fonction render*(container, ...params) par page
+  pages/externat/      — pages du mode Externat (préfixe #edn-.../#ecos-..., voir plus bas)
   styles/main.css      — feuille de style unique, pas de CSS modules
   data/anecdotes.json  — 365 anecdotes médicales pour l'accueil
   data/prompts/*.md    — prompts prêts à copier pour générer du contenu (fiches, cas, QCM, matières)
+  data/prompts/externat/*.md — idem, banque de prompts du mode Externat
+supabase/migrations/*.sql — schéma des tables Externat (aucune n'existe côté P2), voir plus bas
+docs/externat/         — spec, journal de décisions et liste de tâches manuelles du mode Externat
 ```
 
 ## Identité visuelle (à respecter, ne pas réinventer)
@@ -57,7 +61,7 @@ Chaque nouvelle table doit recevoir un `grant select, insert, update, delete on 
 ## Décisions de conception à connaître avant de proposer des changements
 
 - **Suppression réelle, pas de soft-delete**, compensée par un export/import JSON complet dans Paramètres (backup manuel). Ne pas ajouter de `deleted_at` sans en discuter.
-- **Pas de répétition espacée (SRS)** ni de graphe de connaissances façon Obsidian — explicitement écartés à plusieurs reprises, à garder pour la toute fin si jamais.
+- **Pas de répétition espacée (SRS) en mode P2.** Décision inversée pour le mode Externat (EDN/ECOS) uniquement, ajouté en phase Externat V2 (voir `docs/externat/SPEC-EXTERNAT-V2.md` §0.3 et la section dédiée plus bas) : le SRS y est désormais volontaire. Le mode P2 garde exactement son fonctionnement d'avant, sans SRS ni graphe de connaissances façon Obsidian.
 - Le statut `a_revoir` (fiches, tentatives, qcm_tentatives) alimente les pages Révision / Carnet d'erreurs. Une tentative de cas/QCM ratée passe automatiquement `a_revoir = true` à l'enregistrement.
 - Les liens entre fiches (`pre_requis`/`consequences`) et vers des fiches (`fiches_liees` sur cas/QCM) sortent **toujours vides** des prompts d'import — Sullivan les ajoute lui-même ensuite via l'interface (recherche live sur la page détail d'une fiche).
 - Sur `#fiche/:id`, layout en 2 colonnes sur desktop (≥860px) avec une sidebar à onglets (Liens/Notes perso/Gestion), empilé en une colonne sur mobile.
@@ -85,10 +89,13 @@ Chaque nouvelle table doit recevoir un `grant select, insert, update, delete on 
 - **Ne jamais faire `container.addEventListener(...)` ou `document.addEventListener(...)` à l'intérieur d'une fonction `render*()` de page** sans y réfléchir : `container` (souvent `#content`) et `document` sont persistants sur toute la session, alors que `render*()` est rappelée à chaque navigation vers cette page — l'écouteur s'accumule à chaque visite au lieu d'être remplacé. Rencontré dans `session.js`, `fiche-detail.js` (×2), `accueil.js` et `tag-filter.js` (composant partagé par 5 pages). Corrections possibles : (a) attacher l'écouteur à un élément recréé à chaque rendu (ex. le `.wrap` de la page) quand la portée du clic peut se limiter à cet élément, ou (b) si l'écouteur doit rester sur `document` (fermer un menu au clic n'importe où sur la page), dédoublonner en gardant la référence de la fonction et en faisant `removeEventListener` avant de la reposer (voir `tag-filter.js`).
 - **`class="hidden"` ne masque RIEN par défaut dans ce projet** — il n'existe aucune règle générique `.hidden { display: none }` dans `main.css`. Chaque composant qui l'utilise a sa propre règle combinée (`.correction.hidden`, `.modal-overlay.hidden`, `.sidebar-panel.hidden`, `#qcm-edit-form.hidden`...). Ajouter `class="hidden"` sur un nouvel élément sans ajouter la règle CSS correspondante ne fait rien visuellement (bug rencontré et corrigé en direct sur `#signalement-panel`/`#copier-signalement-btn`, détecté seulement par un test live dans le navigateur — la classe était bien posée/retirée en JS mais sans effet visuel).
 - **Ne jamais ajouter une `height`/`width` explicite "en plus" de `inset: 0` sur un élément `position: fixed`** en pensant doubler la robustesse — une hauteur explicite gagne sur celle induite par `top`/`bottom` à 0, donc si le JS doit un jour rendre `inset` négatif (déborder volontairement du viewport, ex. le flou de `#wallpaper-layer`), le débord s'applique sur un axe mais pas l'autre, silencieusement. `inset: 0` seul suffit et n'a pas ce problème. Trouvé uniquement par un test Playwright automatisé comparant `getBoundingClientRect()` au viewport — invisible à l'inspection visuelle habituelle.
+- **Le piège des écouteurs accumulés sur une cible persistante s'applique aussi à `window`**, pas seulement `container`/`document` — rencontré sur `#edn-zap/:id` (éditeur de zones), où un `window.addEventListener('resize', ...)` posé naïvement à l'intérieur du `render()` interne de la page (rappelé à chaque interaction, pas seulement à chaque navigation) se serait accumulé indéfiniment. Corrigé en le posant une seule fois par navigation, hors de `render()`, avec le même principe de dédoublonnage que `tag-filter.js` (garder la référence de la fonction, `removeEventListener` avant de la reposer).
+- **Un groupe de boutons radio a besoin d'un `name` partagé identique** pour que cocher l'un décoche vraiment les autres — sans lui, chaque `<input type="radio">` se comporte comme son propre groupe indépendant. Rencontré sur le rendu QRU du moteur EDN (`pages/externat/question-engine.js`) : une première version générait les radios via un helper générique sans `name`, ce qui aurait laissé cocher plusieurs "bonnes réponses" en même temps sans qu'aucune erreur ne se manifeste (juste un score toujours à 0, silencieusement).
+- **Un module statiquement importé par `pages/import.js` ne doit dépendre d'aucun module chargé à la demande (zod)**, même indirectement — sinon Vite fusionne zod dans le chunk principal malgré l'`await import('../lib/import-schemas.js')` déjà en place ailleurs dans le même fichier (avertissement de build `INEFFECTIVE_DYNAMIC_IMPORT`, chunk principal +110 Ko). Rencontré en ajoutant `idFieldPourCible` (utilisée par `pages/import.js` avant même le clic sur "Importer", donc importée statiquement) directement depuis `lib/import-schemas.js`. Corrigé en sortant cette fonction (et la petite table qu'elle consulte) dans `lib/import-targets.js`, sans aucune dépendance à zod ; `import-schemas.js` la réexporte pour ne rien casser côté API existante. Toujours vérifier après un `npm run build` qu'`import-schemas-*.js` reste un chunk séparé.
 
 ## Tests
 
-- `npm test` (vitest, mode `run`) — pour l'instant uniquement des fonctions pures, pas de jsdom/DOM : `lib/scoring.js`, `lib/escape.js`, `lib/richtext.js`, `lib/import-schemas.js`.
+- `npm test` (vitest, mode `run`) — pour l'instant uniquement des fonctions pures, pas de jsdom/DOM : `lib/scoring.js`, `lib/escape.js`, `lib/richtext.js`, `lib/import-schemas.js`, et côté Externat `lib/edn-scoring.js`, `lib/edn-srs.js`, `lib/edn-shuffle.js`, `lib/edn-format.js`, `lib/raccourcis.js` (routes `edn-question`/`edn-dossier`).
 - Échappement HTML : une seule source, `src/lib/escape.js` (`escapeHtml`, échappe `& < > " '`). Ne pas recréer de copie locale — `main.js`, `import.js` et `richtext.js` en avaient chacun une auparavant, désormais tous importent depuis `lib/escape.js`.
 
 ## Validation à l'import (`#import`)
@@ -118,6 +125,65 @@ Chaque nouvelle table doit recevoir un `grant select, insert, update, delete on 
 - **Réglages** (`fond_reglages`, table `preferences` existante — aucune nouvelle table/colonne) : mode (`cover`/`contain`/`centre`), point focal (grille 3×3, `{x,y}` en %), flou (0–20px), assombrissement (0–100 %, curseur — la luminance de l'image ne calcule plus que la valeur INITIALE lors du choix d'une nouvelle image, `assombrissementInitial()`, plus jamais recalculée automatiquement après). `resoudreReglages`/`calculerStyleFond` sont des fonctions **pures**, testées (`lib/fond.test.js`).
 - Réglages séparés téléphone/ordinateur (option) : détection par `contexteAppareil()` = `matchMedia('(pointer: coarse)')` OU `matchMedia('(max-width: 768px)')` — jamais par user-agent. Un écouteur `resize` (posé une fois au chargement du module, pas dans un `render*()`) ne réapplique que si le contexte résolu a réellement changé (utile après rotation d'une tablette).
 - `-webkit-backdrop-filter` : vérifié sur tout le projet, deux occurrences de `backdrop-filter` sans son pendant `-webkit-` existaient sur `.topbar`/`.mobile-tabbar` (aucun rapport avec le fond, trouvé en vérifiant systématiquement comme demandé) — corrigées.
+
+## Mode Externat (EDN + ECOS)
+
+Deuxième mode d'usage du site (P2 reste le mode par défaut, strictement inchangé), ajouté à
+partir de `docs/externat/SPEC-EXTERNAT-V2.md` — lis ce document en entier avant de proposer un
+changement dans ce périmètre, ainsi que `docs/externat/DECISIONS.md` (chaque arbitrage pris sans
+demander à Sullivan y est journalisé avec le contexte et l'alternative écartée) et
+`docs/externat/A-FAIRE-SULLIVAN.md` (ce qu'il doit faire lui-même, notamment appliquer les
+migrations).
+
+- **Bascule de cycle** (`lib/cycle.js`, préférence `cycle` synchronisée entre appareils, cache
+  localStorage) : `'preclinique'` (défaut) ou `'externat'`, changée depuis Paramètres → carte
+  "Cycle d'études" (confirmation avant bascule). Un badge discret dans la topbar (clic → ouvre
+  cette carte, jamais de bascule directe au clic) rappelle le mode courant. La navigation
+  (`main.js`, `appliquerNavPourCycle`) régénère nav desktop/tabbar mobile/menu selon le cycle ;
+  les pages de l'autre mode restent accessibles via le menu. Une route `#edn-*`/`#ecos-*` visitée
+  en mode P2 affiche un bouton pour basculer directement dessus, jamais une erreur.
+- **Modèle de données** : tables préfixées `r2c_`/`edn_`/`ecos_`/`constantes_bio`, schéma complet
+  dans `supabase/migrations/001_externat_fondations.sql` (RLS + policy + grants explicites,
+  idempotente). Aucune table P2 n'est modifiée. `r2c_items`/`r2c_sdd` ont `numero` (entier) comme
+  clé primaire, pas `id` — `lib/upsert.js` (`upsertPartiel`) accepte un paramètre `idColumn` pour
+  ça. Un dossier (`edn_dossiers`, DP/KFP/TCS/LCA) porte ses questions comme de vraies lignes
+  `edn_questions` (`dossier_id` + `ordre`), jamais en jsonb imbriqué comme `qcm.questions` — voir
+  `lib/edn-content.js`.
+- **Dégradation propre** (`lib/externat-schema.js`) : toute page externat qui tape dans une table
+  pas encore migrée affiche "Migration 001 non appliquée..." au lieu de planter
+  (`estTableAbsente`/`htmlMigrationManquante`, détecte les codes `42P01`/`PGRST205`).
+- **Moteur docimologique** (`lib/edn-scoring.js`, fonctions pures testées contre les exemples
+  officiels du cahier des charges) : 7 formats (QRU, QRM à barème par discordance, QRP/QRP_LONG,
+  ZAP, QROC, TCS), rendus et joués par `pages/externat/question-engine.js` (partagé entre
+  `#edn-question` et `#edn-dossier`, jamais dupliqué). Barème totalement séparé de
+  `lib/scoring.js` (P2, Outremed) — ne jamais les mélanger. Le dossier applique le "no-back"
+  (`resoudreRaccourci` désactive `←` sur `edn-dossier`, voir `lib/raccourcis.js`) : une question
+  validée est verrouillée définitivement, jamais de bouton précédent. LCA (écran partagé) et le
+  mode examen (chrono global, aucune correction avant la fin) sont hors périmètre tant que la
+  phase 2 (lot 6) n'est pas faite — `#edn-dossier` affiche un message d'attente pour ces dossiers.
+- **Éditeur ZAP** (`pages/externat/edn-zap.js`, `#edn-zap/:id`) : SEULE exception au principe "pas
+  de saisie de contenu dans l'UI" (des coordonnées de clic ne peuvent pas venir d'un JSON généré
+  par une IA). Le rayon d'une zone est en % de la LARGEUR de l'image ; sa hauteur visuelle doit
+  être recalculée selon le ratio largeur/hauteur réellement affiché pour rester un cercle (voir
+  piège dédié plus haut sur l'accumulation d'écouteurs `resize`).
+- **SRS** (`lib/edn-srs.js`, pur et testé) : UNIQUEMENT en mode Externat (voir "Décisions de
+  conception" plus haut). Paliers J+1/3/7/14/30/60/120, 3 réussites parfaites consécutives
+  requises pour un item `prioritaire` avant de passer au palier suivant (sinon retour à J+1),
+  plafond anti-surcharge (réglage Paramètres, 100/jour par défaut). Mis à jour après CHAQUE
+  tentative (`lib/edn-tentatives.js`, y compris en mode flash) — jamais en modifiant une ligne
+  `edn_tentatives` existante (append-only, seuls les tags d'erreur s'ajoutent à l'écriture
+  initiale, jamais après coup).
+- **Carnet d'erreurs** : section Externat ajoutée à `pages/carnet-erreurs.js` (jamais dupliqué),
+  dérivée de `edn_tentatives` sans colonne `a_revoir` dédiée (il n'y en a pas dans le schéma) — une
+  cible reste "à revoir" tant que sa tentative la plus récente est imparfaite, voir
+  `lib/edn-carnet.js`.
+- **Session de révision** (`pages/externat/edn-session.js`) : enchaîne plusieurs cibles
+  (tableau de bord "Commencer"/"Série Flash", carnet d'erreurs "Refaire ces erreurs") en
+  réutilisant tel quel `#edn-question`/`#edn-dossier` (3e segment de hash `session-<mode>`),
+  jamais un joueur dédié dupliqué.
+- **Prompts** dans `src/data/prompts/externat/`, affichés par la page Prompts quand le cycle est
+  Externat (`pages/import.js`, `promptsActuels()`). Un test (`lib/edn-prompts.test.js`) vérifie que
+  l'exemple JSON de chaque prompt passe son schéma zod, comme pour les prompts P2.
 
 ## Build & déploiement
 

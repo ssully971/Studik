@@ -20,6 +20,7 @@ import { renderEdnQuestion } from './pages/externat/edn-question.js'
 import { renderEdnDossier } from './pages/externat/edn-dossier.js'
 import { renderEdnZap } from './pages/externat/edn-zap.js'
 import { renderEcosStations } from './pages/externat/ecos-stations.js'
+import { renderEdnSessionResume } from './pages/externat/edn-session.js'
 import { renderAccueil } from './pages/accueil.js'
 import { renderReferentiel } from './pages/referentiel.js'
 import { renderImport } from './pages/import.js'
@@ -47,10 +48,11 @@ const EDN_ROUTE_HANDLERS = {
   'edn-accueil': (content) => renderEdnAccueil(content),
   'edn-items': (content) => renderEdnItems(content),
   'edn-banque': (content) => renderEdnBanque(content),
-  'edn-question': (content, id) => renderEdnQuestion(content, id),
-  'edn-dossier': (content, id) => renderEdnDossier(content, id),
+  'edn-question': (content, id, segment) => renderEdnQuestion(content, id, segment),
+  'edn-dossier': (content, id, segment) => renderEdnDossier(content, id, segment),
   'edn-zap': (content, id) => renderEdnZap(content, id),
   'ecos-stations': (content) => renderEcosStations(content),
+  'edn-session-resume': (content) => renderEdnSessionResume(content),
 }
 
 function estRouteExternat(route) {
@@ -470,7 +472,7 @@ function router() {
   } else if (route === 'parametres') {
     renderParametres(content)
   } else if (estRouteExternat(route)) {
-    if (estExternat()) EDN_ROUTE_HANDLERS[route](content, parts[1])
+    if (estExternat()) EDN_ROUTE_HANDLERS[route](content, parts[1], parts[2])
     else renderBasculeExternat(content)
   } else {
     content.innerHTML = `<div class="wrap"><p class="voice">Page "${route}" à venir.</p></div>`

@@ -13,6 +13,9 @@ import { getMatieres, buildMatiereColorMap, couleurTab, getTousLesCoursAplatis }
 import { renderTagFilters } from './tag-filter.js'
 import { renderTagPicker } from './tag-picker.js'
 import { definirScopeRetry } from './qcm-retry-session.js'
+import { estExternat } from '../lib/cycle.js'
+import { getTentativesEdnARevoir, resoudreCiblesEnDetail } from '../lib/edn-carnet.js'
+import { demarrerSessionExternat } from './externat/edn-session.js'
 
 const TYPE_LABELS = {
   clinique: 'clinique',
@@ -115,6 +118,19 @@ async function renderActives(container) {
     return
   }
 
+  const modeExternat = estExternat()
+  let tentativesEdn = []
+  let detailParCibleEdn = {}
+  if (modeExternat) {
+    try {
+      tentativesEdn = await getTentativesEdnARevoir()
+      detailParCibleEdn = await resoudreCiblesEnDetail(tentativesEdn)
+    } catch {
+      tentativesEdn = []
+      detailParCibleEdn = {}
+    }
+  }
+
   let matiereColorMap = {}
   try {
     matiereColorMap = buildMatiereColorMap(await getMatieres({}))
@@ -146,7 +162,25 @@ async function renderActives(container) {
       <h3 class="voice" style="font-size: 15px;">QCM</h3>
     </div>
     <div id="erreurs-qcm-list" class="fiches-list" style="margin-bottom: 12px;"></div>
-    <div id="erreurs-qcm-voir-plus"></div>
+    <div id="erreurs-qcm-voir-plus" style="margin-bottom: ${modeExternat ? '32px' : '0'};"></div>
+
+    ${
+      modeExternat
+        ? `
+    <div class="section-head" style="border-bottom: none; padding-bottom: 0;">
+      <h3 class="voice" style="font-size: 15px;">Externat (questions et dossiers)</h3>
+    </div>
+    <div class="filters" id="erreurs-edn-filters">
+      <select id="erreurs-edn-tag" class="periode-select"><option value="">Tous les tags d'erreur</option></select>
+      <select id="erreurs-edn-format" class="periode-select"><option value="">Tous formats</option></select>
+    </div>
+    <div class="import-actions" style="margin-bottom: 12px;">
+      <button id="erreurs-edn-refaire-btn" class="btn primary" style="width: auto;">Refaire ces erreurs</button>
+    </div>
+    <div id="erreurs-edn-list" class="fiches-list"></div>
+    `
+        : ''
+    }
   `
 
   let limiteCas = PAGE_SIZE
@@ -504,6 +538,76 @@ async function renderActives(container) {
       definirScopeRetry({ criteres: { tags: tagsChoisis }, label: tagsChoisis.join(', ') })
       window.location.hash = '#qcm-retry-session'
     })
+  }
+
+  if (modeExternat) {
+    let tagErreurActif = ''
+    let formatActif = ''
+
+    const tagsDisponibles = Array.from(new Set(tentativesEdn.flatMap((t) => t.tags_erreur || []))).sort()
+    const formatsDisponibles = Array.from(
+      new Set(tentativesEdn.map((t) => detailParCibleEdn[t.cible]?.format).filter(Boolean))
+    ).sort()
+
+    document.getElementById('erreurs-edn-tag').innerHTML +=
+      tagsDisponibles.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')
+    document.getElementById('erreurs-edn-format').innerHTML +=
+      formatsDisponibles.map((f) => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('')
+
+    function tentativesEdnFiltrees() {
+      return tentativesEdn.filter((t) => {
+        if (tagErreurActif && !(t.tags_erreur || []).includes(tagErreurActif)) return false
+        const detail = detailParCibleEdn[t.cible]
+        if (formatActif && detail?.format !== formatActif) return false
+        return Boolean(detail)
+      })
+    }
+
+    function renderListeEdn() {
+      const liste = tentativesEdnFiltrees()
+      const listEl = document.getElementById('erreurs-edn-list')
+      if (liste.length === 0) {
+        listEl.innerHTML = `<p class="empty-note">Aucune erreur externat à revoir.</p>`
+        return
+      }
+      listEl.innerHTML = liste
+        .map((t) => {
+          const detail = detailParCibleEdn[t.cible]
+          const href = detail.sorte === 'dossier' ? `#edn-dossier/${encodeURIComponent(detail.id)}` : `#edn-question/${encodeURIComponent(detail.id)}`
+          return `
+          <div class="fiche-row">
+            <div class="tab" style="background: var(--structure);"></div>
+            <div class="fiche-body">
+              <div class="fiche-top">
+                <span class="fiche-title voice">${escapeHtml((detail.titreAffiche || '').slice(0, 140))}</span>
+                <span class="type-label">${escapeHtml(detail.format || '')}</span>
+              </div>
+              <div class="fiche-meta">${t.score}/${t.score_max} · ${(t.tags_erreur || []).map(escapeHtml).join(', ') || 'sans tag'} · ${formatDate(t.date_tentative)}</div>
+            </div>
+            <div class="import-actions" style="margin-top: 0;">
+              <a href="${href}" class="btn primary" style="width: auto;">Rejouer</a>
+            </div>
+          </div>
+        `
+        })
+        .join('')
+    }
+
+    document.getElementById('erreurs-edn-tag').addEventListener('change', (e) => {
+      tagErreurActif = e.target.value
+      renderListeEdn()
+    })
+    document.getElementById('erreurs-edn-format').addEventListener('change', (e) => {
+      formatActif = e.target.value
+      renderListeEdn()
+    })
+    document.getElementById('erreurs-edn-refaire-btn').addEventListener('click', () => {
+      const cibles = tentativesEdnFiltrees().map((t) => ({ cible: t.cible }))
+      if (cibles.length === 0) return
+      demarrerSessionExternat(cibles, 'Refaire mes erreurs', 'entrainement')
+    })
+
+    renderListeEdn()
   }
 
   applyFiltre()

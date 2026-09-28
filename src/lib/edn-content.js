@@ -74,12 +74,14 @@ export async function getQuestionsIsolees() {
   return data
 }
 
-export async function updateQuestionSignalement(id, aCorriger, noteCorrection) {
-  const { error } = await supabase.from('edn_questions').update({ a_corriger: aCorriger, note_correction: noteCorrection }).eq('id', id)
+// Mises à jour génériques (statut, tags, signalement d'erreur — §7.3 Banque) : mêmes champs
+// partiels que updateCas/updateMatiere côté P2, pas une fonction dédiée par champ.
+export async function updateQuestion(id, champs) {
+  const { error } = await supabase.from('edn_questions').update(champs).eq('id', id)
   if (error) throw error
 }
 
-export async function updateDossierSignalement(id, aCorriger, noteCorrection) {
-  const { error } = await supabase.from('edn_dossiers').update({ a_corriger: aCorriger, note_correction: noteCorrection }).eq('id', id)
+export async function updateDossier(id, champs) {
+  const { error } = await supabase.from('edn_dossiers').update(champs).eq('id', id)
   if (error) throw error
 }

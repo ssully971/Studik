@@ -33,12 +33,24 @@ réelle). Coche au fur et à mesure.
    - Éditeur de zones `#edn-zap/:id` sur un vrai téléphone/tablette (tactile) : pose un point,
      ajuste son rayon, supprime-le, enregistre, puis vérifie que le cercle reste bien un cercle
      (pas une ellipse) même sur une image très large/étroite.
-7. **Relire `docs/externat/DECISIONS.md`** avant de donner ton feedback pour la phase 2 : chaque
+7. **Importer un dossier et des questions de test** une fois le lot 4 en place, via les prompts
+   `prompt-edn-qi.md`/`prompt-edn-dp.md`/`prompt-edn-kfp.md`/`prompt-edn-tcs.md`/
+   `prompt-edn-lca.md`/`prompt-edn-zap.md` (colle `prompt-contexte-maitre-externat.md` avant
+   chacun), puis :
+   - Vérifie que le tableau de bord (`#edn-accueil`) affiche bien "Révisions dues" une fois une
+     première tentative faite, et que "Série Flash" fonctionne (dues en priorité, sinon 5 questions
+     déjà tentées au hasard).
+   - Vérifie la Banque (`#edn-banque`) : filtre par statut/à corriger/suspendues, bascule
+     suspendre/réactiver le SRS d'une cible, changement de statut.
+   - Vérifie la section Externat du carnet d'erreurs (`#erreurs`) : filtre par tag/format, bouton
+     "Refaire ces erreurs".
+   - Vérifie Paramètres → carte "Externat — révision" (plafond, tags d'erreur).
+8. **Relire `docs/externat/DECISIONS.md`** avant de donner ton feedback pour la phase 2 : chaque
    arbitrage pris sans te demander y est journalisé avec le contexte et l'alternative écartée
-   (dont le 11e domaine de compétence ECOS et l'ajout de la forme "rect" en ZAP, à trancher en
-   phase 2).
+   (dont le 11e domaine de compétence ECOS, l'ajout de la forme "rect" en ZAP, et un lanceur de
+   série multi-critères sur l'accueil — à trancher en phase 2 si tu les juges utiles).
 
 ## Une fois la phase 1 relue et mergée
 
-8. Donne tes retours à Claude pour lancer la phase 2 (§10 "Prompts de lancement" de la spec, prompt
+9. Donne tes retours à Claude pour lancer la phase 2 (§10 "Prompts de lancement" de la spec, prompt
    "Phase 2").

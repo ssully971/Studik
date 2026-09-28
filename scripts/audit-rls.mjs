@@ -19,6 +19,16 @@ const TABLES = [
   'checkins',
   'captures',
   'contenu_cours',
+  // Mode Externat (externat-v2, migration 001) :
+  'r2c_items',
+  'r2c_sdd',
+  'edn_dossiers',
+  'edn_questions',
+  'edn_tentatives',
+  'edn_srs',
+  'ecos_stations',
+  'ecos_tentatives',
+  'constantes_bio',
 ]
 
 async function checkTable(table) {
