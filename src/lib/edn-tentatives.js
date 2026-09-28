@@ -54,3 +54,11 @@ export function cibleQuestion(id) {
 export function cibleDossier(id) {
   return `d:${id}`
 }
+
+// Historique COMPLET (§8 lot 7, page Stats) — à ne jamais confondre avec
+// lib/edn-carnet.js::getTentativesEdnARevoir(), qui ne garde que la plus récente par cible.
+export async function getToutesLesTentativesEdn() {
+  const { data, error } = await supabase.from('edn_tentatives').select('*').order('date_tentative', { ascending: true })
+  if (error) throw error
+  return data
+}

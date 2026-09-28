@@ -32,6 +32,7 @@ import { renderEcosStations } from './pages/externat/ecos-stations.js'
 import { renderEcosStation } from './pages/externat/ecos-station.js'
 import { renderEdnSessionResume } from './pages/externat/edn-session.js'
 import { renderEdnExamen } from './pages/externat/edn-examen.js'
+import { renderEdnStats } from './pages/externat/edn-stats.js'
 import { toggleModaleConstantes, fermerModaleConstantes } from './pages/externat/constantes-modal.js'
 import { renderAccueil } from './pages/accueil.js'
 import { renderReferentiel } from './pages/referentiel.js'
@@ -52,7 +53,7 @@ import { renderSession } from './pages/session.js'
 import { renderOrganisation } from './pages/organisation.js'
 
 const app = document.getElementById('app')
-const SECONDARY_ROUTES = ['capture', 'import', 'parametres', 'stats', 'organisation', 'edn-items']
+const SECONDARY_ROUTES = ['capture', 'import', 'parametres', 'stats', 'organisation', 'edn-items', 'edn-stats']
 
 // Routes du mode externat (préfixe #edn-... / #ecos-...) : voir lib/cycle.js et §3 de la spec.
 // Une route externat visitée en mode P2 affiche un lien de bascule plutôt qu'une erreur.
@@ -67,6 +68,7 @@ const EDN_ROUTE_HANDLERS = {
   'ecos-station': (content, id, segment) => renderEcosStation(content, id, segment),
   'edn-session-resume': (content) => renderEdnSessionResume(content),
   'edn-examen': (content) => renderEdnExamen(content),
+  'edn-stats': (content) => renderEdnStats(content),
 }
 
 function estRouteExternat(route) {
@@ -159,7 +161,7 @@ function menuDropdownHTML(cycle) {
     <a href="#edn-items" data-route="edn-items">Items R2C</a>
     <div class="dropdown-divider"></div>
     ${croise}
-    <a href="#stats" data-route="stats">Statistiques</a>
+    <a href="${cycle === 'externat' ? '#edn-stats' : '#stats'}" data-route="${cycle === 'externat' ? 'edn-stats' : 'stats'}">Statistiques</a>
     <a href="#capture" data-route="capture">Capture rapide</a>
     <a href="#import" data-route="import">Import &amp; prompts</a>
     <a href="#organisation" data-route="organisation">Organisation</a>

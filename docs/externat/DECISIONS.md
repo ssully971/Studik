@@ -626,3 +626,71 @@ Banque → lancement → chrono global qui décroît → aucune correction avant
 correction colorée correcte pour chaque question → tags d'erreur optionnels → tentatives
 enregistrées une par origine → soumission forcée confirmée en laissant le chrono expirer sans
 interagir. `npm test` (473 tests) et `npm run build` verts.
+
+## Lot 7 — Statistiques et exports
+
+### Page `#edn-stats` séparée de `#stats` (P2), lien "Statistiques" du menu devenu cycle-aware
+**Contexte.** §8 : "Page Stats externat" — jusqu'ici `#stats` renvoyait TOUJOURS vers la page de
+stats P2 (`renderStats`), même en mode Externat : le lien du menu déroulant n'était pas
+conditionné par le cycle (contrairement au reste de la navigation).
+**Retenu.** Nouvelle route `#edn-stats` (même principe que `#edn-accueil` vs `#accueil`) : le lien
+"Statistiques" du menu pointe vers `#edn-stats`/`#stats` selon `cycle`, ajouté à
+`EDN_ROUTE_HANDLERS` et à `SECONDARY_ROUTES`. Bug préexistant corrigé au passage (pas introduit par
+ce lot, mais jamais remarqué avant faute de page Externat à comparer).
+**Écarté.** Rendre `#stats` lui-même cycle-aware (comme `route === 'accueil'` ne l'est pas non
+plus, par choix déjà acté) : casser une route existante utilisée par des liens/favoris potentiels
+aurait été un changement plus risqué qu'en ajouter une nouvelle.
+
+### Unités évaluées : aplatir chaque tentative (dossier ou question) en une entrée par question notée
+**Contexte.** §8 : "réussite par spécialité, item, format et rang" — mais une tentative de dossier
+ne stocke qu'un `detail` (scores par sous-question), sans le format/rang/spécialités/items de
+chaque sous-question (ceux-ci vivent sur les lignes `edn_questions` du dossier, jamais dupliqués
+dans la tentative).
+**Retenu.** La page (`edn-stats.js`) résout, pour chaque dossier RÉELLEMENT tenté (jamais tous les
+dossiers), ses questions via `getDossierAvecQuestions`, puis aplatit `detail[i]` + les métadonnées
+de la question `i` en une "unité évaluée" — la même forme qu'une tentative de question isolée.
+`lib/edn-stats.js` (pur, testé) n'agrège jamais que ce format uniforme, jamais deux chemins de
+calcul selon la provenance.
+**LCA comptée double** : appliqué non seulement aux regroupements par spécialité/item/format/rang
+mais aussi à la note AA estimée (`noteAAEstimee`) — la spec liste "LCA comptée double" comme un
+point séparé de "note AA estimée", mais les deux sont des agrégats de réussite ; les traiter
+différemment aurait été arbitraire et jamais justifié par le texte. Vérifié par un test dédié
+(une unité double-A issue d'un dossier LCA pèse 2x dans le calcul).
+
+### Fatigue score : sessions reconstruites par écart entre tentatives consécutives, pas une colonne
+**Contexte.** §8 : "calculé à partir de `date_tentative` et `duree_s` **sans nouvelle donnée**" —
+aucun `session_id` n'existe et n'en sera ajouté.
+**Retenu.** `reussiteParDureeSession` (lib/edn-stats.js) trie les tentatives par date, démarre une
+nouvelle "session" dès que l'écart avec la tentative PRÉCÉDENTE (jamais le début de la session en
+cours — bug trouvé et corrigé en écrivant les tests : comparer au début de session aurait empêché
+toute session de dépasser le seuil de pause) dépasse `SEUIL_PAUSE_SESSION_MIN` (30 min), puis
+regroupe la réussite par tranche de minutes écoulées depuis le début de CETTE session.
+**Message factuel** (`messageFatigue`) : un simple constat chiffré ("réussite la plus haute à
+Xh (Y%), la plus basse à Zh (W%)"), jamais une recommandation — et seulement si l'écart dépasse
+20 points ET que chaque heure comparée a un échantillon d'au moins 3 unités (sinon un pic à 100%
+sur une seule question à 3h du matin serait trompeur).
+**ECOS inclus dans le calcul de fatigue** (pas seulement EDN) : les deux partagent `date_tentative`
+et `score`/`score_max`, la page Externat est un tout, pas deux fatigue scores séparés.
+
+### Exports (CSV Anki, PDF) limités aux questions isolées "à revoir"
+**Contexte.** §8 : "CSV compatible avec l'import d'Anki (recto = énoncé, verso = correction +
+explication)" et "PDF « mes erreurs » via le jsPDF existant".
+**Retenu.** Réutilise EXACTEMENT la même source que le Carnet d'erreurs
+(`getTentativesEdnARevoir()` + `resoudreCiblesEnDetail()`, lib/edn-carnet.js — étendu pour inclure
+`contenu`/`explication` dans le select, un ajout additif sans risque pour son autre usage) plutôt
+que de redéfinir "qu'est-ce qu'une erreur" une seconde fois. `lib/edn-export.js`
+(`correctionTexte`, pur, testé par format) est la source UNIQUE de "qu'est-ce que la bonne
+réponse" pour le CSV et le PDF, jamais deux logiques de correction qui pourraient diverger.
+**Écarté.** Inclure les dossiers en erreur dans ces exports : le Carnet d'erreurs traite un
+dossier comme UNE seule cible (pas de sous-score par question conservé au même niveau que pour une
+question isolée), et `correctionTexte` opère sur une question, pas un dossier entier. Développer
+la ventilation par sous-question d'un dossier en erreur uniquement pour l'export aurait
+dépassé le périmètre du lot pour un gain marginal (l'essentiel du carnet reste des questions
+isolées) — signalé explicitement dans l'UI de la page Stats plutôt que silencieusement omis.
+**Format CSV** : texte brut uniquement (markdown retiré via `texteBrut`), jamais de HTML, pour
+rester compatible avec un import Anki basique sans avoir à cocher "Allow HTML in fields".
+
+`npm test` (508 tests, +43 pour ce lot) et `npm run build` verts. Vérifié en direct (Playwright) :
+tableau de bord complet avec données réalistes (spécialités, items, ECOS, fatigue), filtre
+d'obsolescence qui distingue correctement obsolète/non-obsolète, export CSV et PDF déclenchant
+chacun un téléchargement réel avec le bon contenu.

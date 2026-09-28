@@ -213,3 +213,54 @@ export function exporterFichesPDF(fiches, nomFichier) {
 
   doc.save(`${nomFichier || 'studik-export'}.pdf`)
 }
+
+// Export "mes erreurs" externat (§8 lot 7) — jsPDF existant, jamais @react-pdf. `erreurs` :
+// [{ titre, sousTitre, correction }], déjà résolu par la page appelante (pages/externat/edn-stats.js)
+// depuis lib/edn-carnet.js + lib/edn-export.js (correctionTexte), pour ne jamais dupliquer la
+// définition de "qu'est-ce qu'une erreur" ou "qu'est-ce que la correction".
+export function exporterErreursExternatPDF(erreurs) {
+  if (!erreurs || erreurs.length === 0) return
+
+  const doc = new jsPDF()
+  const state = { y: 20 }
+
+  doc.setFont(undefined, 'normal')
+  doc.setFontSize(18)
+  doc.setTextColor(20, 20, 20)
+  doc.text('Mes erreurs — Externat', 14, state.y)
+  state.y += 12
+
+  erreurs.forEach((e) => {
+    if (state.y > 255) {
+      doc.addPage()
+      state.y = 20
+    }
+
+    doc.setFontSize(12)
+    doc.setTextColor(20, 20, 20)
+    const titreLignes = doc.splitTextToSize(normaliserPourPdf(e.titre), 180)
+    doc.text(titreLignes, 14, state.y)
+    state.y += titreLignes.length * 6
+
+    if (e.sousTitre) {
+      doc.setFontSize(9)
+      doc.setTextColor(120, 120, 120)
+      doc.text(normaliserPourPdf(e.sousTitre), 14, state.y + 4)
+      state.y += 8
+    } else {
+      state.y += 2
+    }
+
+    if (e.correction) {
+      doc.setFontSize(10)
+      doc.setTextColor(60, 60, 60)
+      const correctionLignes = doc.splitTextToSize(normaliserPourPdf(e.correction), 180)
+      doc.text(correctionLignes, 14, state.y + 4)
+      state.y += correctionLignes.length * 5 + 10
+    } else {
+      state.y += 8
+    }
+  })
+
+  doc.save('mes-erreurs-externat.pdf')
+}

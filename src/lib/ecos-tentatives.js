@@ -29,3 +29,10 @@ export async function getTentativesEcos(stationId) {
   if (error) throw error
   return data
 }
+
+// Toutes stations confondues (§8 lot 7, page Stats — "ECOS par domaine").
+export async function getToutesLesTentativesEcos() {
+  const { data, error } = await supabase.from('ecos_tentatives').select('*').order('date_tentative', { ascending: true })
+  if (error) throw error
+  return data
+}
