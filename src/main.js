@@ -168,6 +168,8 @@ function appliquerNavPourCycle() {
   const badge = document.getElementById('cycle-badge')
   if (badge) badge.textContent = cycle === 'externat' ? 'EXTERNAT' : 'P2'
 
+  appliquerVisibilitePeriodeSelect()
+
   router()
 }
 
@@ -271,18 +273,31 @@ function renderShell(user) {
   appliquerNavPourCycle()
 }
 
+// Le sélecteur de période (années/semestres des matières P2) n'a aucun sens en mode Externat, qui
+// n'utilise pas la table `matieres` (voir lib/cycle.js) — il doit rester cyclé/masqué même après
+// coup si l'utilisateur bascule de cycle, pas seulement à l'ouverture initiale.
+let periodesDisponiblesCache = []
+
+function appliquerVisibilitePeriodeSelect() {
+  const select = document.getElementById('periode-select')
+  if (!select) return
+  select.style.display = estExternat() || periodesDisponiblesCache.length === 0 ? 'none' : ''
+}
+
 async function setupPeriodeSelector() {
   const select = document.getElementById('periode-select')
   let periodes = []
   try {
     periodes = await getPeriodesDisponibles()
   } catch (err) {
-    select.style.display = 'none'
+    periodesDisponiblesCache = []
+    appliquerVisibilitePeriodeSelect()
     return
   }
 
+  periodesDisponiblesCache = periodes
   if (periodes.length === 0) {
-    select.style.display = 'none'
+    appliquerVisibilitePeriodeSelect()
     return
   }
 
@@ -297,6 +312,7 @@ async function setupPeriodeSelector() {
   })
 
   select.innerHTML = html
+  appliquerVisibilitePeriodeSelect()
 
   select.addEventListener('change', () => {
     setPeriodeActuelle(select.value ? JSON.parse(select.value) : null)
