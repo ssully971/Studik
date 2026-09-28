@@ -59,7 +59,64 @@ deux modes en permanence : aurait surchargé l'écran mobile.
 
 ## Lot 2 — Référentiels et import
 
-_(à compléter)_
+### `statut` de `edn_dossiers`/`edn_questions`
+**Contexte.** Le §4.2 dit juste "statut : mêmes valeurs que l'existant", ambigu entre les 4
+valeurs des fiches (`brouillon/valide/a_revoir/archive`) et les 3 de `cas_cliniques`/`qcm`
+(`brouillon/valide/archive`).
+**Retenu.** Les 3 valeurs de `cas_cliniques`/`qcm`. Le statut "à revoir" d'une fiche P2 encode un
+état de révision qui, côté Externat, est déjà porté indépendamment par `edn_srs` (palier, date de
+prochaine révision) — dupliquer cette information dans `statut` aurait créé deux sources de
+vérité.
+**Écarté.** Les 4 valeurs des fiches.
+
+### `upsertPartiel` généralisé à une colonne clé configurable
+**Contexte.** `r2c_items`/`r2c_sdd` ont `numero` (entier) comme clé primaire, pas `id` — `lib/
+upsert.js` (`upsertPartiel`) codait en dur le nom de colonne `id` dans ses requêtes.
+**Retenu.** Un paramètre optionnel `idColumn` (défaut `'id'`) sur `upsertPartiel`, utilisé avec
+`'numero'` depuis `lib/r2c.js`. Une seule implémentation de l'upsert partiel, pas de copie
+dupliquée pour ces deux tables.
+**Écarté.** Une fonction d'upsert dédiée aux tables à clé entière : aurait dupliqué toute la
+logique déjà testée en production de `upsertPartiel`.
+
+### `idFieldPourCible` sorti de `lib/import-schemas.js` vers `lib/import-targets.js`
+**Contexte.** `pages/import.js` a besoin de connaître, de façon synchrone et sans charger zod,
+quel champ sert de clé pour chaque cible (pour les contrôles de doublon/id manquant, qui
+s'exécutent avant tout import et donc avant le chargement dynamique de zod). Un premier essai
+important `idFieldPourCible` directement depuis `import-schemas.js` a fait échouer la règle "zod
+chargé à la demande seulement" : le build a émis `INEFFECTIVE_DYNAMIC_IMPORT` et zod s'est
+retrouvé dans le chunk principal (989 Ko → 1099 Ko) au lieu de son chunk séparé.
+**Retenu.** `idFieldPourCible` (et la table qu'elle consulte) vit dans un nouveau fichier sans
+aucune dépendance à zod (`lib/import-targets.js`), importé statiquement par `pages/import.js` ;
+`import-schemas.js` la réexporte pour ne rien casser côté tests/API existante. Le build confirme
+zod de nouveau dans son propre chunk après ce changement.
+**Écarté.** Dupliquer la table id/cible dans les deux fichiers (risque de divergence silencieuse).
+
+### Questions d'un dossier stockées comme lignes réelles, pas en jsonb imbriqué
+**Contexte.** `qcm.questions` est un tableau jsonb opaque ; on aurait pu faire pareil pour
+`edn_dossiers`.
+**Retenu.** Chaque question d'un DP/KFP/TCS/LCA est une ligne à part dans `edn_questions`
+(`dossier_id` + `ordre`), éclatée à l'import par `lib/edn-content.js`. Nécessaire : le §4.3 traite
+certaines cibles de révision au niveau du dossier entier mais la question reste l'unité de rendu
+et de format (chaque question a son propre `format`/`rang`/`contenu`), et le lot 3 doit pouvoir
+récupérer un dossier avec ses questions ordonnées sans parser un blob applicatif.
+**Écarté.** `questions` en jsonb sur `edn_dossiers` comme pour les QCM.
+
+### Détection automatique de la cible au collage : heuristique, pas garantie
+**Contexte.** `detecterTypeImport` bascule déjà l'onglet actif sur la forme détectée du JSON collé
+pour fiches/cas/qcm ; les nouvelles cibles ajoutent des formes qui se recoupent partiellement
+(`edn_dossiers.questions` est aussi un tableau, comme `qcm.questions`).
+**Retenu.** Étendu avec des heuristiques best-effort (ex. distinction par présence de
+`duree_minutes`), documentées comme non garanties dans le code — Sullivan choisit toujours l'onglet
+à la main si la détection se trompe, ça ne bloque jamais rien.
+**Écarté.** Rendre la détection exhaustive/infaillible : coût disproportionné pour un simple
+confort au collage.
+
+### Avertissement non bloquant pour un item/SDD référencé mais pas encore importé
+**Contexte.** §6 : "Les items et SDD référencés existent : avertissement non bloquant, comme pour
+les matières inconnues."
+**Retenu.** Même mécanisme que les matières inconnues : vérifié après validation zod, ajouté à la
+liste `avertissements`, n'empêche jamais l'import. Vérifié aussi bien au niveau du dossier qu'au
+niveau de chacune de ses questions imbriquées.
 
 ## Lot 3 — Moteur
 

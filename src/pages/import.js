@@ -6,6 +6,13 @@ import { getTags, getTagsAvecPerimetre, ajouterTag, supprimerTag, modifierPerime
 import { getPeriodesDisponibles } from '../lib/periode.js'
 import { slugify } from '../lib/slug.js'
 import { escapeHtml } from '../lib/escape.js'
+import { estExternat } from '../lib/cycle.js'
+import { estTableAbsente, messageMigrationManquante } from '../lib/externat-schema.js'
+import { idFieldPourCible } from '../lib/import-targets.js'
+import { insertR2cItems, getAllR2cItemNumeros, insertR2cSdd, getAllR2cSddNumeros } from '../lib/r2c.js'
+import { insertDossiersAvecQuestions, getAllDossierIds, insertQuestionsIsolees, getAllQuestionIds } from '../lib/edn-content.js'
+import { insertStations, getAllStationIds } from '../lib/ecos.js'
+import { insertConstantes, getAllConstanteIds } from '../lib/constantes-bio.js'
 import promptContexteMaitre from '../data/prompts/prompt-contexte-maitre.md?raw'
 import promptClinique from '../data/prompts/prompt-fiche-clinique.md?raw'
 import promptMecanisme from '../data/prompts/prompt-fiche-mecanisme.md?raw'
@@ -13,22 +20,36 @@ import promptStructure from '../data/prompts/prompt-fiche-structure.md?raw'
 import promptCas from '../data/prompts/prompt-cas.md?raw'
 import promptQcm from '../data/prompts/prompt-qcm.md?raw'
 import readme from '../data/prompts/README-prompts.md?raw'
+import promptR2cItems from '../data/prompts/externat/prompt-r2c-items.md?raw'
+import promptR2cSdd from '../data/prompts/externat/prompt-r2c-sdd.md?raw'
 
 let mode = 'import'
 
-function findDuplicateIds(items) {
+function findDuplicateIds(items, idField) {
   const seen = new Set()
   const duplicates = new Set()
   items.forEach((item) => {
-    if (seen.has(item.id)) duplicates.add(item.id)
-    seen.add(item.id)
+    if (seen.has(item[idField])) duplicates.add(item[idField])
+    seen.add(item[idField])
   })
   return Array.from(duplicates)
 }
 
+const FORMATS_QUESTION_CONNUS = ['QRU', 'QRM', 'QRP', 'QRP_LONG', 'QROC', 'ZAP', 'TCS']
+const TYPES_DOSSIER_CONNUS = ['DP', 'KFP', 'TCS', 'LCA']
+
+// Détection au clic-coller, pour basculer automatiquement la cible sélectionnée sur celle qui
+// correspond à la forme du JSON collé — best-effort, pas de garantie face à une forme ambiguë ;
+// l'utilisateur peut toujours choisir la cible à la main.
 function detecterTypeImport(item) {
   if (!item || typeof item !== 'object') return null
-  if (Array.isArray(item.questions)) return 'qcm'
+  if (TYPES_DOSSIER_CONNUS.includes(item.type)) return 'edn_dossiers'
+  if (Array.isArray(item.questions) && item.duree_minutes !== undefined) return 'qcm'
+  if (FORMATS_QUESTION_CONNUS.includes(item.format)) return 'edn_questions'
+  if (item.numero !== undefined && item.intitule !== undefined && ('famille' in item)) return 'r2c_sdd'
+  if (item.numero !== undefined && item.intitule !== undefined) return 'r2c_items'
+  if (item.grille !== undefined && item.interlocuteur !== undefined) return 'ecos_stations'
+  if (item.valeur_normale !== undefined) return 'constantes_bio'
   if (item.niveau !== undefined && item.question !== undefined) return 'cas'
   if (item.matiere !== undefined && item.titre !== undefined) return 'fiches'
   return null
@@ -38,6 +59,55 @@ const TARGET_LABELS = {
   fiches: { singulier: 'fiche', pluriel: 'fiches', ajoutees: 'ajoutées' },
   cas: { singulier: 'cas', pluriel: 'cas', ajoutees: 'ajoutés' },
   qcm: { singulier: 'QCM', pluriel: 'QCM', ajoutees: 'ajoutés' },
+  r2c_items: { singulier: 'item', pluriel: 'items', ajoutees: 'ajoutés' },
+  r2c_sdd: { singulier: 'SDD', pluriel: 'SDD', ajoutees: 'ajoutées' },
+  edn_dossiers: { singulier: 'dossier', pluriel: 'dossiers', ajoutees: 'ajoutés' },
+  edn_questions: { singulier: 'question', pluriel: 'questions', ajoutees: 'ajoutées' },
+  ecos_stations: { singulier: 'station', pluriel: 'stations', ajoutees: 'ajoutées' },
+  constantes_bio: { singulier: 'constante', pluriel: 'constantes', ajoutees: 'ajoutées' },
+}
+
+const TARGETS_P2 = [
+  { key: 'fiches', label: 'Fiches' },
+  { key: 'cas', label: 'Cas cliniques' },
+  { key: 'qcm', label: 'QCM' },
+]
+
+const TARGETS_EXTERNAT = [
+  { key: 'r2c_items', label: 'Items R2C' },
+  { key: 'r2c_sdd', label: 'SDD' },
+  { key: 'edn_dossiers', label: 'Dossiers EDN' },
+  { key: 'edn_questions', label: 'Questions isolées' },
+  { key: 'ecos_stations', label: 'Stations ECOS' },
+  { key: 'constantes_bio', label: 'Constantes bio' },
+]
+
+function ciblesDisponibles() {
+  return estExternat() ? [...TARGETS_P2, ...TARGETS_EXTERNAT] : TARGETS_P2
+}
+
+const GET_IDS_PAR_CIBLE = {
+  fiches: getAllFicheIds,
+  cas: getAllCasIds,
+  qcm: getAllQcmIds,
+  r2c_items: getAllR2cItemNumeros,
+  r2c_sdd: getAllR2cSddNumeros,
+  edn_dossiers: getAllDossierIds,
+  edn_questions: getAllQuestionIds,
+  ecos_stations: getAllStationIds,
+  constantes_bio: getAllConstanteIds,
+}
+
+const INSERT_PAR_CIBLE = {
+  fiches: insertFiches,
+  cas: insertCas,
+  qcm: insertQcm,
+  r2c_items: insertR2cItems,
+  r2c_sdd: insertR2cSdd,
+  edn_dossiers: insertDossiersAvecQuestions,
+  edn_questions: insertQuestionsIsolees,
+  ecos_stations: insertStations,
+  constantes_bio: insertConstantes,
 }
 
 export async function renderImport(container, modeForce) {
@@ -75,11 +145,11 @@ export async function renderImport(container, modeForce) {
 }
 
 function renderModeImport(container) {
+  const cibles = ciblesDisponibles()
+
   container.innerHTML = `
     <div class="filters" id="target-filters">
-      <button class="filter-btn active" data-target="fiches">Fiches</button>
-      <button class="filter-btn" data-target="cas">Cas cliniques</button>
-      <button class="filter-btn" data-target="qcm">QCM</button>
+      ${cibles.map((c, i) => `<button class="filter-btn ${i === 0 ? 'active' : ''}" data-target="${c.key}">${c.label}</button>`).join('')}
     </div>
 
     <p class="import-hint">
@@ -97,7 +167,7 @@ function renderModeImport(container) {
     <div id="import-result"></div>
   `
 
-  let target = 'fiches'
+  let target = cibles[0].key
 
   document.getElementById('target-filters').addEventListener('click', (e) => {
     const btn = e.target.closest('.filter-btn')
@@ -123,7 +193,7 @@ function renderModeImport(container) {
     if (items.length === 0) return
 
     const detected = detecterTypeImport(items[0])
-    if (!detected || detected === target) return
+    if (!detected || detected === target || !cibles.some((c) => c.key === detected)) return
 
     target = detected
     document.querySelectorAll('#target-filters .filter-btn').forEach((b) => b.classList.toggle('active', b.dataset.target === detected))
@@ -155,13 +225,14 @@ function renderModeImport(container) {
       return
     }
 
-    const idManquantIndex = items.findIndex((item) => item.id === undefined || item.id === null || item.id === '')
+    const idField = idFieldPourCible(target)
+    const idManquantIndex = items.findIndex((item) => item[idField] === undefined || item[idField] === null || item[idField] === '')
     if (idManquantIndex !== -1) {
-      resultEl.innerHTML = `<p class="import-status error">Élément n°${idManquantIndex + 1} incomplet — le champ "id" est obligatoire.</p>`
+      resultEl.innerHTML = `<p class="import-status error">Élément n°${idManquantIndex + 1} incomplet — le champ "${idField}" est obligatoire.</p>`
       return
     }
 
-    const doublons = findDuplicateIds(items)
+    const doublons = findDuplicateIds(items, idField)
     if (doublons.length > 0) {
       resultEl.innerHTML = `<p class="import-status error">Doublon(s) d'id dans ce lot : ${escapeHtml(doublons.join(', '))}. Corrige avant de réimporter.</p>`
       return
@@ -169,16 +240,18 @@ function renderModeImport(container) {
 
     let existingIds
     try {
-      if (target === 'fiches') existingIds = await getAllFicheIds()
-      else if (target === 'cas') existingIds = await getAllCasIds()
-      else existingIds = await getAllQcmIds()
+      existingIds = await GET_IDS_PAR_CIBLE[target]()
     } catch (err) {
+      if (estTableAbsente(err)) {
+        resultEl.innerHTML = `<p class="import-status error">${messageMigrationManquante('001')}</p>`
+        return
+      }
       resultEl.innerHTML = `<p class="import-status error">Erreur lors de la vérification des ids existants : ${escapeHtml(err.message)}</p>`
       return
     }
 
     const existingSet = new Set(existingIds)
-    const nouveaux = items.filter((i) => !existingSet.has(i.id)).length
+    const nouveaux = items.filter((i) => !existingSet.has(i[idField])).length
     const misesAJour = items.length - nouveaux
 
     // Validation de forme (zod, chargé dynamiquement pour ne pas alourdir le bundle principal) :
@@ -453,13 +526,38 @@ function renderModeImport(container) {
       await creerCoursManquants(
         items.filter((q) => q.cours && q.matieres?.[0]).map((q) => ({ nomMatiere: q.matieres[0], nomCours: q.cours, type: 'clinique' }))
       )
+    } else if (target === 'edn_dossiers' || target === 'edn_questions') {
+      // Avertissement non bloquant si un item/SDD référencé n'existe pas encore dans les
+      // référentiels R2C (§6) — même principe que les matières inconnues ci-dessus.
+      let itemNumeros, sddNumeros
+      try {
+        itemNumeros = new Set(await getAllR2cItemNumeros())
+      } catch {
+        itemNumeros = new Set()
+      }
+      try {
+        sddNumeros = new Set(await getAllR2cSddNumeros())
+      } catch {
+        sddNumeros = new Set()
+      }
+
+      function verifierRefsItemsSdd(objet, libelle) {
+        ;(objet.items || []).forEach((n) => {
+          if (!itemNumeros.has(n)) avertissements.push(`Item R2C n°${n} inconnu (${libelle}) — importe d'abord la liste officielle.`)
+        })
+        ;(objet.sdd || []).forEach((n) => {
+          if (!sddNumeros.has(n)) avertissements.push(`SDD n°${n} inconnue (${libelle}) — importe d'abord la liste officielle.`)
+        })
+      }
+
+      items.forEach((d) => {
+        verifierRefsItemsSdd(d, `dans "${d.id}"`)
+        ;(d.questions || []).forEach((q) => verifierRefsItemsSdd(q, `question "${q.id}" du dossier "${d.id}"`))
+      })
     }
 
     try {
-      let inserted
-      if (target === 'fiches') inserted = await insertFiches(items)
-      else if (target === 'cas') inserted = await insertCas(items)
-      else inserted = await insertQcm(items)
+      const inserted = await INSERT_PAR_CIBLE[target](items)
 
       const labels = TARGET_LABELS[target]
       const nomsAjoutes = nouveaux === 1 ? labels.singulier : labels.pluriel
@@ -476,14 +574,16 @@ function renderModeImport(container) {
       resultEl.innerHTML = html
       document.getElementById('json-input').value = ''
     } catch (err) {
-      resultEl.innerHTML = `<p class="import-status error">Erreur : ${escapeHtml(err.message)}</p>`
+      resultEl.innerHTML = estTableAbsente(err)
+        ? `<p class="import-status error">${messageMigrationManquante('001')}</p>`
+        : `<p class="import-status error">Erreur : ${escapeHtml(err.message)}</p>`
     }
   })
 }
 
 // --- Prompts (ex-#prompts) ---
 
-const PROMPTS = [
+const PROMPTS_P2 = [
   { id: 'contexte-maitre', titre: 'Contexte maître (à coller avant les autres)', contenu: promptContexteMaitre },
   { id: 'fiche-clinique', titre: 'Fiche — Clinique', contenu: promptClinique },
   { id: 'fiche-mecanisme', titre: 'Fiche — Mécanisme', contenu: promptMecanisme },
@@ -492,7 +592,19 @@ const PROMPTS = [
   { id: 'qcm', titre: 'QCM', contenu: promptQcm },
 ]
 
+// D'autres prompts s'ajoutent ici au lot 4 (edn-dp, edn-kfp, edn-tcs, edn-lca, edn-zap,
+// ecos-station, constantes-bio) — seuls r2c-items/r2c-sdd sont livrés au lot 2 (§8).
+const PROMPTS_EXTERNAT = [
+  { id: 'r2c-items', titre: 'Items R2C (liste officielle)', contenu: promptR2cItems },
+  { id: 'r2c-sdd', titre: 'Situations de départ (liste officielle)', contenu: promptR2cSdd },
+]
+
+function promptsActuels() {
+  return estExternat() ? PROMPTS_EXTERNAT : PROMPTS_P2
+}
+
 async function renderModePrompts(container) {
+  const PROMPTS = promptsActuels()
   container.innerHTML = `
     <div class="settings-card" style="margin-bottom: 24px;">
       <h3 class="voice">Tags de référence</h3>
