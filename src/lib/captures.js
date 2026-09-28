@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { paginerTout } from './supabase-paginate.js'
 
 export async function ajouterCapture(texte) {
   const { error } = await supabase.from('captures').insert({ texte })
@@ -6,13 +7,14 @@ export async function ajouterCapture(texte) {
 }
 
 export async function getCapturesNonTraitees() {
-  const { data, error } = await supabase
-    .from('captures')
-    .select('*')
-    .eq('traitee', false)
-    .order('date_creation', { ascending: false })
-  if (error) throw error
-  return data
+  return paginerTout(() =>
+    supabase
+      .from('captures')
+      .select('*')
+      .eq('traitee', false)
+      .order('date_creation', { ascending: false })
+      .order('id', { ascending: false })
+  )
 }
 
 export async function marquerCaptureTraitee(id) {
@@ -31,9 +33,7 @@ export async function deleteAllCaptures() {
 }
 
 export async function getAllCaptures() {
-  const { data, error } = await supabase.from('captures').select('*')
-  if (error) throw error
-  return data
+  return paginerTout(() => supabase.from('captures').select('*').order('id'))
 }
 
 export async function deleteCapturesTraitees() {

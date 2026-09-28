@@ -182,7 +182,7 @@ function renderCorrectionItems(question, reponsesItem) {
           } else {
             symbole = correcte ? '✔' : '—'
           }
-          return `<li class="${classe}"><span class="item-explication-symbole">${symbole}</span> <strong>${escapeHtml(item.texte)}</strong>${explication ? ` — ${escapeHtml(explication)}` : ''}</li>`
+          return `<li class="${classe}"><span class="item-explication-symbole">${symbole}</span><span class="item-explication-texte"><strong>${escapeHtml(item.texte)}</strong>${explication ? ` — ${escapeHtml(explication)}` : ''}</span></li>`
         })
         .join('')}
     </ul>
@@ -213,7 +213,7 @@ function renderQuestion(container, qcm, mode, state) {
           ${q.items
             .map(
               (item, i) => `
-            <label class="checkbox-label" data-item="${i}">
+            <label class="checkbox-label qcm-proposition" data-item="${i}">
               <input type="checkbox" data-index="${i}" ${reponsesQuestion[i] ? 'checked' : ''} />
               <span>${escapeHtml(item.texte)}</span>
             </label>

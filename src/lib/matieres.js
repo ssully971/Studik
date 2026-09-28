@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { upsertPartiel } from './upsert.js'
+import { paginerTout } from './supabase-paginate.js'
 
 // Ne renvoie que les matières de premier niveau (sans parent) : c'est ce qu'attendent
 // tous les sélecteurs/filtres "matière" existants (une sous-matière ne s'y choisit pas).
@@ -33,9 +34,9 @@ export const getEnfantsMatiere = getSousMatieres
 // Toutes les matières (premier niveau + sous-matières), sans filtre de période : sert à
 // construire les tables de couleurs et les listes de gestion, où on a besoin de tout voir.
 export async function getAllMatieresAvecSousMatieres() {
-  const { data, error } = await supabase.from('matieres').select('*').eq('archive', false).order('ordre_affichage')
-  if (error) throw error
-  return data
+  // `ordre_affichage` vaut 0 par défaut pour beaucoup de lignes (voir lib/sync.js) — jamais
+  // unique, donc `id` en second critère pour garantir un ordre total entre les pages.
+  return paginerTout(() => supabase.from('matieres').select('*').eq('archive', false).order('ordre_affichage').order('id'))
 }
 
 export async function getMatiereIdParNom(nom) {
@@ -63,8 +64,7 @@ export function calculerProfondeur(matiere, byId) {
 // "enfants" (tableau, éventuellement vide) et "couleurEffective" (toujours celle de la racine,
 // jamais celle d'un noeud intermédiaire).
 export async function getArbreMatieres({ annee, semestre } = {}) {
-  const { data, error } = await supabase.from('matieres').select('*').eq('archive', false).order('ordre_affichage')
-  if (error) throw error
+  const data = await paginerTout(() => supabase.from('matieres').select('*').eq('archive', false).order('ordre_affichage').order('id'))
 
   const enfantsParParent = {}
   data.forEach((m) => {
@@ -89,14 +89,12 @@ export async function insertMatieres(matieresArray) {
 }
 
 export async function getAllMatiereIds() {
-  const { data, error } = await supabase.from('matieres').select('id')
-  if (error) throw error
+  const data = await paginerTout(() => supabase.from('matieres').select('id').order('id'))
   return data.map((m) => m.id)
 }
 
 export async function getAllMatiereNoms() {
-  const { data, error } = await supabase.from('matieres').select('nom')
-  if (error) throw error
+  const data = await paginerTout(() => supabase.from('matieres').select('nom').order('id'))
   return data.map((m) => m.nom)
 }
 export async function updateMatiere(id, champs) {

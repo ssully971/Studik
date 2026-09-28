@@ -3,6 +3,7 @@ import { prochainEtatSrs } from './edn-srs.js'
 import { getEtatSrs, ecrireEtatSrs } from './edn-srs-data.js'
 import { getNumerosPrioritaires } from './r2c.js'
 import { mettreEnFile } from './offline-queue.js'
+import { paginerTout } from './supabase-paginate.js'
 
 // fetch() natif rejette avec un TypeError quand la requête n'atteint jamais le serveur (pas de
 // réseau, DNS...) — jamais une erreur métier/validation renvoyée PAR le serveur (celle-ci reste
@@ -84,7 +85,15 @@ export function cibleDossier(id) {
 // Historique COMPLET (§8 lot 7, page Stats) — à ne jamais confondre avec
 // lib/edn-carnet.js::getTentativesEdnARevoir(), qui ne garde que la plus récente par cible.
 export async function getToutesLesTentativesEdn() {
-  const { data, error } = await supabase.from('edn_tentatives').select('*').order('date_tentative', { ascending: true })
+  return paginerTout(() => supabase.from('edn_tentatives').select('*').order('date_tentative', { ascending: true }).order('id', { ascending: true }))
+}
+
+// Restauration de sauvegarde (§ Paramètres) : upsert direct, append-only comme le reste de
+// cette table — restaure l'historique tel quel, sans passer par enregistrerTentative (qui
+// recalculerait le SRS à l'écriture ; ce n'est pas le rôle d'une restauration, voir
+// restaurerEtatsSrs dans edn-srs-data.js, qui restaure l'état SRS lui-même tel quel).
+export async function restaurerTentativesEdn(tentatives) {
+  if (!tentatives || tentatives.length === 0) return
+  const { error } = await supabase.from('edn_tentatives').upsert(tentatives, { onConflict: 'id' })
   if (error) throw error
-  return data
 }

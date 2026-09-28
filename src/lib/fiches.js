@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 import { getMatieres } from './matieres.js'
 import { upsertPartiel } from './upsert.js'
+import { paginerTout, requeteParLots } from './supabase-paginate.js'
 
 // `periodes`, si fourni (tableau de {annee, semestre}), prime sur `annee`/`semestre` et est
 // traité comme une UNION de périodes (utilisé quand un tag scopé sur plusieurs périodes est
@@ -20,21 +21,23 @@ async function resoudreNomsMatieres({ annee, semestre, periodes }) {
 }
 
 export async function getFiches({ matiere, type, annee, semestre, periodes, inclureArchivees } = {}) {
-  let query = supabase.from('fiches').select('*')
-  if (!inclureArchivees) query = query.neq('statut', 'archive')
-
-  if (matiere) query = query.eq('matiere', matiere)
-  if (type) query = query.eq('type', type)
-
   const noms = await resoudreNomsMatieres({ annee, semestre, periodes })
-  if (noms) {
-    if (noms.length === 0) return []
-    query = query.in('matiere', noms)
+  if (noms && noms.length === 0) return []
+
+  // Requête reconstruite à chaque page (voir lib/supabase-paginate.js) : un query builder
+  // Supabase ne se réutilise pas après un premier envoi. `titre` n'est pas garanti unique
+  // (deux fiches peuvent partager un titre) — `id` en second critère garantit un ordre total,
+  // condition nécessaire à une pagination par .range() sans doublon ni trou.
+  function fabriqueRequete() {
+    let query = supabase.from('fiches').select('*')
+    if (!inclureArchivees) query = query.neq('statut', 'archive')
+    if (matiere) query = query.eq('matiere', matiere)
+    if (type) query = query.eq('type', type)
+    if (noms) query = query.in('matiere', noms)
+    return query.order('titre').order('id')
   }
 
-  const { data, error } = await query.order('titre')
-  if (error) throw error
-  return data
+  return paginerTout(fabriqueRequete)
 }
 
 export async function getFicheById(id) {
@@ -51,10 +54,7 @@ export async function insertFiches(fichesArray) {
 // fiches liées (ex. résumé de fin de QCM) sans un getFicheById par id. Les ids introuvables
 // (fiche supprimée depuis) sont simplement absents du résultat, pas signalés en erreur.
 export async function getFichesByIds(ids) {
-  if (!ids || ids.length === 0) return []
-  const { data, error } = await supabase.from('fiches').select('id, titre').in('id', ids)
-  if (error) throw error
-  return data
+  return requeteParLots(ids, (lot) => supabase.from('fiches').select('id, titre').in('id', lot))
 }
 
 export async function updateNotesPerso(id, notesPerso) {
@@ -63,20 +63,18 @@ export async function updateNotesPerso(id, notesPerso) {
 }
 
 export async function getFichesARevoir({ matiere, type, annee, semestre, periodes } = {}) {
-  let query = supabase.from('fiches').select('*').eq('statut', 'a_revoir')
-
-  if (matiere) query = query.eq('matiere', matiere)
-  if (type) query = query.eq('type', type)
-
   const noms = await resoudreNomsMatieres({ annee, semestre, periodes })
-  if (noms) {
-    if (noms.length === 0) return []
-    query = query.in('matiere', noms)
+  if (noms && noms.length === 0) return []
+
+  function fabriqueRequete() {
+    let query = supabase.from('fiches').select('*').eq('statut', 'a_revoir')
+    if (matiere) query = query.eq('matiere', matiere)
+    if (type) query = query.eq('type', type)
+    if (noms) query = query.in('matiere', noms)
+    return query.order('titre').order('id')
   }
 
-  const { data, error } = await query.order('titre')
-  if (error) throw error
-  return data
+  return paginerTout(fabriqueRequete)
 }
 
 export async function updateStatut(id, statut) {
@@ -85,8 +83,7 @@ export async function updateStatut(id, statut) {
 }
 
 export async function getAllFicheIds() {
-  const { data, error } = await supabase.from('fiches').select('id')
-  if (error) throw error
+  const data = await paginerTout(() => supabase.from('fiches').select('id').order('id'))
   return data.map((f) => f.id)
 }
 
@@ -145,9 +142,7 @@ export function texteRechercheFiche(fiche) {
 }
 
 export async function getAllFichesRaw() {
-  const { data, error } = await supabase.from('fiches').select('*')
-  if (error) throw error
-  return data
+  return paginerTout(() => supabase.from('fiches').select('*').order('id'))
 }
 
 // --- Cascade de renommage (Organisation) : quand une matière/sous-matière/cours est

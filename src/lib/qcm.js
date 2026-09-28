@@ -1,16 +1,16 @@
 import { supabase } from './supabase.js'
 import { upsertPartiel } from './upsert.js'
+import { paginerTout, requeteParLots } from './supabase-paginate.js'
 export { scoreQuestion, scoreQcm, questionsRateesDeLaTentative } from './scoring.js'
 import { questionsRateesDeLaTentative } from './scoring.js'
 
 export async function getAllQcm({ matiere, statut } = {}) {
-  let query = supabase.from('qcm').select('*')
-
-  if (statut) query = query.eq('statut', statut)
-  else query = query.neq('statut', 'archive')
-
-  const { data, error } = await query.order('date_creation', { ascending: false })
-  if (error) throw error
+  const data = await paginerTout(() => {
+    let query = supabase.from('qcm').select('*')
+    if (statut) query = query.eq('statut', statut)
+    else query = query.neq('statut', 'archive')
+    return query.order('date_creation', { ascending: false }).order('id', { ascending: false })
+  })
 
   if (matiere) {
     return data.filter((q) => (q.matieres || []).includes(matiere))
@@ -61,8 +61,7 @@ export async function deleteQcm(id) {
 }
 
 export async function getAllQcmIds() {
-  const { data, error } = await supabase.from('qcm').select('id')
-  if (error) throw error
+  const data = await paginerTout(() => supabase.from('qcm').select('id').order('id'))
   return data.map((q) => q.id)
 }
 
@@ -92,22 +91,25 @@ export async function getTentativesQcm(qcmId) {
 }
 
 export async function getAllTentativesQcmStats() {
-  const { data, error } = await supabase
-    .from('qcm_tentatives')
-    .select('id, mode, score, score_max, a_revoir, date_tentative, qcm(id, titre, matieres)')
-    .order('date_tentative', { ascending: false })
-  if (error) throw error
-  return data
+  return paginerTout(() =>
+    supabase
+      .from('qcm_tentatives')
+      .select('id, mode, score, score_max, a_revoir, date_tentative, qcm(id, titre, matieres)')
+      .order('date_tentative', { ascending: false })
+      .order('id', { ascending: false })
+  )
 }
 
 // Une seule ligne par QCM : sa tentative la plus récente, uniquement si elle est encore
 // marquée à revoir (une tentative plus récente réussie fait disparaître le QCM de la liste).
 export async function getQcmTentativesARevoir() {
-  const { data, error } = await supabase
-    .from('qcm_tentatives')
-    .select('id, mode, score, score_max, reponses, date_tentative, a_revoir, qcm_id, qcm(id, titre, matieres, questions, tags)')
-    .order('date_tentative', { ascending: false })
-  if (error) throw error
+  const data = await paginerTout(() =>
+    supabase
+      .from('qcm_tentatives')
+      .select('id, mode, score, score_max, reponses, date_tentative, a_revoir, qcm_id, qcm(id, titre, matieres, questions, tags)')
+      .order('date_tentative', { ascending: false })
+      .order('id', { ascending: false })
+  )
 
   const vus = new Set()
   const dernieres = []
@@ -156,8 +158,9 @@ export async function marquerTentativeQcmNonRevue(id) {
 // SQL direct possible sur un élément de tableau, on relit puis réécrit chaque ligne concernée.
 
 export async function renommerMatiereQcm(ancienNom, nouveauNom) {
-  const { data, error } = await supabase.from('qcm').select('id, matieres').contains('matieres', [ancienNom])
-  if (error) throw error
+  const data = await paginerTout(() =>
+    supabase.from('qcm').select('id, matieres').contains('matieres', [ancienNom]).order('id')
+  )
   for (const q of data) {
     const matieres = q.matieres.map((m) => (m === ancienNom ? nouveauNom : m))
     const { error: err2 } = await supabase.from('qcm').update({ matieres }).eq('id', q.id)
@@ -174,11 +177,13 @@ export async function renommerCoursQcm(nomMatiere, ancienNom, nouveauNom) {
 // comme revue (a_revoir = false) — reste visible tant que l'utilisateur ne le supprime pas
 // lui-même, ou jusqu'à une nouvelle tentative parfaite qui le sort naturellement de la liste.
 export async function getQcmTentativesRevues() {
-  const { data, error } = await supabase
-    .from('qcm_tentatives')
-    .select('id, mode, score, score_max, reponses, date_tentative, a_revoir, qcm_id, qcm(id, titre, matieres, questions, tags)')
-    .order('date_tentative', { ascending: false })
-  if (error) throw error
+  const data = await paginerTout(() =>
+    supabase
+      .from('qcm_tentatives')
+      .select('id, mode, score, score_max, reponses, date_tentative, a_revoir, qcm_id, qcm(id, titre, matieres, questions, tags)')
+      .order('date_tentative', { ascending: false })
+      .order('id', { ascending: false })
+  )
 
   const vus = new Set()
   const revues = []
@@ -201,26 +206,19 @@ export async function deleteAllTentativesQcm() {
 }
 
 export async function deleteTentativesQcmByMatiere(matiere) {
-  const { data: qcmIds, error: err1 } = await supabase.from('qcm').select('id').contains('matieres', [matiere])
-  if (err1) throw err1
-
+  const qcmIds = await paginerTout(() => supabase.from('qcm').select('id').contains('matieres', [matiere]).order('id'))
   const ids = qcmIds.map((q) => q.id)
   if (ids.length === 0) return
 
-  const { error } = await supabase.from('qcm_tentatives').delete().in('qcm_id', ids)
-  if (error) throw error
+  await requeteParLots(ids, (lot) => supabase.from('qcm_tentatives').delete().in('qcm_id', lot))
 }
 
 export async function getAllQcmRaw() {
-  const { data, error } = await supabase.from('qcm').select('*')
-  if (error) throw error
-  return data
+  return paginerTout(() => supabase.from('qcm').select('*').order('id'))
 }
 
 export async function getAllQcmTentativesRaw() {
-  const { data, error } = await supabase.from('qcm_tentatives').select('*')
-  if (error) throw error
-  return data
+  return paginerTout(() => supabase.from('qcm_tentatives').select('*').order('id'))
 }
 
 export async function restaurerTentativesQcm(tentativesArray) {

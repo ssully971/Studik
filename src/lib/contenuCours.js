@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { paginerTout } from './supabase-paginate.js'
 
 // Rattachements supplémentaires entre un contenu (fiche/cas/QCM) et un emplacement de la
 // hiérarchie matières, en plus de son rattachement principal (matiere/sous_matiere/cours sur la
@@ -9,9 +10,9 @@ import { supabase } from './supabase.js'
 // limitée à ce niveau.
 
 export async function getTousLesAttachements() {
-  const { data, error } = await supabase.from('contenu_cours').select('*')
-  if (error) throw error
-  return data
+  // Pas de colonne `id` sur cette table de jointure : sa clé (cours_id, contenu_type,
+  // contenu_id) sert de tri, les trois ensemble garantissent un ordre total.
+  return paginerTout(() => supabase.from('contenu_cours').select('*').order('cours_id').order('contenu_type').order('contenu_id'))
 }
 
 export async function getCoursAttaches(contenuType, contenuId) {

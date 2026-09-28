@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { mettreEnFile } from './offline-queue.js'
+import { paginerTout } from './supabase-paginate.js'
 
 // Tentatives ECOS (§4.4, §5.9) — append-only comme edn-tentatives.js, mais sans SRS : les
 // stations ECOS ne sont pas revues par répétition espacée (hors périmètre de la spec).
@@ -50,7 +51,13 @@ export async function getTentativesEcos(stationId) {
 
 // Toutes stations confondues (§8 lot 7, page Stats — "ECOS par domaine").
 export async function getToutesLesTentativesEcos() {
-  const { data, error } = await supabase.from('ecos_tentatives').select('*').order('date_tentative', { ascending: true })
+  return paginerTout(() => supabase.from('ecos_tentatives').select('*').order('date_tentative', { ascending: true }).order('id', { ascending: true }))
+}
+
+// Restauration de sauvegarde (§ Paramètres) : upsert direct, append-only comme le reste de
+// cette table.
+export async function restaurerTentativesEcos(tentatives) {
+  if (!tentatives || tentatives.length === 0) return
+  const { error } = await supabase.from('ecos_tentatives').upsert(tentatives, { onConflict: 'id' })
   if (error) throw error
-  return data
 }

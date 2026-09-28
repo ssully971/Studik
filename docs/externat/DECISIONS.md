@@ -760,3 +760,170 @@ du navigateur pour ne pas couper aussi la connexion au serveur de développement
 en file pendant la coupure (aucun insert tenté), indicateur affiché immédiatement, retour en ligne
 → rejeu idempotent + recalcul SRS + file vidée + indicateur qui disparaît, bouton "Préparer le
 hors-ligne" sans erreur.
+
+## Fiabilité et interface — branche `reliability-and-ui-fixes` (après la phase 2)
+
+### Pagination Supabase : un helper générique, pas de `.range()` au cas par cas
+
+**Contexte.** Demande explicite de Sullivan, après avoir réalisé que PostgREST plafonne toute
+lecture à 1000 lignes sans erreur (silencieusement tronqué au-delà) et qu'aucune requête du
+projet — P2 ou Externat — n'utilisait `.range()`. Audit imposé de chaque lecture Supabase,
+classée A (lecture complète pouvant dépasser 1000 lignes)/B (bornée volontairement, à ne pas
+toucher)/C (agrégat calculé côté client).
+
+**Retenu.** `lib/supabase-paginate.js` (voir CLAUDE.md, section "Lectures Supabase et
+pagination", pour le détail et la règle de classification) : `paginerTout` (pages de 1000 via
+`.range()`) et `requeteParLots` (`.in()` découpé en lots de 200). Appliqués à toutes les lectures
+classées A, aussi bien P2 (fiches, cas, QCM, tentatives, matières/cours, captures, checkins,
+contenu_cours) que Externat (dossiers/questions EDN, tentatives EDN, stations/tentatives ECOS,
+état SRS). Colonnes de tri existantes complétées par un critère de départage garantissant un
+ordre total (le plus souvent `id`) partout où ce n'était pas déjà le cas.
+
+**Écarté : des fonctions/vues Postgres pour les agrégats (catégorie C).** `getStatsTentatives`,
+`getAllTentativesQcmStats`, `getToutesLesTentativesEdn`, `getToutesLesTentativesEcos` continuent
+de calculer leurs statistiques côté client à partir de l'historique complet, simplement lu en
+entier via `paginerTout` comme une lecture A plutôt que via une fonction SQL dédiée. Aucun
+mécanisme de fonction/vue Postgres n'existe ailleurs dans ce projet ; en introduire un pour
+quelques agrégats aurait ajouté une seconde façon de faire pour un gain qui ne se justifie pas à
+l'échelle d'un usage solo. Un seul helper, une seule convention.
+
+**Bug trouvé en corrigeant tous les `.in()` du projet (pas un bug rapporté)** :
+`resoudreCiblesEnDetail` (`lib/edn-carnet.js`, carnet d'erreurs Externat) construisait bien
+`idsQuestions`/`idsDossiers`, mais ne les passait jamais à un `.in()` — les deux requêtes lisaient
+la table entière (`edn_questions`/`edn_dossiers`) à chaque affichage, sans effet visible (la map
+finale ne gardait que ce qui était utilisé). Corrigé au passage : `.in('id', lot)` ajouté,
+découpé par `requeteParLots`. Voir CLAUDE.md, pièges déjà rencontrés.
+
+`npm test` (528 tests, +15 pour `lib/supabase-paginate.test.js`) et `npm run build` verts. Vérifié
+par un test "fumée" temporaire (mock Supabase, 1500 fiches / 1300 checkins, supprimé après
+vérification — pas dans l'historique) que `getAllFichesRaw`/`getFiches`/`getCheckins` renvoient
+bien tout, pas seulement les 1000 premières lignes.
+
+**Second passage d'audit, en fin de tâche (rapport final).** Un audit indépendant de toutes les
+lectures Supabase du projet, demandé pour le rapport final, a signalé 13 fonctions comme
+"classées A mais sans helper". Vérification de chacune plutôt qu'application mécanique :
+
+- **3 vrais oublis, corrigés** : `renommerMatiereQcm` (`lib/qcm.js`) lisait tout `qcm` filtré par
+  `.contains('matieres', [ancienNom])` sans pagination, alors que `deleteTentativesQcmByMatiere`
+  juste en dessous, sur le même filtre, l'avait déjà ; `getCapturesNonTraitees` (`lib/captures.js`)
+  pareil face à `getAllCaptures` du même fichier ; `getActiviteParJour` (`lib/activite.js`,
+  agrégat C pour la heatmap) lisait ses 3 sous-requêtes (tentatives/qcm_tentatives/checkins sur
+  une fenêtre de 140 jours) sans helper — une fenêtre de temps borne la durée, pas le nombre de
+  lignes, un usage intensif soutenu peut quand même dépasser 1000 lignes dedans. Les trois
+  corrigées avec `paginerTout` (voir CLAUDE.md, piège dédié).
+- **10 signalements écartés, déjà des choix B assumés** : `r2c_items`/`r2c_sdd` (référentiel
+  externe fixe, ~367/356 lignes par définition — déjà documenté), `constantes_bio` (même
+  raisonnement, référentiel de constantes biologiques borné), `tags_reference` (liste FERMÉE que
+  Sullivan gère lui-même à la main, voir modèle de données), `qcm_progression.getProgressions`
+  (une ligne par QCM tant qu'il n'est pas fini/abandonné — petit par nature, exactement l'exemple
+  "QCM en cours" déjà donné dans la règle de classification). Ajoutés explicitement à la liste
+  d'exemples B dans CLAUDE.md pour qu'un futur audit ne les re-signale pas sans contexte.
+- **6 cas bornés par un parent, laissés tels quels** : lectures filtrées par une clé étrangère
+  (les tentatives d'UN cas/QCM/station, les questions d'UN dossier, les sous-matières d'UNE
+  matière) — le nombre d'enfants d'une seule entité ne dépasse jamais 1000 en pratique, contexte
+  différent d'une lecture de table entière. Même principe ajouté à la règle de classification.
+
+**Retenu.** Un audit automatisé fondé uniquement sur "y a-t-il un `.limit()`/`.single()` dans le
+code" ne suffit pas à distinguer B "bornée par construction" (qui n'a souvent aucune trace
+syntaxique de sa borne, juste un raisonnement métier) d'un vrai oubli — la classification reste un
+jugement à documenter, pas une règle mécanique. D'où l'ajout des exemples concrets dans CLAUDE.md
+plutôt qu'une re-classification pure code.
+
+### Sauvegarde/restauration étendue à l'Externat : un module dédié, pas un second système
+
+**Contexte.** Demande explicite : la sauvegarde de Paramètres ne couvrait que le P2. L'étendre à
+l'Externat sans dupliquer le mécanisme existant, avec un préflight (pas de transaction atomique
+possible sans fonction Postgres) et un ordre de restauration déduit des vraies clés étrangères.
+
+**Retenu.** `lib/backup.js` (détail dans CLAUDE.md, section "Sauvegarde et restauration") centralise
+ce que `parametres.js` faisait jusque-là en ligne dans son gestionnaire de clic — pas un second
+système, la même liste de fonctions `insertX`/`restaurerX` déjà utilisées ailleurs, simplement
+sortie dans un module testable et étendue à l'Externat. Champ `version` (absent = ancien format
+P2, restauré à l'identique via `restaurerLegacy`, une copie figée du code d'avant). Préflight
+(`preparerRestauration`) qui vérifie la structure puis la résolvabilité des références réelles
+(`edn_questions.dossier_id` → `edn_dossiers`, `ecos_tentatives.station_id` → `ecos_stations`,
+`matieres.parent_id` → `matieres`) contre le fichier ET la base, AVANT toute écriture — sinon une
+contrainte de clé étrangère aurait échoué en cours de restauration avec une erreur Postgres brute,
+après que certaines tables aient déjà été écrites.
+
+**Écarté : une transaction Postgres (fonction RPC) pour une restauration atomique.** Demande
+explicite de ne pas l'implémenter (aucune fonction SQL n'existe ailleurs dans ce projet). À la
+place : préflight strict en amont (réduit fortement le risque d'échec en cours de route) + message
+d'erreur nommant la table en cause + upsert par id partout, donc une restauration interrompue peut
+être intégralement relancée depuis le même fichier sans dupliquer ni perdre quoi que ce soit.
+
+**Préférences Externat (cycle, plafond de révisions, tags d'erreur) : lues/écrites via
+`lirePreference`/`ecrirePreference` directement, jamais via `getPlafondRevisions()`/
+`getTagsErreur()`.** Ces deux fonctions renvoient un défaut applicatif quand la préférence n'a
+jamais été écrite (100/jour, liste par défaut) — un défaut ne doit jamais se retrouver sauvegardé
+puis réécrit comme s'il s'agissait d'une vraie valeur choisie par Sullivan lors d'une restauration
+vers une autre base.
+
+**Images (Storage) non incluses, assumé.** La sauvegarde reste "les lignes de la base", pas les
+fichiers — même limite déjà connue côté P2, rendue visible sur la carte Sauvegarde des Paramètres
+plutôt que découverte au moment d'une restauration. Aucune refonte du stockage dans cette PR
+(explicitement hors périmètre de la demande).
+
+**File hors-ligne (IndexedDB) : avertissement, pas un blocage.** Si des tentatives EDN/ECOS
+attendent encore le retour du réseau au moment de l'export, elles ne sont pas dans le fichier
+(pas encore en base) — `exporterSauvegarde()` renvoie leur nombre, Paramètres affiche un
+avertissement après le téléchargement plutôt que d'empêcher l'export (l'utilisateur peut vouloir
+sauvegarder quand même, puis réessayer plus tard une fois reconnecté).
+
+**Bug préexistant trouvé et corrigé (indépendant de l'Externat, découvert en écrivant le test
+d'aller-retour export→restauration demandé)** : l'export "tentatives" (cas cliniques) réutilisait
+`getStatsTentatives()` (`lib/cas.js`) — pensée pour l'affichage de la page Stats, elle ne
+sélectionne que `id, reussi, date_tentative, cas_cliniques(matiere, type, question)`. Aucun
+`cas_id`, aucune `reponse_donnee`, aucun `a_revoir`, et le cas joint n'a même pas son `id` — une
+restauration produisait donc des tentatives avec `cas_id: undefined` (la ligne existante de
+`restaurerTentatives`, `t.cas_id || t.cas_cliniques?.id`, ne pouvait pas non plus s'en sortir
+puisque `cas_cliniques.id` n'était pas sélectionné). Corrigé par une fonction dédiée à la
+sauvegarde, `getAllTentativesRaw()` (`select('*')`, paginée) ; `getStatsTentatives()` reste
+inchangée pour la page Stats.
+
+`npm test` (540 tests, +12 pour `lib/backup.test.js` : aller-retour complet mocké — ids, relation
+dossier→questions, relation station→tentatives ECOS, tentatives et SRS restaurés tels quels,
+préférences Externat, format historique sans version, préflight structure/références, erreur
+nommée et relançable) et `npm run build` verts. Vérifié en direct (Playwright, mock Supabase en
+mémoire dans le navigateur) via la vraie page Paramètres : export réel (téléchargement intercepté,
+JSON inspecté), restauration de ce même fichier, restauration d'un ancien fichier sans `version`,
+refus propre d'un fichier malformé et d'une référence irrésoluble — aucune écriture dans ces deux
+derniers cas, aucune erreur console.
+
+### Popup heatmap masquée derrière la section Matières : la cause réelle n'était pas l'hypothèse initiale
+
+**Contexte.** Au survol/tap de `.streak-card` (accueil P2), `.heatmap-popup` (calendrier de streak,
+`z-index: 20`) se peignait systématiquement SOUS la section "Matières" qui suit dans le DOM, en
+mode verre dépoli. L'hypothèse de départ ciblait `isolation: isolate` sur `.streak-card` (ajouté
+au commit be80880), en s'appuyant sur un piège déjà documenté dans CLAUDE.md pour un bug similaire
+côté heatmap Externat.
+
+**Retenu.** Vérifié empiriquement (Playwright, en isolant chaque variable une par une) que
+`isolation: isolate` n'est PAS la cause : retirer cette seule propriété ne change rien tant que le
+mode verre dépoli est actif, et sans mode verre le bug n'existe pas du tout, avec ou sans
+isolation. La vraie cause est `[data-glass="on"] .settings-card { backdrop-filter: ... }` — cette
+règle s'applique aussi à `.streak-card` (qui est un `.settings-card`), et `backdrop-filter`
+recrée exactement le même piège de contexte d'empilement qu'`isolation: isolate`, indépendamment
+d'elle. Corrigé en ajoutant un `z-index: 5` explicite sur `.streak-card:hover`/`.streak-card.ouvert`
+(bien en dessous des `z-index: 50` de `.modal-overlay`, jamais en conflit avec une modale) : peu
+importe ce qui promeut `.streak-card` en contexte d'empilement isolé, un z-index explicite le fait
+gagner face à la section suivante, qui reste elle à z-index automatique.
+
+Effet de bord découvert pendant la correction : une fois le popup effectivement peint au-dessus,
+son fond `background: var(--surface-2)` — rendu translucide par le mode verre dépoli — laissait
+transparaître le texte de la section du dessous, NET et illisible, sans aucun flou. Cause : le
+parent direct du popup (`.streak-card`) a déjà son propre `backdrop-filter` en mode verre ; un
+second `backdrop-filter` imbriqué sur le popup lui-même ne parvient pas, dans Chromium, à flouter
+ce qui est peint par un élément extérieur à ce parent (une autre section du DOM) — seule la
+translucidité du fond s'applique, sans le flou attendu. Corrigé en gardant `.heatmap-popup` HORS
+de la liste `[data-glass="on"] .settings-card, ...` et en lui donnant un fond toujours opaque
+(`rgb(var(--surface-rgb))` plutôt que `var(--surface-2)`), qui ne varie pas avec le mode verre.
+
+**Écarté.** Ajouter `.heatmap-popup` à la liste des sélecteurs `[data-glass="on"]` qui reçoivent
+`backdrop-filter` — testé, ne résout pas la lisibilité (voir effet de bord ci-dessus) et aurait
+rendu ce petit popup utilitaire aussi translucide qu'une grande carte, sans bénéfice.
+
+Vérifié en direct (Playwright, mock Supabase en mémoire) à 375px et 1280px, avec et sans fond
+d'écran/mode verre dépoli, au survol (desktop) comme via `.ouvert` (tap tactile), avec un jeu de
+données volontairement chargé (8 matières) pour garantir un chevauchement géométrique réel entre
+le popup et la section Matières dans tous les cas. `npm test` et `npm run build` verts.

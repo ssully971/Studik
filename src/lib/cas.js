@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { upsertPartiel } from './upsert.js'
+import { paginerTout, requeteParLots } from './supabase-paginate.js'
 
 // --- Cas cliniques ---
 
@@ -10,15 +11,18 @@ export const GABARITS_CAS = {
 }
 
 export async function getCasAleatoire({ matiere, cours, niveau, tags } = {}) {
-  let query = supabase.from('cas_cliniques').select('*').neq('statut', 'archive')
-
-  if (matiere) query = query.eq('matiere', matiere)
-  if (cours) query = query.eq('cours', cours)
-  if (niveau) query = query.eq('niveau', niveau)
-  if (tags && tags.length > 0) query = query.overlaps('tags', tags)
-
-  const { data, error } = await query
-  if (error) throw error
+  // Le tirage au hasard porte sur l'ENSEMBLE filtré : une lecture tronquée à 1000 lignes
+  // biaiserait le tirage (les cas au-delà du seuil ne pourraient jamais sortir) — d'où la
+  // pagination complète malgré le tri arbitraire (`id`, seulement là pour garantir un ordre
+  // total entre les pages, sans rapport avec le tirage lui-même).
+  const data = await paginerTout(() => {
+    let query = supabase.from('cas_cliniques').select('*').neq('statut', 'archive')
+    if (matiere) query = query.eq('matiere', matiere)
+    if (cours) query = query.eq('cours', cours)
+    if (niveau) query = query.eq('niveau', niveau)
+    if (tags && tags.length > 0) query = query.overlaps('tags', tags)
+    return query.order('id')
+  })
   if (!data || data.length === 0) return null
 
   const index = Math.floor(Math.random() * data.length)
@@ -36,15 +40,12 @@ export async function insertCas(casArray) {
 }
 
 export async function getAllCasIds() {
-  const { data, error } = await supabase.from('cas_cliniques').select('id')
-  if (error) throw error
+  const data = await paginerTout(() => supabase.from('cas_cliniques').select('id').order('id'))
   return data.map((c) => c.id)
 }
 
 export async function getAllCas() {
-  const { data, error } = await supabase.from('cas_cliniques').select('*')
-  if (error) throw error
-  return data
+  return paginerTout(() => supabase.from('cas_cliniques').select('*').order('id'))
 }
 
 export function texteRechercheCas(cas) {
@@ -102,12 +103,15 @@ export async function enregistrerTentative(casId, reussi, reponseDonnee) {
 // Une seule ligne par cas : sa tentative la plus récente, uniquement si elle est encore
 // marquée à revoir (une tentative plus récente réussie fait disparaître le cas de la liste).
 export async function getTentativesRatees() {
-  const { data, error } = await supabase
-    .from('tentatives')
-    .select('*, cas_cliniques(id, matiere, type, question, fiches_liees, reponse_attendue, tags)')
-    .order('date_tentative', { ascending: false })
-
-  if (error) throw error
+  // `date_tentative` seul ne garantit pas un ordre total (deux tentatives peuvent partager le
+  // même horodatage) — `id` en second critère évite tout doublon/trou entre deux pages.
+  const data = await paginerTout(() =>
+    supabase
+      .from('tentatives')
+      .select('*, cas_cliniques(id, matiere, type, question, fiches_liees, reponse_attendue, tags)')
+      .order('date_tentative', { ascending: false })
+      .order('id', { ascending: false })
+  )
 
   const vus = new Set()
   const dernieres = []
@@ -135,12 +139,13 @@ export async function marquerCommeNonRevu(tentativeId) {
 // revue (a_revoir = false) — reste visible tant que l'utilisateur ne le supprime pas lui-même,
 // ou jusqu'à une nouvelle tentative réussie qui le sort naturellement de cette liste.
 export async function getTentativesRevues() {
-  const { data, error } = await supabase
-    .from('tentatives')
-    .select('*, cas_cliniques(id, matiere, type, question, fiches_liees, reponse_attendue, tags)')
-    .order('date_tentative', { ascending: false })
-
-  if (error) throw error
+  const data = await paginerTout(() =>
+    supabase
+      .from('tentatives')
+      .select('*, cas_cliniques(id, matiere, type, question, fiches_liees, reponse_attendue, tags)')
+      .order('date_tentative', { ascending: false })
+      .order('id', { ascending: false })
+  )
 
   const vus = new Set()
   const revues = []
@@ -158,14 +163,11 @@ export async function deleteTentative(id) {
 }
 
 export async function deleteTentativesByMatiere(matiere) {
-  const { data: casIds, error: err1 } = await supabase.from('cas_cliniques').select('id').eq('matiere', matiere)
-  if (err1) throw err1
-
+  const casIds = await paginerTout(() => supabase.from('cas_cliniques').select('id').eq('matiere', matiere).order('id'))
   const ids = casIds.map((c) => c.id)
   if (ids.length === 0) return
 
-  const { error } = await supabase.from('tentatives').delete().in('cas_id', ids)
-  if (error) throw error
+  await requeteParLots(ids, (lot) => supabase.from('tentatives').delete().in('cas_id', lot))
 }
 
 export async function deleteAllTentatives() {
@@ -173,13 +175,21 @@ export async function deleteAllTentatives() {
   if (error) throw error
 }
 
+// Lignes brutes, TOUTES les colonnes (contrairement à getStatsTentatives, qui ne sélectionne
+// que ce qu'affiche la page Stats — pas assez pour une sauvegarde : ni cas_id, ni
+// reponse_donnee, ni a_revoir. Utilisée par la sauvegarde de Paramètres.
+export async function getAllTentativesRaw() {
+  return paginerTout(() => supabase.from('tentatives').select('*').order('id'))
+}
+
 export async function getStatsTentatives() {
-  const { data, error } = await supabase
-    .from('tentatives')
-    .select('id, reussi, date_tentative, cas_cliniques(matiere, type, question)')
-    .order('date_tentative', { ascending: false })
-  if (error) throw error
-  return data
+  return paginerTout(() =>
+    supabase
+      .from('tentatives')
+      .select('id, reussi, date_tentative, cas_cliniques(matiere, type, question)')
+      .order('date_tentative', { ascending: false })
+      .order('id', { ascending: false })
+  )
 }
 
 // --- Cascade de renommage (Organisation) : voir lib/fiches.js pour le contexte complet.
