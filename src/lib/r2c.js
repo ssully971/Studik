@@ -47,3 +47,17 @@ export async function getAllR2cSddNumeros() {
 export async function insertR2cSdd(items) {
   return upsertPartiel('r2c_sdd', items, 'numero')
 }
+
+// Restauration de sauvegarde (§ Paramètres) : upsert direct des lignes brutes (clé `numero`,
+// pas `id` — voir CLAUDE.md).
+export async function restaurerR2cItems(items) {
+  if (!items || items.length === 0) return
+  const { error } = await supabase.from('r2c_items').upsert(items, { onConflict: 'numero' })
+  if (error) throw error
+}
+
+export async function restaurerR2cSdd(items) {
+  if (!items || items.length === 0) return
+  const { error } = await supabase.from('r2c_sdd').upsert(items, { onConflict: 'numero' })
+  if (error) throw error
+}

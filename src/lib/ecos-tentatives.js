@@ -53,3 +53,11 @@ export async function getTentativesEcos(stationId) {
 export async function getToutesLesTentativesEcos() {
   return paginerTout(() => supabase.from('ecos_tentatives').select('*').order('date_tentative', { ascending: true }).order('id', { ascending: true }))
 }
+
+// Restauration de sauvegarde (§ Paramètres) : upsert direct, append-only comme le reste de
+// cette table.
+export async function restaurerTentativesEcos(tentatives) {
+  if (!tentatives || tentatives.length === 0) return
+  const { error } = await supabase.from('ecos_tentatives').upsert(tentatives, { onConflict: 'id' })
+  if (error) throw error
+}

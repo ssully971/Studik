@@ -19,3 +19,10 @@ export async function getConstantes() {
   if (error) throw error
   return data
 }
+
+// Restauration de sauvegarde (§ Paramètres) : upsert direct des lignes brutes.
+export async function restaurerConstantes(items) {
+  if (!items || items.length === 0) return
+  const { error } = await supabase.from('constantes_bio').upsert(items, { onConflict: 'id' })
+  if (error) throw error
+}

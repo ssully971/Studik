@@ -65,6 +65,30 @@ export async function getAllDossiers() {
   return paginerTout(() => supabase.from('edn_dossiers').select('*').order('date_creation', { ascending: false }).order('id', { ascending: false }))
 }
 
+// TOUTES les questions (dossier_id null ou pas) — contrairement à getQuestionsIsolees, qui ne
+// garde que les questions hors dossier. Utilisée par la sauvegarde de Paramètres : une
+// sauvegarde doit couvrir la table entière, pas seulement ce qu'affiche la Banque.
+export async function getAllQuestionsRaw() {
+  return paginerTout(() => supabase.from('edn_questions').select('*').order('id'))
+}
+
+// Restauration de sauvegarde (§ Paramètres) : upsert direct des lignes brutes, sans passer par
+// insertDossiersAvecQuestions/insertQuestionsIsolees (pensées pour le JSON d'import, qui impose
+// dossier_id: null sur toute question — une sauvegarde doit au contraire restaurer le
+// dossier_id réel de chaque question). Restaure toujours les dossiers avant les questions
+// (dossier_id référence edn_dossiers, contrainte réelle de la migration 001).
+export async function restaurerDossiers(dossiers) {
+  if (!dossiers || dossiers.length === 0) return
+  const { error } = await supabase.from('edn_dossiers').upsert(dossiers, { onConflict: 'id' })
+  if (error) throw error
+}
+
+export async function restaurerQuestions(questions) {
+  if (!questions || questions.length === 0) return
+  const { error } = await supabase.from('edn_questions').upsert(questions, { onConflict: 'id' })
+  if (error) throw error
+}
+
 export async function getQuestionsIsolees() {
   return paginerTout(() =>
     supabase

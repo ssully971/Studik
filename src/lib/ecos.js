@@ -19,6 +19,14 @@ export async function getStations() {
   return paginerTout(() => supabase.from('ecos_stations').select('*').order('date_creation', { ascending: false }).order('id', { ascending: false }))
 }
 
+// Restauration de sauvegarde (§ Paramètres) : upsert direct des lignes brutes (contrairement à
+// insertStations, pensée pour le JSON d'import).
+export async function restaurerStations(stations) {
+  if (!stations || stations.length === 0) return
+  const { error } = await supabase.from('ecos_stations').upsert(stations, { onConflict: 'id' })
+  if (error) throw error
+}
+
 export async function getStationById(id) {
   const { data, error } = await supabase.from('ecos_stations').select('*').eq('id', id).single()
   if (error) throw error

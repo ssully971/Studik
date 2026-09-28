@@ -25,15 +25,30 @@ export async function ecrireEtatSrs(cible, nouvelEtat, suspendue) {
   if (error) throw error
 }
 
-// Toutes les lignes SRS en une fois (map cible -> ligne) : sert à afficher l'état "suspendue"
-// dans la Banque sans une requête par ligne (§7.3).
+// Toutes les lignes SRS, brutes (tableau) — utilisée par getTousLesEtatsSrs (Banque, voir
+// ci-dessous) et par la sauvegarde de Paramètres, qui a besoin du tableau, pas de la map.
+export async function getTousLesEtatsSrsRaw() {
+  return paginerTout(() => supabase.from('edn_srs').select('*').order('cible'))
+}
+
+// Même chose en map cible -> ligne : sert à afficher l'état "suspendue" dans la Banque sans une
+// requête par ligne (§7.3).
 export async function getTousLesEtatsSrs() {
-  const data = await paginerTout(() => supabase.from('edn_srs').select('*').order('cible'))
+  const data = await getTousLesEtatsSrsRaw()
   const map = {}
   data.forEach((r) => {
     map[r.cible] = r
   })
   return map
+}
+
+// Restauration de sauvegarde (§ Paramètres) : upsert direct, tel quel — l'état SRS restauré
+// n'est jamais recalculé (§7.1 : la répétition espacée reprend exactement où la sauvegarde
+// l'a laissée).
+export async function restaurerEtatsSrs(etats) {
+  if (!etats || etats.length === 0) return
+  const { error } = await supabase.from('edn_srs').upsert(etats, { onConflict: 'cible' })
+  if (error) throw error
 }
 
 export async function suspendreCible(cible, suspendue) {

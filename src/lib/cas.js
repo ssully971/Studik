@@ -175,6 +175,13 @@ export async function deleteAllTentatives() {
   if (error) throw error
 }
 
+// Lignes brutes, TOUTES les colonnes (contrairement à getStatsTentatives, qui ne sélectionne
+// que ce qu'affiche la page Stats — pas assez pour une sauvegarde : ni cas_id, ni
+// reponse_donnee, ni a_revoir. Utilisée par la sauvegarde de Paramètres.
+export async function getAllTentativesRaw() {
+  return paginerTout(() => supabase.from('tentatives').select('*').order('id'))
+}
+
 export async function getStatsTentatives() {
   return paginerTout(() =>
     supabase

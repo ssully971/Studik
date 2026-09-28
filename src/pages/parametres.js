@@ -3,20 +3,13 @@ import { getCycle, setCycle, estExternat, getAfficherP2EnExternat, setAfficherP2
 import { getPlafondRevisions, setPlafondRevisions } from '../lib/edn-dashboard.js'
 import { getTagsErreur, setTagsErreur, TAGS_ERREUR_DEFAUT } from '../lib/edn-tags-erreur.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
-import { getFiches, getAllFichesRaw, insertFiches, deleteAllFiches } from '../lib/fiches.js'
-import { getAllCas, insertCas, deleteAllCas, getStatsTentatives, deleteAllTentatives, restaurerTentatives } from '../lib/cas.js'
-import { getAllMatieresAvecSousMatieres, insertMatieres, deleteAllMatieres } from '../lib/matieres.js'
-import { getAllCaptures, deleteAllCaptures, deleteCapturesTraitees, restaurerCaptures } from '../lib/captures.js'
-import {
-  getAllQcmRaw,
-  insertQcm,
-  deleteAllQcm,
-  getAllQcmTentativesRaw,
-  restaurerTentativesQcm,
-  deleteAllTentativesQcm,
-} from '../lib/qcm.js'
-import { getCheckins, deleteAllCheckins, restaurerCheckins } from '../lib/checkins.js'
-import { getTagsAvecPerimetre, restaurerTags } from '../lib/tags.js'
+import { deleteAllFiches } from '../lib/fiches.js'
+import { deleteAllCas, deleteAllTentatives } from '../lib/cas.js'
+import { deleteAllMatieres } from '../lib/matieres.js'
+import { deleteAllCaptures, deleteCapturesTraitees } from '../lib/captures.js'
+import { deleteAllQcm, deleteAllTentativesQcm } from '../lib/qcm.js'
+import { deleteAllCheckins } from '../lib/checkins.js'
+import { exporterSauvegarde, preparerRestauration, restaurerSauvegarde } from '../lib/backup.js'
 import { getTheme, setTheme } from '../lib/theme.js'
 import {
   getFond,
@@ -38,26 +31,6 @@ import { getGlass, setGlass } from '../lib/glass.js'
 import { televerserImage, supprimerImage } from '../lib/images.js'
 import { synchroniserDonnees } from '../lib/sync.js'
 import { escapeHtml } from '../lib/escape.js'
-
-// Insère les matières parents avant leurs enfants (parent_id référence une autre ligne de la
-// même table) : un ordre quelconque ferait échouer la contrainte de clé étrangère à la restauration.
-function trierMatieresParProfondeur(matieres) {
-  const byId = {}
-  matieres.forEach((m) => {
-    byId[m.id] = m
-  })
-  function profondeur(m) {
-    let p = 0
-    let courant = m
-    while (courant?.parent_id) {
-      p++
-      courant = byId[courant.parent_id]
-      if (!courant) break
-    }
-    return p
-  }
-  return [...matieres].sort((a, b) => profondeur(a) - profondeur(b))
-}
 
 function statusHTML(id) {
   return `<span id="${id}" class="import-status"></span>`
@@ -191,7 +164,8 @@ export async function renderParametres(container) {
 
         <div class="settings-card">
           <h3 class="voice">Sauvegarde</h3>
-          <p class="settings-desc">Exporte toutes tes données (fiches, cas, QCM, matières, tentatives, captures, streak, tags) dans un fichier, y compris le contenu archivé, ou restaure une sauvegarde précédente.</p>
+          <p class="settings-desc">Exporte toutes tes données dans un fichier — P2 (fiches, cas, QCM, matières, tentatives, captures, streak, tags) et, si le mode Externat est configuré, EDN/ECOS (référentiels R2C, constantes biologiques, dossiers/questions, tentatives, état de la répétition espacée, stations ECOS, préférences Externat) — y compris le contenu archivé, ou restaure une sauvegarde précédente.</p>
+          <p class="settings-desc">Ne sauvegarde que les données (lignes de la base) : les chemins d'image sont conservés, mais pas les fichiers eux-mêmes (stockage Supabase) — comme pour le P2, ce n'est pas une évolution prévue par cette sauvegarde.</p>
           <p class="settings-desc" id="derniere-sauvegarde-txt">${formatDerniereSauvegarde(localStorage.getItem(CLE_DERNIERE_SAUVEGARDE))}</p>
           <div class="import-actions">
             <button id="export-btn" class="btn" style="width: auto;">Exporter une sauvegarde</button>
@@ -539,31 +513,11 @@ export async function renderParametres(container) {
   })
 
   document.getElementById('export-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('export-btn')
+    btn.disabled = true
+    setStatus('export-status', 'Préparation…', '')
     try {
-      const [fiches, cas, qcm, matieres, tentatives, tentativesQcm, captures, checkins, tags] = await Promise.all([
-        getAllFichesRaw(),
-        getAllCas(),
-        getAllQcmRaw(),
-        getAllMatieresAvecSousMatieres(),
-        getStatsTentatives(),
-        getAllQcmTentativesRaw(),
-        getAllCaptures(),
-        getCheckins(),
-        getTagsAvecPerimetre(),
-      ])
-
-      const backup = {
-        exported_at: new Date().toISOString(),
-        fiches,
-        cas,
-        qcm,
-        matieres,
-        tentatives,
-        tentativesQcm,
-        captures,
-        checkins,
-        tags,
-      }
+      const { backup, nombreTentativesEnAttente } = await exporterSauvegarde()
 
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
@@ -578,9 +532,19 @@ export async function renderParametres(container) {
         localStorage.getItem(CLE_DERNIERE_SAUVEGARDE)
       )
 
-      setStatus('export-status', 'Sauvegarde téléchargée.', 'success')
+      // Ces tentatives ne sont pas encore en base (§8 lot 8, file hors-ligne IndexedDB) : le
+      // fichier vient d'être généré depuis la base, elles n'y figurent donc pas.
+      setStatus(
+        'export-status',
+        nombreTentativesEnAttente > 0
+          ? `Sauvegarde téléchargée — attention, ${nombreTentativesEnAttente} tentative${nombreTentativesEnAttente !== 1 ? 's' : ''} encore hors-ligne (en attente de réseau) n'y figure${nombreTentativesEnAttente !== 1 ? 'nt' : ''} pas.`
+          : 'Sauvegarde téléchargée.',
+        nombreTentativesEnAttente > 0 ? 'error' : 'success'
+      )
     } catch (err) {
       setStatus('export-status', 'Erreur : ' + err.message, 'error')
+    } finally {
+      btn.disabled = false
     }
   })
 
@@ -592,15 +556,15 @@ export async function renderParametres(container) {
       const text = await file.text()
       const data = JSON.parse(text)
 
-      if (data.matieres?.length) await insertMatieres(trierMatieresParProfondeur(data.matieres))
-      if (data.fiches?.length) await insertFiches(data.fiches)
-      if (data.cas?.length) await insertCas(data.cas)
-      if (data.qcm?.length) await insertQcm(data.qcm)
-      if (data.tentatives?.length) await restaurerTentatives(data.tentatives)
-      if (data.tentativesQcm?.length) await restaurerTentativesQcm(data.tentativesQcm)
-      if (data.captures?.length) await restaurerCaptures(data.captures)
-      if (data.checkins?.length) await restaurerCheckins(data.checkins)
-      if (data.tags?.length) await restaurerTags(data.tags)
+      setStatus('restore-status', 'Vérification du fichier…', '')
+      const preflight = await preparerRestauration(data)
+      if (!preflight.ok) {
+        setStatus('restore-status', 'Fichier refusé, rien n\'a été écrit : ' + preflight.erreurs.join(' '), 'error')
+        return
+      }
+
+      setStatus('restore-status', 'Restauration en cours…', '')
+      await restaurerSauvegarde(data, { onEtape: (cle) => setStatus('restore-status', `Restauration en cours… (${cle})`, '') })
 
       setStatus('restore-status', 'Sauvegarde restaurée.', 'success')
     } catch (err) {

@@ -798,3 +798,64 @@ découpé par `requeteParLots`. Voir CLAUDE.md, pièges déjà rencontrés.
 par un test "fumée" temporaire (mock Supabase, 1500 fiches / 1300 checkins, supprimé après
 vérification — pas dans l'historique) que `getAllFichesRaw`/`getFiches`/`getCheckins` renvoient
 bien tout, pas seulement les 1000 premières lignes.
+
+### Sauvegarde/restauration étendue à l'Externat : un module dédié, pas un second système
+
+**Contexte.** Demande explicite : la sauvegarde de Paramètres ne couvrait que le P2. L'étendre à
+l'Externat sans dupliquer le mécanisme existant, avec un préflight (pas de transaction atomique
+possible sans fonction Postgres) et un ordre de restauration déduit des vraies clés étrangères.
+
+**Retenu.** `lib/backup.js` (détail dans CLAUDE.md, section "Sauvegarde et restauration") centralise
+ce que `parametres.js` faisait jusque-là en ligne dans son gestionnaire de clic — pas un second
+système, la même liste de fonctions `insertX`/`restaurerX` déjà utilisées ailleurs, simplement
+sortie dans un module testable et étendue à l'Externat. Champ `version` (absent = ancien format
+P2, restauré à l'identique via `restaurerLegacy`, une copie figée du code d'avant). Préflight
+(`preparerRestauration`) qui vérifie la structure puis la résolvabilité des références réelles
+(`edn_questions.dossier_id` → `edn_dossiers`, `ecos_tentatives.station_id` → `ecos_stations`,
+`matieres.parent_id` → `matieres`) contre le fichier ET la base, AVANT toute écriture — sinon une
+contrainte de clé étrangère aurait échoué en cours de restauration avec une erreur Postgres brute,
+après que certaines tables aient déjà été écrites.
+
+**Écarté : une transaction Postgres (fonction RPC) pour une restauration atomique.** Demande
+explicite de ne pas l'implémenter (aucune fonction SQL n'existe ailleurs dans ce projet). À la
+place : préflight strict en amont (réduit fortement le risque d'échec en cours de route) + message
+d'erreur nommant la table en cause + upsert par id partout, donc une restauration interrompue peut
+être intégralement relancée depuis le même fichier sans dupliquer ni perdre quoi que ce soit.
+
+**Préférences Externat (cycle, plafond de révisions, tags d'erreur) : lues/écrites via
+`lirePreference`/`ecrirePreference` directement, jamais via `getPlafondRevisions()`/
+`getTagsErreur()`.** Ces deux fonctions renvoient un défaut applicatif quand la préférence n'a
+jamais été écrite (100/jour, liste par défaut) — un défaut ne doit jamais se retrouver sauvegardé
+puis réécrit comme s'il s'agissait d'une vraie valeur choisie par Sullivan lors d'une restauration
+vers une autre base.
+
+**Images (Storage) non incluses, assumé.** La sauvegarde reste "les lignes de la base", pas les
+fichiers — même limite déjà connue côté P2, rendue visible sur la carte Sauvegarde des Paramètres
+plutôt que découverte au moment d'une restauration. Aucune refonte du stockage dans cette PR
+(explicitement hors périmètre de la demande).
+
+**File hors-ligne (IndexedDB) : avertissement, pas un blocage.** Si des tentatives EDN/ECOS
+attendent encore le retour du réseau au moment de l'export, elles ne sont pas dans le fichier
+(pas encore en base) — `exporterSauvegarde()` renvoie leur nombre, Paramètres affiche un
+avertissement après le téléchargement plutôt que d'empêcher l'export (l'utilisateur peut vouloir
+sauvegarder quand même, puis réessayer plus tard une fois reconnecté).
+
+**Bug préexistant trouvé et corrigé (indépendant de l'Externat, découvert en écrivant le test
+d'aller-retour export→restauration demandé)** : l'export "tentatives" (cas cliniques) réutilisait
+`getStatsTentatives()` (`lib/cas.js`) — pensée pour l'affichage de la page Stats, elle ne
+sélectionne que `id, reussi, date_tentative, cas_cliniques(matiere, type, question)`. Aucun
+`cas_id`, aucune `reponse_donnee`, aucun `a_revoir`, et le cas joint n'a même pas son `id` — une
+restauration produisait donc des tentatives avec `cas_id: undefined` (la ligne existante de
+`restaurerTentatives`, `t.cas_id || t.cas_cliniques?.id`, ne pouvait pas non plus s'en sortir
+puisque `cas_cliniques.id` n'était pas sélectionné). Corrigé par une fonction dédiée à la
+sauvegarde, `getAllTentativesRaw()` (`select('*')`, paginée) ; `getStatsTentatives()` reste
+inchangée pour la page Stats.
+
+`npm test` (540 tests, +12 pour `lib/backup.test.js` : aller-retour complet mocké — ids, relation
+dossier→questions, relation station→tentatives ECOS, tentatives et SRS restaurés tels quels,
+préférences Externat, format historique sans version, préflight structure/références, erreur
+nommée et relançable) et `npm run build` verts. Vérifié en direct (Playwright, mock Supabase en
+mémoire dans le navigateur) via la vraie page Paramètres : export réel (téléchargement intercepté,
+JSON inspecté), restauration de ce même fichier, restauration d'un ancien fichier sans `version`,
+refus propre d'un fichier malformé et d'une référence irrésoluble — aucune écriture dans ces deux
+derniers cas, aucune erreur console.
