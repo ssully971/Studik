@@ -332,3 +332,14 @@ peut faire croire que le clic n'a rien fait sur un lot de cette taille.
 (désactiver le bouton + libellé "Import en cours..."/spinner) sur `renderModePrompts`/le handler
 de clic d'`#import` (`src/pages/import.js`), le temps du traitement zod + upsert séquentiel.
 **Écarté (pour l'instant).** Corriger immédiatement : demande explicite de reporter ce point.
+
+### Élargi : absence générale de retour visuel pendant le chargement (pas seulement `#import`)
+**Contexte.** Même remarque étendue par Sullivan à d'autres écrans Externat (ex. listes qui vont
+chercher des données Supabase) : aucun état de chargement visible (pas de skeleton/spinner), un
+écran peut sembler figé le temps de la requête.
+**Statut.** Regroupé avec le point ci-dessus, reporté au lot 2. **Reste à faire** : introduire un
+état de chargement visuel simple et réutilisable (skeleton ou spinner léger, cohérent avec
+l'identité visuelle noir OLED/Lora/IBM Plex) pour les écrans Externat qui vont chercher des
+données avant affichage (`#import`, listes `#edn-banque`/`#edn-items`, tableau de bord), pas un
+correctif isolé au seul bouton d'import.
+**Écarté (pour l'instant).** Corriger immédiatement : reporté au même titre que le point ci-dessus.
