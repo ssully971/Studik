@@ -436,3 +436,46 @@ réutilisés par les deux modes, jamais dupliqués/divergents entre P2 et Extern
 **Retenu.** Noté ici comme contrainte de conception pour la phase 2, à relire avant de commencer
 ces chantiers (indicateur de chargement déjà écrit comme "réutilisable" plus haut ; le mécanisme
 d'upload post-import ZAP/QCM est explicitement designé comme un point commun ci-dessus).
+
+## Phase 2 — intégration des retours de la phase 1 (branche `externat-v2-phase2`)
+
+PR #1 fusionnée dans `main` sur demande explicite de Sullivan ("Merge pour lancer la phase 2").
+Avant les lots 5 à 8, les points suivants (notés ci-dessus) ont été traités :
+
+- **Chargement visuel réutilisable** : découverte en relisant le code qu'un composant existait
+  déjà et correspondait exactement au besoin — `lib/loader.js` (`afficherLoader`), le loader
+  "Feuillet" utilisé au démarrage de l'app, dont le commentaire d'origine dit explicitement qu'il
+  est "pensé... pour toute transition de route un peu longue". **Retenu** : réutilisé tel quel
+  (aucune duplication) sur `#edn-banque`, `#edn-question`, `#edn-dossier` (remplace le `<p
+  class="voice">Chargement…</p>` par `afficherLoader(container)`, avec `arreterLoader()` appelé
+  sur chaque chemin de sortie — succès et erreur — pour ne pas laisser tourner le `setInterval`
+  dans le vide une fois le contenu réel affiché). Un petit `.spinner` CSS séparé a été ajouté pour
+  le cas différent du bouton d'import (le loader "Feuillet" est plein écran, inadapté à un bouton).
+  **Écarté** : créer un deuxième mécanisme de chargement — le composant existant couvrait déjà le
+  besoin, l'occasion de le réutiliser plutôt que d'empiler un système parallèle.
+- **`#import` : bouton "Importer" avec état de chargement.** Le clic déclenche désormais
+  `importBtn.disabled = true` + spinner + libellé "Import en cours…", restauré dans un `finally`
+  qui couvre tous les chemins de retour existants (le corps du traitement a été extrait dans une
+  fonction interne `importerLot()` pour pouvoir l'entourer d'un seul `try/finally` sans dupliquer
+  chaque `return`).
+- **`#edn-banque` : tri + lancer une session.** Ajout d'un `<select>` de tri (titre/statut/format)
+  et d'un bouton "Lancer une session sur ces résultats" qui appelle `demarrerSessionExternat`
+  (`edn-session.js`, déjà conçu pour enchaîner plusieurs cibles) avec la liste actuellement
+  filtrée — couvre à la fois la demande "trier" et "enchaîner sans re-cliquer à chaque question",
+  y compris pour les questions isolées seules (même mécanisme, pas de chantier séparé).
+- **`#import` : cartes "Tags de référence"/"Comment ça marche" repliées par défaut.** Converties en
+  `<details class="settings-card"><summary>...` — repli natif du navigateur, aucun JS
+  supplémentaire, CSS ajoutée pour que le `<summary>` garde le même poids visuel que l'ancien
+  `<h3>`.
+- **Raccourci clavier `t`** (page `#import` uniquement) : bascule Import ↔ Prompts, résolu dans
+  `lib/raccourcis.js` (testé) plutôt que branché à la main dans `import.js`, cohérent avec le reste
+  du système de raccourcis — clique sur un nouveau bouton visible `#import-toggle-btn` (même
+  principe que les autres raccourcis : `.click()` sur un id stable).
+
+**Toujours reporté** (décision de conception à prendre avec Sullivan avant de coder, pas un simple
+oubli) : l'upload d'image directement depuis l'import (ZAP + popup QCM P2) — nécessite de changer
+la nature de `#import` (aujourd'hui un paste JSON texte pur) pour y intégrer un upload de fichier,
+ce qui dépasse le cadre d'une intégration de retours et mérite d'être découpé en sous-lot à part
+entière plutôt que fait rapidement en même temps que le reste.
+
+`npm test` (418 tests, +3 pour le raccourci `t`) et `npm run build` verts après ce lot.

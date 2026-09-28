@@ -167,6 +167,13 @@ export function resoudreRaccourci(ctx) {
     if (key === 'ArrowUp') return elementsPresents.includes('ligne-focalisee') ? { type: 'focus-move', direction: -1 } : null
   }
 
+  // Basculer Import ↔ Prompts sur #import (§ retours phase 1 : générer en série demande de
+  // repasser souvent de l'un à l'autre). "t" est libre hors séquence "g" sur cette route (pas de
+  // liste/jeu ici).
+  if (route === 'import' && key.toLowerCase() === 't') {
+    return elementsPresents.includes('import-toggle-btn') ? { type: 'click', id: 'import-toggle-btn' } : null
+  }
+
   return null
 }
 
@@ -196,5 +203,6 @@ export function tableAide() {
     { touches: 'b / p', description: "Marquer une fiche « bien vue » / « pas top » (entraînement, session, fiche)" },
     { touches: 'j / k, ↓ / ↑', description: 'Se déplacer dans une liste (référentiel, révision, erreurs, tag)' },
     { touches: 'Entrée', description: 'Ouvrir la ligne sélectionnée (référentiel, révision, tag)' },
+    { touches: 't', description: 'Basculer Import ↔ Prompts (page #import)' },
   ]
 }

@@ -527,7 +527,7 @@ function router() {
 // dupliquant la logique interne d'une page. Voir lib/raccourcis.js pour le détail des touches.
 
 const TYPES_SAISIE = ['text', 'email', 'password', 'search', 'number']
-const IDS_BOUTONS_SURVEILLES = ['valider-btn', 'suivant-btn', 'precedent-btn', 'finir-btn', 'refaire-erreurs-btn', 'revu-bien-btn', 'revu-pas-bien-btn']
+const IDS_BOUTONS_SURVEILLES = ['valider-btn', 'suivant-btn', 'precedent-btn', 'finir-btn', 'refaire-erreurs-btn', 'revu-bien-btn', 'revu-pas-bien-btn', 'import-toggle-btn']
 
 let sequenceRaccourciEnAttente = null
 let aideOverlay = null

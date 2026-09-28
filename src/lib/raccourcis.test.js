@@ -334,6 +334,23 @@ describe('Joueur de questions/dossiers Externat (edn-question, edn-dossier)', ()
   })
 })
 
+describe('"t" bascule Import/Prompts sur #import', () => {
+  it('clique #import-toggle-btn quand présent', () => {
+    expect(resoudreRaccourci({ route: 'import', key: 't', elementsPresents: ['import-toggle-btn'] })).toEqual({
+      type: 'click',
+      id: 'import-toggle-btn',
+    })
+  })
+
+  it("ne fait rien si l'élément n'est pas présent", () => {
+    expect(resoudreRaccourci({ route: 'import', key: 't', elementsPresents: [] })).toBeNull()
+  })
+
+  it("n'agit pas sur une autre route", () => {
+    expect(resoudreRaccourci({ route: 'accueil', key: 't', elementsPresents: ['import-toggle-btn'] })).toBeNull()
+  })
+})
+
 describe("absence de collision dans un même contexte", () => {
   // Pour chaque route, un ensemble représentatif de touches ne doit jamais produire deux
   // interprétations différentes selon l'ordre des règles : on vérifie juste qu'une seule

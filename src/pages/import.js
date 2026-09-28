@@ -132,6 +132,7 @@ export async function renderImport(container, modeForce) {
       <div class="filters" style="margin-bottom: 20px;">
         <button class="filter-btn ${mode === 'import' ? 'active' : ''}" data-mode="import">Importer</button>
         <button class="filter-btn ${mode === 'prompts' ? 'active' : ''}" data-mode="prompts">Prompts</button>
+        <button id="import-toggle-btn" class="btn" style="width: auto;" title="Basculer Import/Prompts">Basculer <kbd class="kbd-hint">t</kbd></button>
       </div>
 
       <div id="import-mode-content"></div>
@@ -144,6 +145,11 @@ export async function renderImport(container, modeForce) {
       mode = btn.dataset.mode
       renderImport(container)
     })
+  })
+
+  document.getElementById('import-toggle-btn').addEventListener('click', () => {
+    mode = mode === 'import' ? 'prompts' : 'import'
+    renderImport(container)
   })
 
   const modeContent = document.getElementById('import-mode-content')
@@ -248,6 +254,22 @@ function renderModeImport(container) {
       return
     }
 
+    // À partir d'ici, le traitement (vérification des ids, validation zod, créations en
+    // cascade, upserts séquentiels) peut prendre plusieurs secondes sur un gros lot (ex. 367
+    // items R2C) — retour visuel obligatoire (signalé par Sullivan : le bouton ne changeait pas
+    // d'état, rien ne laissait deviner qu'un clic avait été pris en compte).
+    const importBtn = document.getElementById('import-btn')
+    const libelleInitial = importBtn.textContent
+    importBtn.disabled = true
+    importBtn.innerHTML = `<span class="spinner" aria-hidden="true"></span> Import en cours…`
+    try {
+      await importerLot()
+    } finally {
+      importBtn.disabled = false
+      importBtn.textContent = libelleInitial
+    }
+
+    async function importerLot() {
     let existingIds
     try {
       existingIds = await GET_IDS_PAR_CIBLE[target]()
@@ -588,6 +610,7 @@ function renderModeImport(container) {
         ? `<p class="import-status error">${messageMigrationManquante('001')}</p>`
         : `<p class="import-status error">Erreur : ${escapeHtml(err.message)}</p>`
     }
+    }
   })
 }
 
@@ -631,8 +654,8 @@ async function renderModePrompts(container) {
     </div>
     <p class="import-hint">${modeExternat ? "Prompts propres au mode Externat (référentiels R2C, questions et dossiers EDN, ECOS, constantes biologiques) — entièrement distincts des prompts P2." : 'Prompts propres au référentiel P2 (fiches, cas, QCM, matières) — bascule en mode Externat (Paramètres) pour voir sa propre banque.'}</p>
 
-    <div class="settings-card" style="margin-bottom: 24px;">
-      <h3 class="voice">Tags de référence</h3>
+    <details class="settings-card" style="margin-bottom: 24px;">
+      <summary class="voice">Tags de référence</summary>
       <p class="settings-desc">Ta liste fermée de tags, à copier dans le champ "Tags autorisés" des prompts. Clique un tag pour lui associer une ou plusieurs périodes (📍 = tag scopé) ; laisse-le sans période pour qu'il s'applique partout.</p>
       <input type="text" id="tags-recherche" class="search-input" placeholder="Rechercher un tag…" style="margin-bottom: 10px;" />
       <div id="tags-chips" class="tags" style="margin-bottom: 12px; max-height: 220px; overflow-y: auto;"></div>
@@ -642,12 +665,12 @@ async function renderModePrompts(container) {
         <button id="copier-tags-btn" class="btn primary" style="width: auto;">Copier la liste</button>
         <span id="tags-status" class="import-status"></span>
       </div>
-    </div>
+    </details>
 
-    <div class="settings-card" style="margin-bottom: 24px;">
-      <h3 class="voice">Comment ça marche</h3>
+    <details class="settings-card" style="margin-bottom: 24px;">
+      <summary class="voice">Comment ça marche</summary>
       <pre class="prompt-readme">${escapeHtml(modeExternat ? readmeExternat : readme)}</pre>
-    </div>
+    </details>
 
     <div class="fiches-list" id="prompts-list"></div>
 

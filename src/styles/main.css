@@ -1645,6 +1645,18 @@ a.tag:hover,
   margin-bottom: 8px;
 }
 
+/* <details class="settings-card"> : cartes repliables (fermées par défaut), même poids visuel
+   que .settings-card h3 — utilisé sur #import pour "Tags de référence"/"Comment ça marche". */
+.settings-card summary {
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-card[open] summary {
+  margin-bottom: 8px;
+}
+
 .settings-desc {
   font-size: 13px;
   color: var(--text-dim);
@@ -2471,4 +2483,23 @@ a.tag:hover,
 @keyframes loader-reveal {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Petit spinner inline (bouton en cours de traitement, ex. #import) — le loader "Feuillet"
+   ci-dessus est pensé pour une transition de page entière, pas pour un bouton. */
+.spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  opacity: 0.6;
+  vertical-align: -2px;
+  margin-right: 6px;
+  animation: spinner-rotation 0.7s linear infinite;
+}
+
+@keyframes spinner-rotation {
+  to { transform: rotate(360deg); }
 }

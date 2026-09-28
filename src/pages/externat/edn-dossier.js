@@ -1,6 +1,7 @@
 import { getDossierAvecQuestions } from '../../lib/edn-content.js'
 import { estTableAbsente, htmlMigrationManquante } from '../../lib/externat-schema.js'
 import { escapeHtml } from '../../lib/escape.js'
+import { afficherLoader } from '../../lib/loader.js'
 import { richText, activerInteractionsRichText } from '../../lib/richtext.js'
 import { scoreQuestion, ajusterScoreQroc } from '../../lib/edn-scoring.js'
 import { enregistrerTentative, cibleDossier } from '../../lib/edn-tentatives.js'
@@ -34,12 +35,13 @@ function renderBarreProgression(index, total) {
 // définitivement verrouillée, aucun bouton "précédent" n'existe jamais sur cette page. LCA (écran
 // partagé) est hors périmètre de ce lot, voir §8 lot 6.
 export async function renderEdnDossier(container, id, contexteSegment) {
-  container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
+  const arreterLoader = afficherLoader(container)
 
   let dossier
   try {
     dossier = await getDossierAvecQuestions(id)
   } catch (err) {
+    arreterLoader()
     if (estTableAbsente(err)) {
       container.innerHTML = `<div class="wrap"><div class="section-head"><h2 class="voice">Dossier</h2></div>${htmlMigrationManquante('001')}</div>`
       return
@@ -47,6 +49,7 @@ export async function renderEdnDossier(container, id, contexteSegment) {
     container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${escapeHtml(err.message)}</p></div>`
     return
   }
+  arreterLoader()
 
   if (dossier.type === 'LCA') {
     container.innerHTML = `

@@ -1,6 +1,7 @@
 import { getQuestionById } from '../../lib/edn-content.js'
 import { estTableAbsente, htmlMigrationManquante } from '../../lib/externat-schema.js'
 import { escapeHtml } from '../../lib/escape.js'
+import { afficherLoader } from '../../lib/loader.js'
 import { richText, activerInteractionsRichText } from '../../lib/richtext.js'
 import { scoreQuestion, ajusterScoreQroc } from '../../lib/edn-scoring.js'
 import { enregistrerTentative, cibleQuestion } from '../../lib/edn-tentatives.js'
@@ -21,12 +22,13 @@ import {
 // question de DP hors de son dossier"). `contexteSegment` (3e segment de hash) encode le mode de
 // jeu quand la question est lancée depuis une session (#edn-session) — voir edn-session.js.
 export async function renderEdnQuestion(container, id, contexteSegment) {
-  container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
+  const arreterLoader = afficherLoader(container)
 
   let question
   try {
     question = await getQuestionById(id)
   } catch (err) {
+    arreterLoader()
     if (estTableAbsente(err)) {
       container.innerHTML = `<div class="wrap"><div class="section-head"><h2 class="voice">Question</h2></div>${htmlMigrationManquante('001')}</div>`
       return
@@ -34,6 +36,7 @@ export async function renderEdnQuestion(container, id, contexteSegment) {
     container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${escapeHtml(err.message)}</p></div>`
     return
   }
+  arreterLoader()
 
   const { enSession, mode } = analyserContexteJeu(contexteSegment)
   const propositions = ordonnerPropositions(question)
