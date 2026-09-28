@@ -171,6 +171,60 @@ export async function renderParametres(container) {
         </div>
 
         <div class="settings-card">
+          <h3 class="voice">Pseudo</h3>
+          <p class="settings-desc">Utilisé pour la salutation sur l'accueil.</p>
+          <input type="text" id="pseudo-input" class="search-input settings-input" value="${pseudoActuel}" placeholder="Ton pseudo" />
+          <div class="import-actions">
+            <button id="save-pseudo-btn" class="btn primary" style="width: auto;">Enregistrer</button>
+            ${statusHTML('pseudo-status')}
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h3 class="voice">Mot de passe</h3>
+          <input type="password" id="password-input" class="search-input settings-input" placeholder="Nouveau mot de passe" />
+          <div class="import-actions">
+            <button id="save-password-btn" class="btn primary" style="width: auto;">Changer le mot de passe</button>
+            ${statusHTML('password-status')}
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h3 class="voice">Sauvegarde</h3>
+          <p class="settings-desc">Exporte toutes tes données (fiches, cas, QCM, matières, tentatives, captures, streak, tags) dans un fichier, y compris le contenu archivé, ou restaure une sauvegarde précédente.</p>
+          <p class="settings-desc" id="derniere-sauvegarde-txt">${formatDerniereSauvegarde(localStorage.getItem(CLE_DERNIERE_SAUVEGARDE))}</p>
+          <div class="import-actions">
+            <button id="export-btn" class="btn" style="width: auto;">Exporter une sauvegarde</button>
+            ${statusHTML('export-status')}
+          </div>
+          <div class="import-actions">
+            <label class="btn" style="width: auto; cursor: pointer;">
+              Restaurer une sauvegarde
+              <input type="file" id="restore-input" accept="application/json" style="display: none;" />
+            </label>
+            ${statusHTML('restore-status')}
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h3 class="voice">Tout synchroniser</h3>
+          <p class="settings-desc">Scanne les fiches, cas et QCM et crée automatiquement les matières, sous-matières et tags qui leur manquent en référence. Action sûre : uniquement des créations, jamais de suppression.</p>
+          <div class="import-actions">
+            <button id="synchroniser-btn" class="btn" style="width: auto;">Tout synchroniser</button>
+            ${statusHTML('synchroniser-status')}
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h3 class="voice">Capture rapide</h3>
+          <p class="settings-desc">Les notes déjà marquées "traitées" restent en base indéfiniment tant que tu ne les vides pas.</p>
+          <div class="import-actions">
+            <button id="clear-captures-btn" class="btn" style="width: auto;">Vider les captures traitées</button>
+            ${statusHTML('clear-captures-status')}
+          </div>
+        </div>
+
+        <div class="settings-card settings-card-full">
           <h3 class="voice">Fond d'écran</h3>
           <p class="settings-desc">Une image personnelle derrière l'interface. N'importe quel format convient — choisis comment elle s'affiche ci-dessous une fois mise en ligne.</p>
           <p class="settings-desc">${getFond() ? 'Un fond personnalisé est actif.' : 'Fond uni par défaut (noir ou blanc selon le thème).'}</p>
@@ -267,60 +321,6 @@ export async function renderParametres(container) {
           `
               : ''
           }
-        </div>
-
-        <div class="settings-card">
-          <h3 class="voice">Pseudo</h3>
-          <p class="settings-desc">Utilisé pour la salutation sur l'accueil.</p>
-          <input type="text" id="pseudo-input" class="search-input settings-input" value="${pseudoActuel}" placeholder="Ton pseudo" />
-          <div class="import-actions">
-            <button id="save-pseudo-btn" class="btn primary" style="width: auto;">Enregistrer</button>
-            ${statusHTML('pseudo-status')}
-          </div>
-        </div>
-
-        <div class="settings-card">
-          <h3 class="voice">Mot de passe</h3>
-          <input type="password" id="password-input" class="search-input settings-input" placeholder="Nouveau mot de passe" />
-          <div class="import-actions">
-            <button id="save-password-btn" class="btn primary" style="width: auto;">Changer le mot de passe</button>
-            ${statusHTML('password-status')}
-          </div>
-        </div>
-
-        <div class="settings-card">
-          <h3 class="voice">Sauvegarde</h3>
-          <p class="settings-desc">Exporte toutes tes données (fiches, cas, QCM, matières, tentatives, captures, streak, tags) dans un fichier, y compris le contenu archivé, ou restaure une sauvegarde précédente.</p>
-          <p class="settings-desc" id="derniere-sauvegarde-txt">${formatDerniereSauvegarde(localStorage.getItem(CLE_DERNIERE_SAUVEGARDE))}</p>
-          <div class="import-actions">
-            <button id="export-btn" class="btn" style="width: auto;">Exporter une sauvegarde</button>
-            ${statusHTML('export-status')}
-          </div>
-          <div class="import-actions">
-            <label class="btn" style="width: auto; cursor: pointer;">
-              Restaurer une sauvegarde
-              <input type="file" id="restore-input" accept="application/json" style="display: none;" />
-            </label>
-            ${statusHTML('restore-status')}
-          </div>
-        </div>
-
-        <div class="settings-card">
-          <h3 class="voice">Tout synchroniser</h3>
-          <p class="settings-desc">Scanne les fiches, cas et QCM et crée automatiquement les matières, sous-matières et tags qui leur manquent en référence. Action sûre : uniquement des créations, jamais de suppression.</p>
-          <div class="import-actions">
-            <button id="synchroniser-btn" class="btn" style="width: auto;">Tout synchroniser</button>
-            ${statusHTML('synchroniser-status')}
-          </div>
-        </div>
-
-        <div class="settings-card">
-          <h3 class="voice">Capture rapide</h3>
-          <p class="settings-desc">Les notes déjà marquées "traitées" restent en base indéfiniment tant que tu ne les vides pas.</p>
-          <div class="import-actions">
-            <button id="clear-captures-btn" class="btn" style="width: auto;">Vider les captures traitées</button>
-            ${statusHTML('clear-captures-status')}
-          </div>
         </div>
 
         <div class="settings-card settings-danger">

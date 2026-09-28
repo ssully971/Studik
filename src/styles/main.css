@@ -1678,6 +1678,14 @@ a.tag:hover,
   gap: 14px;
 }
 
+/* Carte nettement plus haute que ses voisines (ex. Fond d'écran, avec sa galerie et ses
+   réglages) : en grille CSS, chaque ligne s'aligne sur la plus haute cellule (align-items:
+   stretch par défaut), donc une carte courte à côté d'elle laisse un vide en bas. La faire
+   passer sur toute la largeur évite qu'elle partage une ligne avec une carte plus courte. */
+.settings-card-full {
+  grid-column: 1 / -1;
+}
+
 .settings-card {
   display: flex;
   flex-direction: column;
