@@ -50,6 +50,7 @@
 [data-glass="on"] .dropdown-panel,
 [data-glass="on"] .search-results,
 [data-glass="on"] .search-results-inline,
+[data-glass="on"] .raccourci-tile,
 [data-glass="on"] .login-card {
   backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
@@ -1126,6 +1127,46 @@ a.tag:hover,
   color: var(--text-dim);
 }
 
+/* Grille de raccourcis en tuiles (#edn-accueil) — même liseré de couleur que .settings-card-accent
+   (--accent-carte en style inline, une couleur par tuile) mais en carte cliquable plutôt qu'un
+   simple bouton, pour donner à chaque raccourci un repère visuel distinct. */
+.raccourci-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.raccourci-tile {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 16px 18px;
+  /* inset plutôt que border-top : ni le survol ni le mode verre dépoli ci-dessus ne redéfinissent
+     `border`/`border-color` en shorthand complet (4 côtés), ce qui écraserait un border-top
+     distinct — voir le même choix sur .settings-card-accent. */
+  box-shadow: inset 0 3px 0 0 var(--accent-carte, var(--hairline));
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.raccourci-tile:hover {
+  border-color: var(--text-faint);
+  transform: translateY(-1px);
+}
+
+.raccourci-tile .titre {
+  display: block;
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.raccourci-tile .desc {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
 .cycle-badge {
   font-family: "IBM Plex Mono", monospace;
   font-size: 10px;
@@ -1684,6 +1725,18 @@ a.tag:hover,
    passer sur toute la largeur évite qu'elle partage une ligne avec une carte plus courte. */
 .settings-card-full {
   grid-column: 1 / -1;
+}
+
+/* Liseré de couleur en haut d'une carte (#edn-accueil) — ce contenu (Série Flash, hors-ligne...)
+   n'a pas de "type" clinique/mécanisme/structure comme les fiches P2, --accent-carte est donc
+   fixé au cas par cas en style inline plutôt que par une classe .type-* dédiée. En box-shadow
+   inset plutôt que border-top : le mode verre dépoli redéfinit `border` en shorthand complet sur
+   .settings-card (largeur/style/couleur des 4 côtés), ce qui écraserait silencieusement un
+   border-top plus large posé par une classe séparée (conflit de spécificité avec le sélecteur
+   combiné [data-glass="on"] .settings-card) — box-shadow est une propriété entièrement
+   différente, jamais touchée par ce shorthand. */
+.settings-card-accent {
+  box-shadow: inset 0 3px 0 0 var(--accent-carte, var(--hairline));
 }
 
 .settings-card {

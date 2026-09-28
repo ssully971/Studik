@@ -9,7 +9,7 @@ import { getActiviteParJour } from '../lib/activite.js'
 import { getTentativesRatees } from '../lib/cas.js'
 import { getQcmTentativesARevoir } from '../lib/qcm.js'
 import { renderHeatmap } from './heatmap.js'
-import anecdotes from '../data/anecdotes.json'
+import { pickAnecdote, getSalutation } from '../lib/accueil-hero.js'
 import { escapeHtml } from '../lib/escape.js'
 
 // Compte les cours sous un noeud de l'arbre matières, et combien sont validés (progression
@@ -31,19 +31,6 @@ const TYPE_LABELS = {
   clinique: 'clinique',
   mecanisme: 'mécanisme',
   structure: 'structure',
-}
-
-function pickAnecdote() {
-  const debutAnnee = new Date(new Date().getFullYear(), 0, 0)
-  const diff = new Date() - debutAnnee
-  const jourDeLAnnee = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const index = jourDeLAnnee % anecdotes.length
-  return anecdotes[index]
-}
-
-function getSalutation() {
-  const heure = new Date().getHours()
-  return heure >= 5 && heure < 18 ? 'Bonjour' : 'Bonsoir'
 }
 
 // Part de TOUTES les matières (racines de l'arbre, filtré par période comme dans
