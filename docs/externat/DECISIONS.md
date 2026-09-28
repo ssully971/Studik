@@ -541,3 +541,25 @@ usage synchrone dans un template literal sur une dizaine d'appels existants, pou
 n'appelait jamais `activerInteractionsRichText` — le bouton "Afficher l'image" et le masquage des
 normes d'un éventuel tableau y étaient donc silencieusement inertes.
 **Statut.** Corrigé dans ce commit (un seul appel ajouté, au même endroit que `activerKatex`).
+
+### Joueur LCA (§5.10) : même moteur que DP/KFP/TCS, coquille à écran partagé qui ne remplace que la colonne questions
+**Contexte.** §5.10 : "Desktop : article à gauche (iframe ou `<object>`...), questions défilantes
+à droite. Mobile : onglets Article/Questions." Le stub du lot 3 renvoyait juste un message
+d'attente ; `edn-dossier.js` gérait déjà tout le reste (no-back, verrouillage, tag d'erreur, score,
+résumé) pour DP/KFP/TCS.
+**Retenu.** Extraction de la carte "question courante" dans `zoneQuestionHTML(q, propositions)`,
+réutilisée telle quelle par les deux rendus. Pour LCA, `renderCoquilleLCA()` construit UNE SEULE
+FOIS la coquille (article + onglets + conteneur `#lca-question-zone`) ; à chaque validation,
+`renderQuestionCourante()` ne remplace plus que `#lca-question-zone`/`#lca-position`/
+`#lca-progression`, jamais l'iframe de l'article — sinon elle rechargerait à chaque question et
+perdrait la position de lecture. Vérifié en direct (Playwright) : le noeud DOM de l'iframe est
+strictement identique (`===`) avant et après avoir validé une question.
+**Écarté.** `<object>` : `<iframe>` retenu à la place, plus universellement adapté à une URL
+externe quelconque (pas seulement un PDF) — un lien "Ouvrir dans un nouvel onglet" reste affiché
+en toutes circonstances (secours si l'iframe est bloquée par une politique X-Frame-Options, ce
+qu'on ne peut pas détecter côté script).
+**Écarté aussi.** Dupliquer deux arbres DOM mobile/desktop (comme le binôme ECOS du lot 5) : un
+seul arbre avec `data-onglet-mobile` suffit ici puisqu'il n'y a qu'un seul id `#lca-question-zone`
+à cibler, pas de risque de doublon d'id contrairement à la grille ECOS cochable des deux côtés.
+Les questions de LCA comptant double dans les statistiques (§5.9/§8) : reporté au lot 7 (page
+Stats), pas une préoccupation du joueur lui-même.

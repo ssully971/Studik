@@ -2105,6 +2105,63 @@ a.tag:hover,
   }
 }
 
+/* Dossier LCA (§5.10) : un seul arbre DOM (contrairement au binôme ECOS ci-dessus) — l'article et
+   la colonne questions sont toujours tous les deux dans le DOM ; seul un attribut data-onglet-
+   mobile choisit lequel s'affiche sur mobile. Nécessaire pour ne remplacer QUE #lca-question-zone
+   à chaque validation, jamais l'iframe de l'article (sinon rechargement + perte de la position de
+   lecture à chaque question, voir edn-dossier.js). */
+.edn-lca-article,
+.edn-lca-questions {
+  display: none;
+}
+
+.edn-lca-desktop[data-onglet-mobile="article"] .edn-lca-article,
+.edn-lca-desktop[data-onglet-mobile="questions"] .edn-lca-questions {
+  display: block;
+}
+
+.edn-lca-frame {
+  width: 100%;
+  height: 60vh;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+}
+
+#lca-onglets {
+  margin-bottom: 16px;
+}
+
+@media (min-width: 860px) {
+  #lca-onglets {
+    display: none;
+  }
+
+  .edn-lca-desktop {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .edn-lca-desktop > div {
+    min-width: 0;
+  }
+
+  .edn-lca-article,
+  .edn-lca-questions {
+    display: block;
+  }
+
+  .edn-lca-article {
+    position: sticky;
+    top: 90px;
+  }
+
+  .edn-lca-frame {
+    height: 75vh;
+  }
+}
+
 .org-tree {
   display: flex;
   flex-direction: column;
