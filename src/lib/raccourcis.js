@@ -27,9 +27,10 @@ const LIBELLES_SEQUENCE_G = {
 }
 
 // "n" et "r" (navigation globale) désactivés ici : en jeu, ils risqueraient de faire quitter une
-// question en cours par accident. "edn-question"/"edn-dossier" (moteur Externat, §5/§8 lot 3)
-// suivent le même principe, pour la même raison.
-export const ROUTES_SANS_N_R = ['qcm-jouer', 'qcm-retry-session', 'session', 'edn-question', 'edn-dossier']
+// question en cours par accident. "edn-question"/"edn-dossier" (moteur Externat, §5/§8 lot 3) et
+// "edn-examen" (§8 lot 6, chrono global — quitter par accident y coûterait bien plus qu'une seule
+// question) suivent le même principe, pour la même raison.
+export const ROUTES_SANS_N_R = ['qcm-jouer', 'qcm-retry-session', 'session', 'edn-question', 'edn-dossier', 'edn-examen']
 
 // Entrée = premier bouton présent parmi cette chaîne, dans l'ordre.
 const CHAINE_ENTREE_QCM = ['valider-btn', 'suivant-btn', 'finir-btn']
@@ -37,12 +38,15 @@ const CIBLE_ENTREE_SIMPLE = ['valider-btn']
 
 // Le joueur de questions/dossiers Externat (§5) partage la même mécanique que le QCM (chaîne
 // Entrée valider→suivant→finir, 1-5 cochent une proposition, Espace = valider) — jamais de
-// logique dupliquée, juste ces routes ajoutées aux mêmes listes.
-export const ROUTES_QCM = ['qcm-jouer', 'qcm-retry-session', 'edn-question', 'edn-dossier']
+// logique dupliquée, juste ces routes ajoutées aux mêmes listes. "edn-examen" (§8 lot 6) n'a pas
+// de "valider-btn" (aucune correction avant la fin) : la chaîne retombe directement sur
+// "suivant-btn", déjà le bon comportement sans rien y ajouter de spécifique.
+export const ROUTES_QCM = ['qcm-jouer', 'qcm-retry-session', 'edn-question', 'edn-dossier', 'edn-examen']
 export const ROUTES_ENTREE_SIMPLE = ['entrainement', 'session', 'fiche']
-// Dossier EDN : règle du "no-back" (§5.10) — même si le bouton "précédent" n'existe jamais dans
-// cette page, ← est aussi désactivé ici au niveau du résolveur (défense en profondeur).
-export const ROUTES_SANS_ARROW_LEFT = ['edn-dossier']
+// Dossier EDN et examen : règle du "no-back" (§5.10, §8 lot 6) — même si le bouton "précédent"
+// n'existe jamais dans ces pages, ← est aussi désactivé ici au niveau du résolveur (défense en
+// profondeur).
+export const ROUTES_SANS_ARROW_LEFT = ['edn-dossier', 'edn-examen']
 export const ROUTES_LISTE = ['referentiel', 'revision', 'erreurs', 'tag']
 // "erreurs" (carnet d'erreurs) exclue : ses lignes n'ont pas d'action d'ouverture unique et
 // fiable au clic (plusieurs boutons distincts par ligne — voir carnet-erreurs.js), donc Entrée
@@ -127,6 +131,11 @@ export function resoudreRaccourci(ctx) {
   if (key === '/') return { type: 'focus-search' }
   if (key === '?') return { type: 'help' }
   if (key.toLowerCase() === 'c') return { type: 'navigate', hash: '#capture' }
+  // Constantes biologiques (§8 lot 6) : "raccourci clavier libre" demandé par la spec — v(aleurs),
+  // libre partout (aucune route ne l'utilise). Résolu ici indépendamment du cycle P2/Externat
+  // (fonction pure, ne connaît pas le cycle) ; main.js n'exécute l'action que si le cycle est
+  // Externat, même principe que routeAccueilParDefaut()/executerRaccourci pour '#accueil'.
+  if (key.toLowerCase() === 'v') return { type: 'toggle-constantes' }
 
   if (key.toLowerCase() === 'n' && !ROUTES_SANS_N_R.includes(route)) return { type: 'navigate', hash: '#entrainement' }
   if (key.toLowerCase() === 'r' && !ROUTES_SANS_N_R.includes(route)) return { type: 'navigate', hash: '#revision' }
@@ -167,6 +176,13 @@ export function resoudreRaccourci(ctx) {
     if (key === 'ArrowUp') return elementsPresents.includes('ligne-focalisee') ? { type: 'focus-move', direction: -1 } : null
   }
 
+  // Basculer Import ↔ Prompts sur #import (§ retours phase 1 : générer en série demande de
+  // repasser souvent de l'un à l'autre). "t" est libre hors séquence "g" sur cette route (pas de
+  // liste/jeu ici).
+  if (route === 'import' && key.toLowerCase() === 't') {
+    return elementsPresents.includes('import-toggle-btn') ? { type: 'click', id: 'import-toggle-btn' } : null
+  }
+
   return null
 }
 
@@ -196,5 +212,7 @@ export function tableAide() {
     { touches: 'b / p', description: "Marquer une fiche « bien vue » / « pas top » (entraînement, session, fiche)" },
     { touches: 'j / k, ↓ / ↑', description: 'Se déplacer dans une liste (référentiel, révision, erreurs, tag)' },
     { touches: 'Entrée', description: 'Ouvrir la ligne sélectionnée (référentiel, révision, tag)' },
+    { touches: 't', description: 'Basculer Import ↔ Prompts (page #import)' },
+    { touches: 'v', description: 'Constantes biologiques (mode Externat)' },
   ]
 }

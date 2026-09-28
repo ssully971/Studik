@@ -1,7 +1,8 @@
 import { getQuestionById } from '../../lib/edn-content.js'
 import { estTableAbsente, htmlMigrationManquante } from '../../lib/externat-schema.js'
 import { escapeHtml } from '../../lib/escape.js'
-import { richText, activerInteractionsRichText } from '../../lib/richtext.js'
+import { afficherLoader } from '../../lib/loader.js'
+import { richText, activerInteractionsRichText, activerKatex } from '../../lib/richtext.js'
 import { scoreQuestion, ajusterScoreQroc } from '../../lib/edn-scoring.js'
 import { enregistrerTentative, cibleQuestion } from '../../lib/edn-tentatives.js'
 import { getTagsErreur } from '../../lib/edn-tags-erreur.js'
@@ -21,12 +22,13 @@ import {
 // question de DP hors de son dossier"). `contexteSegment` (3e segment de hash) encode le mode de
 // jeu quand la question est lancée depuis une session (#edn-session) — voir edn-session.js.
 export async function renderEdnQuestion(container, id, contexteSegment) {
-  container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
+  const arreterLoader = afficherLoader(container)
 
   let question
   try {
     question = await getQuestionById(id)
   } catch (err) {
+    arreterLoader()
     if (estTableAbsente(err)) {
       container.innerHTML = `<div class="wrap"><div class="section-head"><h2 class="voice">Question</h2></div>${htmlMigrationManquante('001')}</div>`
       return
@@ -34,6 +36,7 @@ export async function renderEdnQuestion(container, id, contexteSegment) {
     container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${escapeHtml(err.message)}</p></div>`
     return
   }
+  arreterLoader()
 
   const { enSession, mode } = analyserContexteJeu(contexteSegment)
   const propositions = ordonnerPropositions(question)
@@ -61,11 +64,13 @@ export async function renderEdnQuestion(container, id, contexteSegment) {
 
   const wrap = container.querySelector('.wrap')
   activerInteractionsRichText(wrap)
+  activerKatex(wrap)
   attacherInteractions(wrap, question, state)
 
   document.getElementById('valider-btn').addEventListener('click', async () => {
     state.score = scoreQuestion(question, state.reponse)
     renderEtVerrouillerCorrection(wrap, question, propositions, state.reponse, state.score)
+    activerKatex(wrap)
     if (question.format === 'QROC') {
       attacherAjustementQroc(wrap, (ajustement) => {
         state.score = ajusterScoreQroc(state.score, ajustement)

@@ -27,7 +27,7 @@ export async function resoudreCiblesEnDetail(tentatives) {
 
   const [questionsRes, dossiersRes] = await Promise.all([
     idsQuestions.length
-      ? supabase.from('edn_questions').select('id, enonce, format, specialites, items, tags')
+      ? supabase.from('edn_questions').select('id, enonce, format, specialites, items, tags, contenu, explication')
       : Promise.resolve({ data: [] }),
     idsDossiers.length ? supabase.from('edn_dossiers').select('id, titre, type, specialites, items, tags') : Promise.resolve({ data: [] }),
   ])

@@ -29,7 +29,12 @@ import { renderEdnQuestion } from './pages/externat/edn-question.js'
 import { renderEdnDossier } from './pages/externat/edn-dossier.js'
 import { renderEdnZap } from './pages/externat/edn-zap.js'
 import { renderEcosStations } from './pages/externat/ecos-stations.js'
+import { renderEcosStation } from './pages/externat/ecos-station.js'
 import { renderEdnSessionResume } from './pages/externat/edn-session.js'
+import { renderEdnExamen } from './pages/externat/edn-examen.js'
+import { renderEdnStats } from './pages/externat/edn-stats.js'
+import { toggleModaleConstantes, fermerModaleConstantes } from './pages/externat/constantes-modal.js'
+import { compterTentativesEnAttente, rejouerFileTentatives, EVENEMENT_FILE_CHANGEE } from './lib/offline-queue.js'
 import { renderAccueil } from './pages/accueil.js'
 import { renderReferentiel } from './pages/referentiel.js'
 import { renderImport } from './pages/import.js'
@@ -49,7 +54,7 @@ import { renderSession } from './pages/session.js'
 import { renderOrganisation } from './pages/organisation.js'
 
 const app = document.getElementById('app')
-const SECONDARY_ROUTES = ['capture', 'import', 'parametres', 'stats', 'organisation', 'edn-items']
+const SECONDARY_ROUTES = ['capture', 'import', 'parametres', 'stats', 'organisation', 'edn-items', 'edn-stats']
 
 // Routes du mode externat (préfixe #edn-... / #ecos-...) : voir lib/cycle.js et §3 de la spec.
 // Une route externat visitée en mode P2 affiche un lien de bascule plutôt qu'une erreur.
@@ -61,7 +66,10 @@ const EDN_ROUTE_HANDLERS = {
   'edn-dossier': (content, id, segment) => renderEdnDossier(content, id, segment),
   'edn-zap': (content, id) => renderEdnZap(content, id),
   'ecos-stations': (content) => renderEcosStations(content),
+  'ecos-station': (content, id, segment) => renderEcosStation(content, id, segment),
   'edn-session-resume': (content) => renderEdnSessionResume(content),
+  'edn-examen': (content) => renderEdnExamen(content),
+  'edn-stats': (content) => renderEdnStats(content),
 }
 
 function estRouteExternat(route) {
@@ -154,7 +162,7 @@ function menuDropdownHTML(cycle) {
     <a href="#edn-items" data-route="edn-items">Items R2C</a>
     <div class="dropdown-divider"></div>
     ${croise}
-    <a href="#stats" data-route="stats">Statistiques</a>
+    <a href="${cycle === 'externat' ? '#edn-stats' : '#stats'}" data-route="${cycle === 'externat' ? 'edn-stats' : 'stats'}">Statistiques</a>
     <a href="#capture" data-route="capture">Capture rapide</a>
     <a href="#import" data-route="import">Import &amp; prompts</a>
     <a href="#organisation" data-route="organisation">Organisation</a>
@@ -186,9 +194,43 @@ function appliquerNavPourCycle() {
   const badge = document.getElementById('cycle-badge')
   if (badge) badge.textContent = cycle === 'externat' ? 'EXTERNAT' : 'P2'
 
+  const constantesBtn = document.getElementById('constantes-flottant-btn')
+  if (constantesBtn) constantesBtn.classList.toggle('hidden', cycle !== 'externat')
+  if (cycle !== 'externat') fermerModaleConstantes()
+
   appliquerVisibilitePeriodeSelect()
+  majIndicatifHorsLigne()
 
   router()
+}
+
+// Indicateur discret "hors-ligne · N en attente" (§8 lot 8) — Externat uniquement (le hors-ligne
+// ne concerne que le SRS/les tentatives EDN/ECOS, aucune fonctionnalité P2 n'y est liée). Mis à
+// jour sur chaque changement de cycle et à chaque évènement online/offline (voir init()).
+async function majIndicatifHorsLigne() {
+  const indicatif = document.getElementById('hors-ligne-indicatif')
+  if (!indicatif) return
+
+  if (!estExternat()) {
+    indicatif.classList.add('hidden')
+    return
+  }
+
+  let enAttente = 0
+  try {
+    enAttente = await compterTentativesEnAttente()
+  } catch {
+    enAttente = 0
+  }
+
+  const horsLigne = typeof navigator !== 'undefined' && navigator.onLine === false
+  if (!horsLigne && enAttente === 0) {
+    indicatif.classList.add('hidden')
+    return
+  }
+
+  indicatif.classList.remove('hidden')
+  indicatif.textContent = horsLigne ? `Hors ligne · ${enAttente} en attente` : `${enAttente} en attente`
 }
 
 let searchCache = null
@@ -231,6 +273,7 @@ function renderShell(user) {
           <div class="brand voice">Studik</div>
           <button id="cycle-badge" class="cycle-badge" type="button" title="Cycle d'études — clique pour changer"></button>
           <select id="periode-select" class="periode-select"></select>
+          <span id="hors-ligne-indicatif" class="hors-ligne-indicatif hidden"></span>
         </div>
         <nav></nav>
         <div class="search-wrapper" id="search-wrapper">
@@ -246,6 +289,17 @@ function renderShell(user) {
     </header>
     <main id="content"></main>
     <nav class="mobile-tabbar"></nav>
+
+    <button id="constantes-flottant-btn" class="constantes-flottant-btn hidden" type="button" title="Constantes biologiques (v)">🧪</button>
+    <div id="constantes-modal-overlay" class="modal-overlay hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <span class="voice">Constantes biologiques</span>
+          <button id="constantes-modal-close" class="btn" style="width: auto;">Fermer</button>
+        </div>
+        <div id="constantes-modal-content"></div>
+      </div>
+    </div>
   `
 
   const dropdown = document.getElementById('menu-dropdown')
@@ -269,6 +323,12 @@ function renderShell(user) {
     window.location.hash = '#parametres'
     router()
     requestAnimationFrame(() => document.getElementById('cycle-card')?.scrollIntoView({ block: 'start' }))
+  })
+
+  document.getElementById('constantes-flottant-btn').addEventListener('click', () => toggleModaleConstantes())
+  document.getElementById('constantes-modal-close').addEventListener('click', () => fermerModaleConstantes())
+  document.getElementById('constantes-modal-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'constantes-modal-overlay') fermerModaleConstantes()
   })
 
   const searchWrapper = document.getElementById('search-wrapper')
@@ -527,7 +587,7 @@ function router() {
 // dupliquant la logique interne d'une page. Voir lib/raccourcis.js pour le détail des touches.
 
 const TYPES_SAISIE = ['text', 'email', 'password', 'search', 'number']
-const IDS_BOUTONS_SURVEILLES = ['valider-btn', 'suivant-btn', 'precedent-btn', 'finir-btn', 'refaire-erreurs-btn', 'revu-bien-btn', 'revu-pas-bien-btn']
+const IDS_BOUTONS_SURVEILLES = ['valider-btn', 'suivant-btn', 'precedent-btn', 'finir-btn', 'refaire-erreurs-btn', 'revu-bien-btn', 'revu-pas-bien-btn', 'import-toggle-btn']
 
 let sequenceRaccourciEnAttente = null
 let aideOverlay = null
@@ -635,6 +695,12 @@ function executerRaccourci(action) {
     case 'close-modal':
       document.querySelector('.modal-overlay:not(.hidden)')?.classList.add('hidden')
       break
+    case 'toggle-constantes':
+      // resoudreRaccourci() résout "v" indépendamment du cycle (fonction pure) ; seule cette
+      // couche DOM sait qu'il ne doit agir qu'en mode Externat, même principe que
+      // routeAccueilParDefaut() ci-dessus pour "g h".
+      if (estExternat()) toggleModaleConstantes()
+      break
     case 'escape-default':
       echapParDefaut(action.goBack)
       break
@@ -724,6 +790,20 @@ async function init() {
   setupRaccourcisClavier()
   onCycleChange(() => appliquerNavPourCycle())
   onAfficherP2EnExternatChange(() => appliquerNavPourCycle())
+
+  // Hors-ligne (§8 lot 8) : au retour du réseau, rejoue la file d'attente (insert idempotent +
+  // recalcul SRS) puis rafraîchit l'indicateur ; à la perte du réseau, seulement l'indicateur.
+  window.addEventListener('online', async () => {
+    try {
+      await rejouerFileTentatives()
+    } catch (err) {
+      console.error('Erreur rejeu file hors-ligne', err)
+    }
+    majIndicatifHorsLigne()
+  })
+  window.addEventListener('offline', () => majIndicatifHorsLigne())
+  window.addEventListener(EVENEMENT_FILE_CHANGEE, () => majIndicatifHorsLigne())
+  majIndicatifHorsLigne()
 }
 
 init()

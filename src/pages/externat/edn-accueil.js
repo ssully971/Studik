@@ -5,6 +5,7 @@ import { checkinAujourdhui, getCheckins } from '../../lib/checkins.js'
 import { computeStreak } from '../../lib/streak.js'
 import { getPlafondRevisions, getCiblesDuesTriees, getCiblesFlash } from '../../lib/edn-dashboard.js'
 import { demarrerSessionExternat } from './edn-session.js'
+import { preparerHorsLigne } from '../../lib/offline-preparer.js'
 
 // Tableau de bord externat (§7.2) — révisions dues (SRS), Série Flash, raccourcis, streak
 // (identique au fonctionnement P2, carte simplifiée ici plutôt que dupliquer le composant riche
@@ -39,6 +40,14 @@ export async function renderEdnAccueil(container) {
       </div>
 
       <div class="settings-card" style="margin-bottom: 20px;">
+        <h3 class="voice">Hors-ligne</h3>
+        <p class="settings-desc" id="hors-ligne-desc">Télécharge les révisions dues et leurs images pour les consulter sans connexion.</p>
+        <div class="import-actions">
+          <button id="preparer-hors-ligne-btn" class="btn" style="width: auto;">Préparer le hors-ligne</button>
+        </div>
+      </div>
+
+      <div class="settings-card" style="margin-bottom: 20px;">
         <h3 class="voice">Série Flash</h3>
         <p class="settings-desc">5 cibles courtes, pour réviser entre deux patients.</p>
         <div class="import-actions">
@@ -70,6 +79,24 @@ export async function renderEdnAccueil(container) {
 
   document.getElementById('commencer-revisions-btn')?.addEventListener('click', () => {
     demarrerSessionExternat(ciblesDues, 'Révisions dues', 'entrainement')
+  })
+
+  document.getElementById('preparer-hors-ligne-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('preparer-hors-ligne-btn')
+    const desc = document.getElementById('hors-ligne-desc')
+    btn.disabled = true
+    try {
+      const { nombreCibles } = await preparerHorsLigne({
+        onProgression: (fait, total) => {
+          desc.textContent = `Téléchargement… ${fait} / ${total}`
+        },
+      })
+      desc.textContent = nombreCibles > 0 ? `${nombreCibles} cible(s) prête(s) hors-ligne.` : 'Aucune cible due à préparer pour le moment.'
+    } catch (err) {
+      desc.textContent = 'Erreur : ' + err.message
+    } finally {
+      btn.disabled = false
+    }
   })
 
   document.getElementById('serie-flash-btn').addEventListener('click', async () => {

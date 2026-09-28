@@ -3,18 +3,22 @@ import { getTousLesEtatsSrs, suspendreCible } from '../../lib/edn-srs-data.js'
 import { cibleQuestion, cibleDossier } from '../../lib/edn-tentatives.js'
 import { estTableAbsente, htmlMigrationManquante } from '../../lib/externat-schema.js'
 import { escapeHtml } from '../../lib/escape.js'
+import { afficherLoader } from '../../lib/loader.js'
+import { demarrerSessionExternat } from './edn-session.js'
+import { demarrerExamenExterne } from './edn-examen.js'
 
 const STATUTS = ['brouillon', 'valide', 'archive']
 
 // Banque de questions/dossiers (§7.3) : liste + filtres, suspendre/réactiver le SRS, changer le
 // statut, signaler une erreur (même principe que fiches.a_corriger), lien vers l'éditeur ZAP.
 export async function renderEdnBanque(container) {
-  container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
+  const arreterLoader = afficherLoader(container)
 
   let dossiers, questions, srsMap
   try {
     ;[dossiers, questions, srsMap] = await Promise.all([getAllDossiers(), getQuestionsIsolees(), getTousLesEtatsSrs()])
   } catch (err) {
+    arreterLoader()
     if (estTableAbsente(err)) {
       container.innerHTML = `<div class="wrap"><div class="section-head"><h2 class="voice">Banque</h2></div>${htmlMigrationManquante('001')}</div>`
       return
@@ -22,6 +26,7 @@ export async function renderEdnBanque(container) {
     container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${escapeHtml(err.message)}</p></div>`
     return
   }
+  arreterLoader()
 
   const lignes = [
     ...dossiers.map((d) => ({ ...d, sorte: 'dossier', cible: cibleDossier(d.id), titreAffiche: d.titre, badge: d.type })),
@@ -48,8 +53,18 @@ export async function renderEdnBanque(container) {
           <option value="">Tous statuts</option>
           ${STATUTS.map((s) => `<option value="${s}">${s}</option>`).join('')}
         </select>
+        <select id="banque-tri" class="periode-select">
+          <option value="titre">Trier : titre (A→Z)</option>
+          <option value="statut">Trier : statut</option>
+          <option value="format">Trier : format</option>
+        </select>
         <button class="filter-btn" id="banque-corriger-btn">À corriger</button>
         <button class="filter-btn" id="banque-suspendues-btn">Suspendues du SRS</button>
+      </div>
+
+      <div class="import-actions">
+        <button class="btn primary" id="banque-lancer-session-btn" style="width: auto;">Lancer une session sur ces résultats</button>
+        <button class="btn" id="banque-lancer-examen-btn" style="width: auto;">Lancer un examen (chrono global)</button>
       </div>
 
       <div id="banque-list" class="fiches-list"></div>
@@ -59,8 +74,16 @@ export async function renderEdnBanque(container) {
   let terme = ''
   let sorte = ''
   let statut = ''
+  let tri = 'titre'
   let filtreCorriger = false
   let filtreSuspendues = false
+  let filtreesCourantes = []
+
+  function comparerLignes(a, b) {
+    if (tri === 'statut') return (a.statut || 'brouillon').localeCompare(b.statut || 'brouillon') || (a.titreAffiche || '').localeCompare(b.titreAffiche || '')
+    if (tri === 'format') return (a.badge || '').localeCompare(b.badge || '') || (a.titreAffiche || '').localeCompare(b.titreAffiche || '')
+    return (a.titreAffiche || '').localeCompare(b.titreAffiche || '')
+  }
 
   function ligneVisible(l) {
     if (sorte && l.sorte !== sorte) return false
@@ -74,8 +97,13 @@ export async function renderEdnBanque(container) {
   }
 
   function appliquerFiltres() {
-    const filtrees = lignes.filter(ligneVisible)
+    const filtrees = lignes.filter(ligneVisible).sort(comparerLignes)
+    filtreesCourantes = filtrees
     document.getElementById('banque-count').textContent = `${filtrees.length} / ${lignes.length}`
+    const lancerBtn = document.getElementById('banque-lancer-session-btn')
+    if (lancerBtn) lancerBtn.disabled = filtrees.length === 0
+    const lancerExamenBtn = document.getElementById('banque-lancer-examen-btn')
+    if (lancerExamenBtn) lancerExamenBtn.disabled = filtrees.length === 0
     renderListe(filtrees)
   }
 
@@ -185,6 +213,29 @@ export async function renderEdnBanque(container) {
   document.getElementById('banque-statut').addEventListener('change', (e) => {
     statut = e.target.value
     appliquerFiltres()
+  })
+
+  document.getElementById('banque-tri').addEventListener('change', (e) => {
+    tri = e.target.value
+    appliquerFiltres()
+  })
+
+  document.getElementById('banque-lancer-session-btn').addEventListener('click', () => {
+    if (filtreesCourantes.length === 0) return
+    demarrerSessionExternat(filtreesCourantes, `Banque (${filtreesCourantes.length})`, 'entrainement')
+  })
+
+  document.getElementById('banque-lancer-examen-btn').addEventListener('click', () => {
+    if (filtreesCourantes.length === 0) return
+    const saisie = window.prompt('Durée de l\'examen en minutes :', '60')
+    if (saisie === null) return
+    const dureeMinutes = Number(saisie)
+    if (!Number.isFinite(dureeMinutes) || dureeMinutes <= 0) {
+      alert('Durée invalide.')
+      return
+    }
+    const simulateurUness = window.confirm('Activer le thème "Simulateur UNESS" (clair, sans fond d\'écran) pour cet examen ?')
+    demarrerExamenExterne(filtreesCourantes, dureeMinutes, simulateurUness)
   })
 
   document.getElementById('banque-corriger-btn').addEventListener('click', (e) => {

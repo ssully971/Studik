@@ -334,13 +334,69 @@ describe('Joueur de questions/dossiers Externat (edn-question, edn-dossier)', ()
   })
 })
 
+describe('Mode examen (edn-examen, §8 lot 6)', () => {
+  it('Entrée clique "suivant-btn" (pas de valider-btn en mode examen, aucune correction avant la fin)', () => {
+    expect(resoudreRaccourci({ route: 'edn-examen', key: 'Enter', elementsPresents: ['suivant-btn'] })).toEqual({
+      type: 'click',
+      id: 'suivant-btn',
+    })
+  })
+
+  it('1 à 5 cochent une proposition présente', () => {
+    expect(resoudreRaccourci({ route: 'edn-examen', key: '3', elementsPresents: ['item-3'] })).toEqual({
+      type: 'toggle-item',
+      index: 2,
+    })
+  })
+
+  it('← ne fait rien (no-back, même chrono global unique)', () => {
+    expect(resoudreRaccourci({ route: 'edn-examen', key: 'ArrowLeft', elementsPresents: ['precedent-btn'] })).toBeNull()
+    expect(ROUTES_SANS_ARROW_LEFT).toContain('edn-examen')
+  })
+
+  it('n et r sont désactivés (quitter un examen en cours par accident serait coûteux)', () => {
+    expect(resoudreRaccourci({ route: 'edn-examen', key: 'n' })).toBeNull()
+    expect(resoudreRaccourci({ route: 'edn-examen', key: 'r' })).toBeNull()
+    expect(ROUTES_SANS_N_R).toContain('edn-examen')
+  })
+})
+
+describe('"t" bascule Import/Prompts sur #import', () => {
+  it('clique #import-toggle-btn quand présent', () => {
+    expect(resoudreRaccourci({ route: 'import', key: 't', elementsPresents: ['import-toggle-btn'] })).toEqual({
+      type: 'click',
+      id: 'import-toggle-btn',
+    })
+  })
+
+  it("ne fait rien si l'élément n'est pas présent", () => {
+    expect(resoudreRaccourci({ route: 'import', key: 't', elementsPresents: [] })).toBeNull()
+  })
+
+  it("n'agit pas sur une autre route", () => {
+    expect(resoudreRaccourci({ route: 'accueil', key: 't', elementsPresents: ['import-toggle-btn'] })).toBeNull()
+  })
+})
+
+describe('"v" ouvre/ferme les constantes biologiques (§8 lot 6)', () => {
+  it('résout sur n\'importe quelle route (le filtrage par cycle se fait dans main.js, pas ici)', () => {
+    expect(resoudreRaccourci({ route: 'edn-accueil', key: 'v', elementsPresents: [] })).toEqual({ type: 'toggle-constantes' })
+    expect(resoudreRaccourci({ route: 'accueil', key: 'v', elementsPresents: [] })).toEqual({ type: 'toggle-constantes' })
+  })
+
+  it('pas de collision : "v" reste sans effet le temps d\'une séquence "g" en attente', () => {
+    const ctx = { route: 'accueil', key: 'v', elementsPresents: [], sequenceEnAttente: { expireAt: Date.now() + 500 } }
+    expect(resoudreRaccourci(ctx)).toEqual({ type: 'clear-sequence' })
+  })
+})
+
 describe("absence de collision dans un même contexte", () => {
   // Pour chaque route, un ensemble représentatif de touches ne doit jamais produire deux
   // interprétations différentes selon l'ordre des règles : on vérifie juste qu'une seule
   // branche du résolveur répond par touche (propriété structurelle du code, testée par la
   // stabilité du résultat sur plusieurs appels identiques + absence de throw).
   const routes = ['accueil', 'referentiel', 'revision', 'erreurs', 'tag', 'entrainement', 'session', 'fiche', 'qcm-jouer', 'qcm-retry-session']
-  const touches = ['/', 'n', 'r', ' ', 'Enter', 'Escape', 'c', 'g', 'e', 'b', 'p', 'j', 'k', '1', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']
+  const touches = ['/', 'n', 'r', ' ', 'Enter', 'Escape', 'c', 'g', 'e', 'b', 'p', 'j', 'k', 't', 'v', '1', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']
 
   routes.forEach((route) => {
     touches.forEach((key) => {

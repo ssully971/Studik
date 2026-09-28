@@ -1145,6 +1145,24 @@ a.tag:hover,
   border-color: var(--text-dim);
 }
 
+/* Indicateur discret "hors-ligne · N en attente" (§8 lot 8) — même gabarit que .cycle-badge,
+   jamais cliquable (pas d'action, juste un constat). */
+.hors-ligne-indicatif {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #C46A5C;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 4px 9px;
+  flex-shrink: 0;
+}
+
+.hors-ligne-indicatif.hidden {
+  display: none;
+}
+
 .periode-select {
   background: var(--surface);
   border: 1px solid var(--hairline);
@@ -1256,6 +1274,30 @@ a.tag:hover,
 }
 
 .mobile-tabbar {
+  display: none;
+}
+
+/* Bouton flottant "Constantes biologiques" (§8 lot 6) : visible sur tous les écrans externat
+   (bascule dans main.js/appliquerNavPourCycle, jamais par page), masqué en mode P2 via .hidden
+   (règle combinée, comme chaque composant .hidden de ce projet — voir CLAUDE.md). */
+.constantes-flottant-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 15;
+}
+
+.constantes-flottant-btn.hidden {
   display: none;
 }
 
@@ -1490,6 +1532,12 @@ a.tag:hover,
     font-weight: 700;
   }
 
+  /* Bouton flottant "Constantes biologiques" (§8 lot 6) : remonté au-dessus de la tabbar mobile
+     fixe, jamais superposé dessus. */
+  .constantes-flottant-btn {
+    bottom: 76px;
+  }
+
     .search-wrapper {
     display: none;
   }
@@ -1642,6 +1690,18 @@ a.tag:hover,
 .settings-card h3 {
   font-size: 16px;
   font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* <details class="settings-card"> : cartes repliables (fermées par défaut), même poids visuel
+   que .settings-card h3 — utilisé sur #import pour "Tags de référence"/"Comment ça marche". */
+.settings-card summary {
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-card[open] summary {
   margin-bottom: 8px;
 }
 
@@ -2062,6 +2122,94 @@ a.tag:hover,
   }
 }
 
+/* Station ECOS mode binôme (§5.9) : un seul appareil, écran partagé sur desktop (candidat/
+   examinateur côte à côte), onglets fixes sur mobile — jamais les deux affichés en même temps. */
+.ecos-binome-desktop {
+  display: none;
+}
+
+#binome-onglets {
+  margin-bottom: 16px;
+}
+
+@media (min-width: 860px) {
+  .ecos-binome-mobile {
+    display: none;
+  }
+
+  #binome-onglets {
+    display: none;
+  }
+
+  .ecos-binome-desktop {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .ecos-binome-desktop > div {
+    min-width: 0;
+  }
+}
+
+/* Dossier LCA (§5.10) : un seul arbre DOM (contrairement au binôme ECOS ci-dessus) — l'article et
+   la colonne questions sont toujours tous les deux dans le DOM ; seul un attribut data-onglet-
+   mobile choisit lequel s'affiche sur mobile. Nécessaire pour ne remplacer QUE #lca-question-zone
+   à chaque validation, jamais l'iframe de l'article (sinon rechargement + perte de la position de
+   lecture à chaque question, voir edn-dossier.js). */
+.edn-lca-article,
+.edn-lca-questions {
+  display: none;
+}
+
+.edn-lca-desktop[data-onglet-mobile="article"] .edn-lca-article,
+.edn-lca-desktop[data-onglet-mobile="questions"] .edn-lca-questions {
+  display: block;
+}
+
+.edn-lca-frame {
+  width: 100%;
+  height: 60vh;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+}
+
+#lca-onglets {
+  margin-bottom: 16px;
+}
+
+@media (min-width: 860px) {
+  #lca-onglets {
+    display: none;
+  }
+
+  .edn-lca-desktop {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .edn-lca-desktop > div {
+    min-width: 0;
+  }
+
+  .edn-lca-article,
+  .edn-lca-questions {
+    display: block;
+  }
+
+  .edn-lca-article {
+    position: sticky;
+    top: 90px;
+  }
+
+  .edn-lca-frame {
+    height: 75vh;
+  }
+}
+
 .org-tree {
   display: flex;
   flex-direction: column;
@@ -2471,4 +2619,63 @@ a.tag:hover,
 @keyframes loader-reveal {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Petit spinner inline (bouton en cours de traitement, ex. #import) — le loader "Feuillet"
+   ci-dessus est pensé pour une transition de page entière, pas pour un bouton. */
+.spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  opacity: 0.6;
+  vertical-align: -2px;
+  margin-right: 6px;
+  animation: spinner-rotation 0.7s linear infinite;
+}
+
+@keyframes spinner-rotation {
+  to { transform: rotate(360deg); }
+}
+
+/* Option "Simulateur UNESS" (§8 lot 6) : thème clair et sobre, limité à l'écran d'examen — une
+   classe sur le conteneur de l'examen (jamais un thème global/persisté, contrairement au mode
+   sombre/clair habituel du site qu'on n'a pas). Redéfinit les tokens de couleur comme le fait déjà
+   @media print pour un besoin similaire (voir CLAUDE.md), sans fond d'écran ni verre dépoli.
+   body:has(...) reste scopé à la présence réelle de la classe dans le DOM (jamais persisté au-delà
+   de la page d'examen montée). */
+.simulateur-uness {
+  --ink: #F4F4F0;
+  --surface: #FFFFFF;
+  --surface-2: #ECECE8;
+  --hairline: #D6D6D0;
+  --text: #1A1A1A;
+  --text-dim: #555555;
+  --text-faint: #8A8A85;
+  --clinique: #4A4A4A;
+  --mecanisme: #4A4A4A;
+  --structure: #4A4A4A;
+  background: var(--ink);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.simulateur-uness .checkbox-label.wrong,
+.simulateur-uness .edn-prop-wrong {
+  border-color: var(--hairline);
+  color: var(--text);
+}
+
+body:has(.simulateur-uness) #wallpaper-layer {
+  display: none;
+}
+
+body:has(.simulateur-uness) .topbar,
+body:has(.simulateur-uness) .mobile-tabbar {
+  background: #FFFFFF !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }

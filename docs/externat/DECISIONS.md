@@ -436,3 +436,327 @@ réutilisés par les deux modes, jamais dupliqués/divergents entre P2 et Extern
 **Retenu.** Noté ici comme contrainte de conception pour la phase 2, à relire avant de commencer
 ces chantiers (indicateur de chargement déjà écrit comme "réutilisable" plus haut ; le mécanisme
 d'upload post-import ZAP/QCM est explicitement designé comme un point commun ci-dessus).
+
+## Phase 2 — intégration des retours de la phase 1 (branche `externat-v2-phase2`)
+
+PR #1 fusionnée dans `main` sur demande explicite de Sullivan ("Merge pour lancer la phase 2").
+Avant les lots 5 à 8, les points suivants (notés ci-dessus) ont été traités :
+
+- **Chargement visuel réutilisable** : découverte en relisant le code qu'un composant existait
+  déjà et correspondait exactement au besoin — `lib/loader.js` (`afficherLoader`), le loader
+  "Feuillet" utilisé au démarrage de l'app, dont le commentaire d'origine dit explicitement qu'il
+  est "pensé... pour toute transition de route un peu longue". **Retenu** : réutilisé tel quel
+  (aucune duplication) sur `#edn-banque`, `#edn-question`, `#edn-dossier` (remplace le `<p
+  class="voice">Chargement…</p>` par `afficherLoader(container)`, avec `arreterLoader()` appelé
+  sur chaque chemin de sortie — succès et erreur — pour ne pas laisser tourner le `setInterval`
+  dans le vide une fois le contenu réel affiché). Un petit `.spinner` CSS séparé a été ajouté pour
+  le cas différent du bouton d'import (le loader "Feuillet" est plein écran, inadapté à un bouton).
+  **Écarté** : créer un deuxième mécanisme de chargement — le composant existant couvrait déjà le
+  besoin, l'occasion de le réutiliser plutôt que d'empiler un système parallèle.
+- **`#import` : bouton "Importer" avec état de chargement.** Le clic déclenche désormais
+  `importBtn.disabled = true` + spinner + libellé "Import en cours…", restauré dans un `finally`
+  qui couvre tous les chemins de retour existants (le corps du traitement a été extrait dans une
+  fonction interne `importerLot()` pour pouvoir l'entourer d'un seul `try/finally` sans dupliquer
+  chaque `return`).
+- **`#edn-banque` : tri + lancer une session.** Ajout d'un `<select>` de tri (titre/statut/format)
+  et d'un bouton "Lancer une session sur ces résultats" qui appelle `demarrerSessionExternat`
+  (`edn-session.js`, déjà conçu pour enchaîner plusieurs cibles) avec la liste actuellement
+  filtrée — couvre à la fois la demande "trier" et "enchaîner sans re-cliquer à chaque question",
+  y compris pour les questions isolées seules (même mécanisme, pas de chantier séparé).
+- **`#import` : cartes "Tags de référence"/"Comment ça marche" repliées par défaut.** Converties en
+  `<details class="settings-card"><summary>...` — repli natif du navigateur, aucun JS
+  supplémentaire, CSS ajoutée pour que le `<summary>` garde le même poids visuel que l'ancien
+  `<h3>`.
+- **Raccourci clavier `t`** (page `#import` uniquement) : bascule Import ↔ Prompts, résolu dans
+  `lib/raccourcis.js` (testé) plutôt que branché à la main dans `import.js`, cohérent avec le reste
+  du système de raccourcis — clique sur un nouveau bouton visible `#import-toggle-btn` (même
+  principe que les autres raccourcis : `.click()` sur un id stable).
+
+**Toujours reporté** (décision de conception à prendre avec Sullivan avant de coder, pas un simple
+oubli) : l'upload d'image directement depuis l'import (ZAP + popup QCM P2) — nécessite de changer
+la nature de `#import` (aujourd'hui un paste JSON texte pur) pour y intégrer un upload de fichier,
+ce qui dépasse le cadre d'une intégration de retours et mérite d'être découpé en sous-lot à part
+entière plutôt que fait rapidement en même temps que le reste.
+
+`npm test` (418 tests, +3 pour le raccourci `t`) et `npm run build` verts après ce lot.
+
+## Lot 5 — ECOS
+
+- **Chronomètre unique réutilisé pour station (8:00) et transition de circuit (2:00)**
+  (`lib/ecos-timer.js`, pur, testé). **Retenu** : une seule machine à états paramétrée par
+  `dureeTotaleS`, jamais deux implémentations. Le repère de lecture (7:00 restantes) et l'alerte
+  finale (1:00 restante) sont des constantes absolues appliquées seulement quand `etat ===
+  'en_cours'` — jamais évaluées sur un chrono "pret" ou "termine".
+- **Pas de zéro éliminatoire automatique** (§5.9 : "aucune source officielle trouvée"). **Retenu**
+  : `scoreGrille` (lib/ecos-scoring.js) additionne simplement les points des items cochés, sans
+  aucune règle spéciale sur 0/100 — confirmé volontairement, pas un oubli.
+- **Bouton "Terminer maintenant"** ajouté sur l'écran de jeu (absent de la spec, mais permet de
+  quitter le chrono avant la fin naturelle — utile pour s'entraîner sur une partie seulement d'une
+  station, ou en cas d'erreur). **Écarté** : forcer les 8 minutes complètes systématiquement,
+  contraignant sans bénéfice évident en dehors des conditions d'examen réelles (lot 6).
+- **`DOMAINES_ECOS`** (`lib/ecos.js`) ne liste que 10 des 11 domaines du guide CNG — le 11e reste
+  inconnu (voir A-FAIRE-SULLIVAN.md). Liste purement indicative pour le filtre de `#ecos-stations`,
+  pas une contrainte en base (le schéma §4.4 a toujours `domaine text`, sans `check`) : un domaine
+  hors liste reste importable sans erreur, cohérent avec le principe déjà appliqué à `tags`.
+- **Mode binôme sur un seul appareil** : bascule par onglets sur mobile (`<button data-onglet>`),
+  écran partagé en CSS grid 2 colonnes à partir de 860px (même seuil que `.fiche-layout`, §CLAUDE.md
+  "Décisions de conception") — jamais les deux affichages en même temps dans le DOM visible, la
+  grille de l'examinateur reste la même instance HTML des deux côtés du breakpoint (pas de
+  duplication de logique de cochage).
+- **Enregistrement audio (`MediaRecorder`) strictement en mémoire** : `URL.createObjectURL`, jamais
+  de upload Supabase (quota 1 Go, §9). Une permission micro refusée désactive silencieusement
+  `enregistrerAudio` plutôt que de bloquer le démarrage de la station — l'audio est un bonus, pas
+  une condition pour jouer.
+- **Circuit lancé depuis `#ecos-stations`** via des cases à cocher par ligne + bouton "Lancer un
+  circuit (N)" (`lib/ecos-circuit.js`, même principe que `edn-session.js`) — l'ordre de sélection
+  (un `Set`, qui conserve l'ordre d'insertion en JS) devient l'ordre du circuit, pas un tri
+  alphabétique ou par date qui serait moins prévisible pour l'utilisateur qui choisit lui-même.
+- Testé en direct (Playwright + mock Supabase) : liste → choix de mode → chrono qui décroît
+  réellement (Date.now(), pas un compteur décrémenté) → révélation solo → auto-pointage → score
+  correct → mode binôme desktop (2 colonnes) et mobile (onglets) → circuit complet sur 2 stations
+  (transition, avance, dernière station termine le circuit et revient à la liste). Aucune régression
+  détectée, `npm test` (440 tests, +22 pour ecos-timer.js/ecos-scoring.js) et `npm run build` verts.
+
+## Lot 6 — Conditions d'examen
+
+### KaTeX (§5.11), jamais fait en phase 1
+**Contexte.** §5.11 prévoyait KaTeX dès le lot 3, avec repli explicite vers le lot 6 "si ça
+complique trop le build". Relecture de `DECISIONS.md`/`CLAUDE.md` : aucune trace de KaTeX ni de
+décision de le reporter — un oubli pur et simple de la phase 1, pas un report consigné. Corrigé
+maintenant plutôt que signalé comme dette supplémentaire.
+**Retenu.** `richText()` (lib/richtext.js) extrait `$$...$$`/`$...$` en jetons neutres **avant**
+le reste du pipeline (comme les images), pour deux raisons : un `|` dans une formule (valeur
+absolue `$|x|$`) ne doit pas être pris pour une colonne de tableau, et le LaTeX brut ne doit pas
+subir les autres transformations (`**gras**` etc.) avant d'atteindre KaTeX. Le rendu réel
+(`activerKatex(scopeEl)`) est une fonction séparée, appelée après la pose du HTML dans le DOM —
+`richText()` reste synchrone, `katex` + sa CSS ne sont chargés (`await import(...)`) que si au
+moins un `.katex-pending` existe réellement dans le scope (vérifié au build : chunk `katex-*.js`
+~260 Ko séparé, +2 Ko seulement sur le bundle principal).
+**Écarté.** Rendre `richText()` asynchrone pour intégrer katex directement : aurait cassé son
+usage synchrone dans un template literal sur une dizaine d'appels existants, pour un gain nul.
+
+### Bug trouvé en passant : ecos-station.js oubliait `activerInteractionsRichText`
+**Contexte.** En ajoutant `activerKatex` à chaque appelant de `richText()`, découverte que
+`ecos-station.js` (lot 5) appelait `richText()` pour la vignette/les consignes/le script mais
+n'appelait jamais `activerInteractionsRichText` — le bouton "Afficher l'image" et le masquage des
+normes d'un éventuel tableau y étaient donc silencieusement inertes.
+**Statut.** Corrigé dans ce commit (un seul appel ajouté, au même endroit que `activerKatex`).
+
+### Joueur LCA (§5.10) : même moteur que DP/KFP/TCS, coquille à écran partagé qui ne remplace que la colonne questions
+**Contexte.** §5.10 : "Desktop : article à gauche (iframe ou `<object>`...), questions défilantes
+à droite. Mobile : onglets Article/Questions." Le stub du lot 3 renvoyait juste un message
+d'attente ; `edn-dossier.js` gérait déjà tout le reste (no-back, verrouillage, tag d'erreur, score,
+résumé) pour DP/KFP/TCS.
+**Retenu.** Extraction de la carte "question courante" dans `zoneQuestionHTML(q, propositions)`,
+réutilisée telle quelle par les deux rendus. Pour LCA, `renderCoquilleLCA()` construit UNE SEULE
+FOIS la coquille (article + onglets + conteneur `#lca-question-zone`) ; à chaque validation,
+`renderQuestionCourante()` ne remplace plus que `#lca-question-zone`/`#lca-position`/
+`#lca-progression`, jamais l'iframe de l'article — sinon elle rechargerait à chaque question et
+perdrait la position de lecture. Vérifié en direct (Playwright) : le noeud DOM de l'iframe est
+strictement identique (`===`) avant et après avoir validé une question.
+**Écarté.** `<object>` : `<iframe>` retenu à la place, plus universellement adapté à une URL
+externe quelconque (pas seulement un PDF) — un lien "Ouvrir dans un nouvel onglet" reste affiché
+en toutes circonstances (secours si l'iframe est bloquée par une politique X-Frame-Options, ce
+qu'on ne peut pas détecter côté script).
+**Écarté aussi.** Dupliquer deux arbres DOM mobile/desktop (comme le binôme ECOS du lot 5) : un
+seul arbre avec `data-onglet-mobile` suffit ici puisqu'il n'y a qu'un seul id `#lca-question-zone`
+à cibler, pas de risque de doublon d'id contrairement à la grille ECOS cochable des deux côtés.
+Les questions de LCA comptant double dans les statistiques (§5.9/§8) : reporté au lot 7 (page
+Stats), pas une préoccupation du joueur lui-même.
+
+### Modale Constantes biologiques : bouton flottant dans la coquille, pas une page
+**Contexte.** §8 lot 6 : "accessible depuis tous les écrans externat (bouton flottant et raccourci
+clavier libre, vérifié dans le résolveur)".
+**Retenu.** `pages/externat/constantes-modal.js` + un bouton flottant posé une seule fois dans
+`renderShell` (main.js), visible/masqué par `appliquerNavPourCycle()` selon le cycle courant —
+jamais par page, pour rester vraiment disponible "depuis tous les écrans" sans dépendre de quelle
+page est montée. Réutilise `.modal-overlay`/`.modal-panel` (classes déjà partagées) : Échap la
+ferme gratuitement via le mécanisme générique déjà câblé dans `executerRaccourci`
+(`close-modal` cherche n'importe quel `.modal-overlay:not(.hidden)`), aucun code à ajouter.
+Cache module (un seul appel réseau par session, les valeurs ne changent jamais en cours de route).
+**Raccourci clavier "v"** : `resoudreRaccourci` le résout sur N'IMPORTE QUELLE route, y compris en
+P2 (fonction pure, ignore le cycle par conception, même principe que `routeAccueilParDefaut()`
+pour "g h") — c'est `executerRaccourci` (main.js) qui vérifie `estExternat()` avant d'ouvrir la
+modale, pas le résolveur. Testé : "v" en P2 ne fait rien, "v" en Externat bascule la modale.
+**Écarté.** Une page `#constantes` séparée : aurait perdu le contexte de la question/du dossier en
+cours à chaque consultation (rupture du flux d'examen), contrairement à une modale superposée.
+
+### Mode examen (§8 lot 6) : joueur dédié `edn-examen.js`, pas une variante de mode dans edn-question/edn-dossier
+**Contexte.** §8 : "compte à rebours global configurable, soumission forcée à zéro, aucune
+correction avant la fin." Très différent du flux entraînement existant (correction immédiate après
+chaque question, chrono par question, tag d'erreur immédiat et bloquant si raté).
+**Retenu.** Un nouveau module `pages/externat/edn-examen.js` (`demarrerExamenExterne(cibles,
+dureeMinutes, simulateurUness)`, lancé depuis un bouton "Lancer un examen" sur `#edn-banque`),
+plutôt que d'ajouter un 3e mode dans `edn-question.js`/`edn-dossier.js` déjà denses. Chaque dossier
+sélectionné est **éclaté** en questions individuelles pour l'examen (un seul chrono global sur
+l'ensemble, questions et dossiers mélangés librement) — mais les tentatives restent regroupées et
+enregistrées **une par origine** (dossier ou question isolée) à la fin, exactement comme en
+entraînement, pas une tentative par question de dossier.
+**Écarté.** Garder la structure "un dossier = ses questions ensemble" pendant l'examen lui-même :
+le chrono global rend cette distinction sans intérêt pendant le jeu (aucune question ne se
+distingue visuellement d'une autre), seul le regroupement au moment d'enregistrer compte.
+**Tags d'erreur au bilan (§7.4 : "proposé au bilan de fin" en mode examen)** : un seul sélecteur de
+tags pour tout l'examen (appliqué à chaque origine ratée) plutôt qu'un sélecteur par origine —
+`attacherTagsErreurChips` cible un id fixe `#tags-erreur-chips`, non paramétrable ; multiplier les
+instances aurait demandé de le modifier pour un gain marginal (l'examen entier partage déjà un
+seul contexte de révision).
+**Bug trouvé et corrigé en testant en direct** : le premier jet de l'écran de revue utilisait des
+ids uniques par bloc (`zone-reponse-revue-${i}`/`correction-revue-${i}`) pour éviter les doublons
+d'id — mais `renderEtVerrouillerCorrection` (question-engine.js) cherche `#correction-zone` **tel
+quel**, sans paramètre. Résultat : aucune correction ne s'affichait (retour silencieux de la
+fonction, `zone` valant `null`). Corrigé en réutilisant les ids exacts attendus (`#zone-reponse`,
+`#correction-zone`) : `querySelector` reste scopé au sous-arbre de CHAQUE bloc de la revue, donc
+l'id dupliqué document-wide (HTML invalide mais sans conséquence pratique ici) résout correctement
+la bonne zone pour chaque question — confirmé par un test Playwright qui dumpait le HTML réel de
+la revue avant de conclure, pas seulement un contrôle de présence de classe CSS.
+**Simulateur UNESS** : classe `.simulateur-uness` posée sur le conteneur (`.wrap`) de chaque écran
+du joueur d'examen, jamais un thème global. Redéfinit les tokens de couleur (comme `@media print`
+le fait déjà pour un besoin similaire) et neutralise les deux classes de correction qui utilisent
+une couleur codée en dur plutôt qu'une variable (`.checkbox-label.wrong`, `.edn-prop-wrong`,
+toutes deux `#C46A5C`) — couverture volontairement limitée aux éléments de correction réellement
+visibles sur cet écran, pas un audit exhaustif de chaque couleur codée en dur du site. `#wallpaper-
+layer` et le verre dépoli de la topbar/tabbar sont masqués via `body:has(.simulateur-uness)`,
+scopé à la présence réelle de la classe dans le DOM (jamais persisté au-delà de la page montée).
+**Raccourcis clavier** : `edn-examen` ajoutée à `ROUTES_QCM` (Entrée retombe directement sur
+"suivant-btn", il n'y a pas de "valider-btn" puisqu'aucune correction n'est montrée avant la fin ;
+1-5 cochent une proposition), à `ROUTES_SANS_ARROW_LEFT` et à `ROUTES_SANS_N_R` (quitter un examen
+en cours par accident coûterait bien plus qu'une seule question).
+Vérifié en direct (Playwright, dialogues `prompt`/`confirm` interceptés) : sélection dans la
+Banque → lancement → chrono global qui décroît → aucune correction avant la fin → revue avec
+correction colorée correcte pour chaque question → tags d'erreur optionnels → tentatives
+enregistrées une par origine → soumission forcée confirmée en laissant le chrono expirer sans
+interagir. `npm test` (473 tests) et `npm run build` verts.
+
+## Lot 7 — Statistiques et exports
+
+### Page `#edn-stats` séparée de `#stats` (P2), lien "Statistiques" du menu devenu cycle-aware
+**Contexte.** §8 : "Page Stats externat" — jusqu'ici `#stats` renvoyait TOUJOURS vers la page de
+stats P2 (`renderStats`), même en mode Externat : le lien du menu déroulant n'était pas
+conditionné par le cycle (contrairement au reste de la navigation).
+**Retenu.** Nouvelle route `#edn-stats` (même principe que `#edn-accueil` vs `#accueil`) : le lien
+"Statistiques" du menu pointe vers `#edn-stats`/`#stats` selon `cycle`, ajouté à
+`EDN_ROUTE_HANDLERS` et à `SECONDARY_ROUTES`. Bug préexistant corrigé au passage (pas introduit par
+ce lot, mais jamais remarqué avant faute de page Externat à comparer).
+**Écarté.** Rendre `#stats` lui-même cycle-aware (comme `route === 'accueil'` ne l'est pas non
+plus, par choix déjà acté) : casser une route existante utilisée par des liens/favoris potentiels
+aurait été un changement plus risqué qu'en ajouter une nouvelle.
+
+### Unités évaluées : aplatir chaque tentative (dossier ou question) en une entrée par question notée
+**Contexte.** §8 : "réussite par spécialité, item, format et rang" — mais une tentative de dossier
+ne stocke qu'un `detail` (scores par sous-question), sans le format/rang/spécialités/items de
+chaque sous-question (ceux-ci vivent sur les lignes `edn_questions` du dossier, jamais dupliqués
+dans la tentative).
+**Retenu.** La page (`edn-stats.js`) résout, pour chaque dossier RÉELLEMENT tenté (jamais tous les
+dossiers), ses questions via `getDossierAvecQuestions`, puis aplatit `detail[i]` + les métadonnées
+de la question `i` en une "unité évaluée" — la même forme qu'une tentative de question isolée.
+`lib/edn-stats.js` (pur, testé) n'agrège jamais que ce format uniforme, jamais deux chemins de
+calcul selon la provenance.
+**LCA comptée double** : appliqué non seulement aux regroupements par spécialité/item/format/rang
+mais aussi à la note AA estimée (`noteAAEstimee`) — la spec liste "LCA comptée double" comme un
+point séparé de "note AA estimée", mais les deux sont des agrégats de réussite ; les traiter
+différemment aurait été arbitraire et jamais justifié par le texte. Vérifié par un test dédié
+(une unité double-A issue d'un dossier LCA pèse 2x dans le calcul).
+
+### Fatigue score : sessions reconstruites par écart entre tentatives consécutives, pas une colonne
+**Contexte.** §8 : "calculé à partir de `date_tentative` et `duree_s` **sans nouvelle donnée**" —
+aucun `session_id` n'existe et n'en sera ajouté.
+**Retenu.** `reussiteParDureeSession` (lib/edn-stats.js) trie les tentatives par date, démarre une
+nouvelle "session" dès que l'écart avec la tentative PRÉCÉDENTE (jamais le début de la session en
+cours — bug trouvé et corrigé en écrivant les tests : comparer au début de session aurait empêché
+toute session de dépasser le seuil de pause) dépasse `SEUIL_PAUSE_SESSION_MIN` (30 min), puis
+regroupe la réussite par tranche de minutes écoulées depuis le début de CETTE session.
+**Message factuel** (`messageFatigue`) : un simple constat chiffré ("réussite la plus haute à
+Xh (Y%), la plus basse à Zh (W%)"), jamais une recommandation — et seulement si l'écart dépasse
+20 points ET que chaque heure comparée a un échantillon d'au moins 3 unités (sinon un pic à 100%
+sur une seule question à 3h du matin serait trompeur).
+**ECOS inclus dans le calcul de fatigue** (pas seulement EDN) : les deux partagent `date_tentative`
+et `score`/`score_max`, la page Externat est un tout, pas deux fatigue scores séparés.
+
+### Exports (CSV Anki, PDF) limités aux questions isolées "à revoir"
+**Contexte.** §8 : "CSV compatible avec l'import d'Anki (recto = énoncé, verso = correction +
+explication)" et "PDF « mes erreurs » via le jsPDF existant".
+**Retenu.** Réutilise EXACTEMENT la même source que le Carnet d'erreurs
+(`getTentativesEdnARevoir()` + `resoudreCiblesEnDetail()`, lib/edn-carnet.js — étendu pour inclure
+`contenu`/`explication` dans le select, un ajout additif sans risque pour son autre usage) plutôt
+que de redéfinir "qu'est-ce qu'une erreur" une seconde fois. `lib/edn-export.js`
+(`correctionTexte`, pur, testé par format) est la source UNIQUE de "qu'est-ce que la bonne
+réponse" pour le CSV et le PDF, jamais deux logiques de correction qui pourraient diverger.
+**Écarté.** Inclure les dossiers en erreur dans ces exports : le Carnet d'erreurs traite un
+dossier comme UNE seule cible (pas de sous-score par question conservé au même niveau que pour une
+question isolée), et `correctionTexte` opère sur une question, pas un dossier entier. Développer
+la ventilation par sous-question d'un dossier en erreur uniquement pour l'export aurait
+dépassé le périmètre du lot pour un gain marginal (l'essentiel du carnet reste des questions
+isolées) — signalé explicitement dans l'UI de la page Stats plutôt que silencieusement omis.
+**Format CSV** : texte brut uniquement (markdown retiré via `texteBrut`), jamais de HTML, pour
+rester compatible avec un import Anki basique sans avoir à cocher "Allow HTML in fields".
+
+`npm test` (508 tests, +43 pour ce lot) et `npm run build` verts. Vérifié en direct (Playwright) :
+tableau de bord complet avec données réalistes (spécialités, items, ECOS, fatigue), filtre
+d'obsolescence qui distingue correctement obsolète/non-obsolète, export CSV et PDF déclenchant
+chacun un téléchargement réel avec le bon contenu.
+
+## Lot 8 — Hors-ligne (PWA)
+
+### `vite-plugin-pwa` est compatible Vite 8 — vérifié réellement, pas juste sur la déclaration de peerDependencies
+**Contexte.** §8 : "Vérifie d'abord que vite-plugin-pwa est compatible avec Vite 8. Sinon, écris un
+service worker minimal à la main et consigne le choix."
+**Retenu.** `peerDependencies` de vite-plugin-pwa 1.3.0 couvre déjà `^8.0.0`, et surtout un
+`npm run build` réel (pas juste `npm install`) génère correctement `dist/sw.js` +
+`dist/workbox-*.js` (37 entrées précachées, ~4,3 Mo) sans aucune erreur — la déclaration seule
+n'aurait pas suffi à en être sûr sur une version aussi récente de Vite. Premier `vite.config.js`
+du projet (il n'en existait aucun jusqu'ici, Vite tournait sur ses réglages par défaut).
+**`manifest: false`** dans la config du plugin : `public/site.webmanifest` existe déjà et reste la
+seule source du manifeste (§8 : "plutôt que d'en créer un second") — le plugin se contente
+d'injecter l'enregistrement du service worker (`registerSW.js`) dans `index.html`.
+**Écarté.** Écrire un service worker à la main : inutile, la compatibilité réelle est confirmée.
+
+### Tentatives hors-ligne : détection à l'avance (`navigator.onLine`) + repli sur erreur réseau, jamais une seule des deux
+**Contexte.** §8 : "mises en file dans IndexedDB avec leur id UUID client et leur date_tentative
+locale... rejouées au retour du réseau par un insert idempotent."
+**Retenu.** `enregistrerTentative`/`enregistrerTentativeEcos` vérifient `navigator.onLine` AVANT de
+tenter la requête (évite une tentative de connexion vouée à l'échec, et son délai), mais mettent
+aussi en file si la requête échoue malgré `onLine === true` (cas réel : `navigator.onLine` peut
+rester vrai sans connectivité effective) — détecté via `err instanceof TypeError`, signature du
+`fetch` natif qui n'atteint jamais le serveur, jamais confondu avec une vraie erreur métier/
+validation renvoyée PAR le serveur (celle-ci continue de remonter normalement).
+**Aucune mise à jour SRS incrémentale pendant la mise en file** : contrairement au chemin en ligne
+(qui met à jour le SRS immédiatement après chaque tentative), une tentative mise en file ne touche
+JAMAIS `edn_srs` — l'état "avant" n'est pas fiable tant que d'autres tentatives en attente
+n'ont pas encore été rejouées. Tout le recalcul SRS se fait au retour du réseau.
+**Recalcul SRS par rejeu complet de l'historique, pas incrémental** : `rejouerHistoriqueSrs`
+(lib/edn-srs.js, pur, testé) reconstruit l'état final d'une cible en rejouant TOUTES ses
+tentatives triées par `date_tentative`, plutôt que d'appliquer seulement les tentatives mises en
+file par-dessus l'état déjà en base — robuste si d'autres tentatives (en ligne, sur un autre
+appareil) se sont ajoutées à la même cible pendant la coupure.
+**File générique** (`lib/offline-queue.js`) : ne connaît qu'"une table, une ligne, éventuellement
+des items pour le SRS" — jamais la forme précise d'une tentative EDN ou ECOS. Ce module NE
+dépend PAS de `edn-tentatives.js`/`ecos-tentatives.js` (qui construisent leur ligne avant de la
+mettre en file) : évite un import circulaire, `edn-tentatives.js` important lui `mettreEnFile`
+depuis `offline-queue.js`.
+**Indicateur "hors-ligne · N en attente"** : mis à jour via un évènement DOM
+(`studik:file-hors-ligne-changee`) émis par `offline-queue.js` à chaque ajout/rejeu, écouté par
+main.js — jamais un import direct de main.js dans un module `lib/`, qui inverserait la
+dépendance. Bug trouvé en testant en direct : l'indicateur ne se rafraîchissait qu'au changement
+de cycle ou aux évènements `online`/`offline`, jamais juste après une mise en file pendant qu'on
+restait déjà hors-ligne — corrigé par cet évènement dédié.
+
+### "Préparer le hors-ligne" : télécharge le contenu à afficher, pas un mode de jeu hors-ligne complet
+**Contexte.** §8 : "télécharge dans IndexedDB les cibles dues du jour (au plafond) et leurs
+images."
+**Retenu.** Réutilise `getCiblesDuesTriees`/`getPlafondRevisions` (lib/edn-dashboard.js, déjà
+utilisées par le tableau de bord — même définition de "cibles dues" partout) et enregistre le
+contenu de chaque cible (question ou dossier+questions) + ses images dans IndexedDB.
+**Écarté (portée volontairement limitée).** Faire fonctionner le JOUEUR de questions/dossiers
+lui-même hors-ligne (lire depuis IndexedDB si le réseau est coupé) : aurait demandé un repli
+hors-ligne dans `edn-question.js`/`edn-dossier.js`/`question-engine.js`, un changement bien plus
+large que "préparer le contenu". Le bouton télécharge ce qu'il faut pour consulter (lecture), les
+TENTATIVES hors-ligne (écriture) sont déjà couvertes par la file — les deux réunis suffisent à
+l'usage principal (réviser dans le métro), sans réécrire toute la couche de données en mode
+"offline-first".
+
+`npm test` (512 tests, +4 pour `rejouerHistoriqueSrs`) et `npm run build` verts (SW généré avec
+succès). Vérifié en direct (Playwright, `navigator.onLine` forcé plutôt que le vrai mode hors-ligne
+du navigateur pour ne pas couper aussi la connexion au serveur de développement) : tentative mise
+en file pendant la coupure (aucun insert tenté), indicateur affiché immédiatement, retour en ligne
+→ rejeu idempotent + recalcul SRS + file vidée + indicateur qui disparaît, bouton "Préparer le
+hors-ligne" sans erreur.

@@ -49,6 +49,30 @@ export function prochainEtatSrs({ etapeActuelle = -1, reussitesParfaitesConsecut
   }
 }
 
+// Rejoue tout l'historique d'une cible (tentatives déjà triées par date_tentative croissante) pour
+// reconstruire son état SRS final — utilisé par le recalcul hors-ligne (§8 lot 8) après avoir
+// rejoué des tentatives en attente dans un ordre qui peut différer de l'ordre d'écriture réel
+// (retour réseau après plusieurs jours hors-ligne, ex.). Fonction pure : ne lit ni n'écrit rien,
+// à l'appelant de fournir l'historique complet et d'écrire le résultat.
+export function rejouerHistoriqueSrs(tentativesTriees, prioritaire = false) {
+  let etat = { etapeActuelle: -1, reussitesParfaitesConsecutives: 0 }
+  let dernierResultat = null
+
+  tentativesTriees.forEach((t) => {
+    const scoreNormalise = t.scoreMax > 0 ? t.score / t.scoreMax : 0
+    dernierResultat = prochainEtatSrs({
+      etapeActuelle: etat.etapeActuelle,
+      reussitesParfaitesConsecutives: etat.reussitesParfaitesConsecutives,
+      scoreNormalise,
+      prioritaire,
+      maintenant: new Date(t.dateTentative),
+    })
+    etat = { etapeActuelle: dernierResultat.etape, reussitesParfaitesConsecutives: dernierResultat.reussitesParfaitesConsecutives }
+  })
+
+  return dernierResultat
+}
+
 // Plafond anti-surcharge (§7.1) : au-delà du réglage "révisions max / jour", les cibles dues sont
 // triées par priorité (item prioritaire d'abord, puis retard le plus ancien), le reste est
 // reporté (pas exclu — il reste dû, juste pas affiché aujourd'hui).
