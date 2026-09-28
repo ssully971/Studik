@@ -16,7 +16,7 @@ import {
 import { jouerBip } from '../../lib/ecos-audio.js'
 import { estTableAbsente, htmlMigrationManquante } from '../../lib/externat-schema.js'
 import { escapeHtml } from '../../lib/escape.js'
-import { richText } from '../../lib/richtext.js'
+import { richText, activerInteractionsRichText, activerKatex } from '../../lib/richtext.js'
 import { afficherLoader } from '../../lib/loader.js'
 import { avancerCircuitEcos, derniereStationDuCircuit } from './ecos-circuit.js'
 
@@ -235,6 +235,10 @@ export async function renderEcosStation(container, id, contexteSegment) {
         }
       </div>
     `
+
+    const wrap = container.querySelector('.wrap')
+    activerInteractionsRichText(wrap)
+    activerKatex(wrap)
 
     if (state.mode === 'binome') {
       attacherGrilleListeners()

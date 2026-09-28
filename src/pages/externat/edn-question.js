@@ -2,7 +2,7 @@ import { getQuestionById } from '../../lib/edn-content.js'
 import { estTableAbsente, htmlMigrationManquante } from '../../lib/externat-schema.js'
 import { escapeHtml } from '../../lib/escape.js'
 import { afficherLoader } from '../../lib/loader.js'
-import { richText, activerInteractionsRichText } from '../../lib/richtext.js'
+import { richText, activerInteractionsRichText, activerKatex } from '../../lib/richtext.js'
 import { scoreQuestion, ajusterScoreQroc } from '../../lib/edn-scoring.js'
 import { enregistrerTentative, cibleQuestion } from '../../lib/edn-tentatives.js'
 import { getTagsErreur } from '../../lib/edn-tags-erreur.js'
@@ -64,11 +64,13 @@ export async function renderEdnQuestion(container, id, contexteSegment) {
 
   const wrap = container.querySelector('.wrap')
   activerInteractionsRichText(wrap)
+  activerKatex(wrap)
   attacherInteractions(wrap, question, state)
 
   document.getElementById('valider-btn').addEventListener('click', async () => {
     state.score = scoreQuestion(question, state.reponse)
     renderEtVerrouillerCorrection(wrap, question, propositions, state.reponse, state.score)
+    activerKatex(wrap)
     if (question.format === 'QROC') {
       attacherAjustementQroc(wrap, (ajustement) => {
         state.score = ajusterScoreQroc(state.score, ajustement)

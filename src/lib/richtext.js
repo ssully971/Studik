@@ -13,7 +13,27 @@ function extraireImages(str) {
   return { travail, images }
 }
 
-function transformerInline(segment, images) {
+// Formules KaTeX (§5.11) : $$...$$ (bloc) puis $...$ (inline), extraites en jetons neutres AVANT
+// le reste du pipeline — sinon un `|` dans une formule (ex. valeur absolue $|x|$) serait pris pour
+// une colonne de tableau, et le contenu LaTeX brut serait échappé/altéré par les autres règles
+// (**gras**, etc.) avant même d'atteindre KaTeX. Rendu réel fait par activerKatex() (chargement
+// différé de la librairie), jamais ici : richText() reste synchrone.
+function extraireFormules(str) {
+  const formules = []
+  let travail = String(str).replace(/\$\$([^$]+)\$\$/g, (match, tex) => {
+    const index = formules.length
+    formules.push({ tex: tex.trim(), bloc: true })
+    return ` FORMULE${index} `
+  })
+  travail = travail.replace(/\$([^$\n]+)\$/g, (match, tex) => {
+    const index = formules.length
+    formules.push({ tex: tex.trim(), bloc: false })
+    return ` FORMULE${index} `
+  })
+  return { travail, formules }
+}
+
+function transformerInline(segment, images, formules) {
   let out = escapeHtml(segment)
   out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   out = out.replace(/==(.+?)==/g, '<mark class="rt-highlight">$1</mark>')
@@ -21,6 +41,11 @@ function transformerInline(segment, images) {
   out = out.replace(/ IMG(\d+) /g, (match, idx) => {
     const url = escapeHtml(images[Number(idx)])
     return `<button type="button" class="img-toggle-btn" data-img-url="${url}">🖼 Afficher l'image</button><span class="img-toggle-content hidden"><img src="${url}" alt="" loading="lazy" /></span>`
+  })
+  out = out.replace(/ FORMULE(\d+) /g, (match, idx) => {
+    const f = formules[Number(idx)]
+    const brut = escapeHtml(f.bloc ? `$$${f.tex}$$` : `$${f.tex}$`)
+    return `<span class="katex-pending" data-latex="${escapeHtml(f.tex)}" data-bloc="${f.bloc}">${brut}</span>`
   })
   return out
 }
@@ -61,13 +86,13 @@ function estColonneNormes(libelle) {
 // détectée par son intitulé — pas besoin qu'une page appelante déclare explicitement qu'elle est
 // en mode entraînement : le masquage par défaut est sans risque partout où ce tableau s'affiche
 // (voir DECISIONS.md, lot 3).
-function rendreTableau(ligneEntete, lignesCorps, images) {
+function rendreTableau(ligneEntete, lignesCorps, images, formules) {
   const entetes = celluesDeLigne(ligneEntete)
   const derniereColonneNormes = entetes.length > 0 && estColonneNormes(entetes[entetes.length - 1])
 
-  const theadHtml = `<tr>${entetes.map((e) => `<th>${transformerInline(e, images)}</th>`).join('')}</tr>`
+  const theadHtml = `<tr>${entetes.map((e) => `<th>${transformerInline(e, images, formules)}</th>`).join('')}</tr>`
   const tbodyHtml = lignesCorps
-    .map((ligne) => `<tr>${celluesDeLigne(ligne).map((c) => `<td>${transformerInline(c, images)}</td>`).join('')}</tr>`)
+    .map((ligne) => `<tr>${celluesDeLigne(ligne).map((c) => `<td>${transformerInline(c, images, formules)}</td>`).join('')}</tr>`)
     .join('')
 
   if (!derniereColonneNormes) {
@@ -84,9 +109,9 @@ function estLigneListe(ligne) {
   return typeof ligne === 'string' && /^\s*[-*]\s+/.test(ligne)
 }
 
-function rendreListe(lignes, images) {
+function rendreListe(lignes, images, formules) {
   const items = lignes.map((l) => l.replace(/^\s*[-*]\s+/, ''))
-  return `<ul class="rt-list">${items.map((i) => `<li>${transformerInline(i, images)}</li>`).join('')}</ul>`
+  return `<ul class="rt-list">${items.map((i) => `<li>${transformerInline(i, images, formules)}</li>`).join('')}</ul>`
 }
 
 // Délégation de clic pour les éléments interactifs produits par richText() : l'image repliée
@@ -110,7 +135,8 @@ export function activerInteractionsRichText(scopeEl) {
 }
 
 export function richText(str) {
-  const { travail, images } = extraireImages(str)
+  const { travail: sansFormules, formules } = extraireFormules(str)
+  const { travail, images } = extraireImages(sansFormules)
   const lignes = travail.split('\n')
   const blocs = []
   let i = 0
@@ -124,19 +150,46 @@ export function richText(str) {
         corps.push(lignes[i])
         i++
       }
-      blocs.push(rendreTableau(ligneEntete, corps, images))
+      blocs.push(rendreTableau(ligneEntete, corps, images, formules))
     } else if (estLigneListe(lignes[i])) {
       const items = []
       while (i < lignes.length && estLigneListe(lignes[i])) {
         items.push(lignes[i])
         i++
       }
-      blocs.push(rendreListe(items, images))
+      blocs.push(rendreListe(items, images, formules))
     } else {
-      blocs.push(transformerInline(lignes[i], images))
+      blocs.push(transformerInline(lignes[i], images, formules))
       i++
     }
   }
 
   return blocs.join('\n')
+}
+
+// Rendu réel des formules KaTeX détectées par richText() (spans ".katex-pending", voir
+// extraireFormules) — chargement différé de katex + sa CSS (await import(...), §5.11), jamais
+// dans le bundle principal. À appeler après avoir posé le HTML de richText() dans le DOM (ex.
+// juste après activerInteractionsRichText(wrap)) ; no-op immédiat (aucun import déclenché) si le
+// texte ne contenait aucune formule.
+let katexPromise = null
+function chargerKatex() {
+  if (!katexPromise) {
+    katexPromise = Promise.all([import('katex'), import('katex/dist/katex.min.css')]).then(([mod]) => mod.default ?? mod)
+  }
+  return katexPromise
+}
+
+export async function activerKatex(scopeEl) {
+  const spans = scopeEl.querySelectorAll('.katex-pending')
+  if (spans.length === 0) return
+  const katex = await chargerKatex()
+  spans.forEach((span) => {
+    try {
+      span.innerHTML = katex.renderToString(span.dataset.latex, { throwOnError: false, displayMode: span.dataset.bloc === 'true' })
+      span.classList.remove('katex-pending')
+    } catch {
+      // Formule malformée : on garde le texte brut déjà affiché plutôt que de planter la page.
+    }
+  })
 }

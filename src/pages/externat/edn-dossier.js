@@ -2,7 +2,7 @@ import { getDossierAvecQuestions } from '../../lib/edn-content.js'
 import { estTableAbsente, htmlMigrationManquante } from '../../lib/externat-schema.js'
 import { escapeHtml } from '../../lib/escape.js'
 import { afficherLoader } from '../../lib/loader.js'
-import { richText, activerInteractionsRichText } from '../../lib/richtext.js'
+import { richText, activerInteractionsRichText, activerKatex } from '../../lib/richtext.js'
 import { scoreQuestion, ajusterScoreQroc } from '../../lib/edn-scoring.js'
 import { enregistrerTentative, cibleDossier } from '../../lib/edn-tentatives.js'
 import { getTagsErreur } from '../../lib/edn-tags-erreur.js'
@@ -135,6 +135,7 @@ export async function renderEdnDossier(container, id, contexteSegment) {
 
     const wrap = container.querySelector('.wrap')
     activerInteractionsRichText(wrap)
+    activerKatex(wrap)
     attacherInteractions(wrap, q, { get reponse() { return state.reponses[i] }, set reponse(v) { state.reponses[i] = v } })
     demarrerTimer()
 
@@ -143,6 +144,7 @@ export async function renderEdnDossier(container, id, contexteSegment) {
       state.dureesQuestions[i] = Math.round((Date.now() - state.debutQuestion) / 1000)
       state.scores[i] = scoreQuestion(q, state.reponses[i])
       renderEtVerrouillerCorrection(wrap, q, propositions, state.reponses[i], state.scores[i])
+      activerKatex(wrap)
       if (q.format === 'QROC') {
         attacherAjustementQroc(wrap, (ajustement) => {
           state.scores[i] = ajusterScoreQroc(state.scores[i], ajustement)

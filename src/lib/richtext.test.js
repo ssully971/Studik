@@ -80,3 +80,39 @@ describe('richText — compatibilité : une ligne simple sans bloc reste inchang
     expect(out).toBe('Ligne 1\nLigne 2')
   })
 })
+
+describe('richText — formules KaTeX (§5.11)', () => {
+  // Le rendu réel (activerKatex, chargement différé de la librairie) n'est pas testé ici — pas de
+  // DOM/jsdom dans ce projet pour l'instant (voir CLAUDE.md). Seule la détection/l'extraction
+  // synchrone de richText() est vérifiée.
+  it('$...$ produit un span en attente de rendu avec le LaTeX en data-attribute', () => {
+    const out = richText('La formule $E=mc^2$ est connue.')
+    expect(out).toContain('class="katex-pending"')
+    expect(out).toContain('data-latex="E=mc^2"')
+    expect(out).toContain('data-bloc="false"')
+    // Le texte brut reste visible (échappé) tant que le rendu n\'a pas eu lieu.
+    expect(out).toContain('$E=mc^2$')
+  })
+
+  it('$$...$$ est marqué en mode bloc (displayMode)', () => {
+    const out = richText('$$\\frac{a}{b}$$')
+    expect(out).toContain('data-bloc="true"')
+    expect(out).toContain('data-latex="\\frac{a}{b}"')
+  })
+
+  it('un `|` à l\'intérieur d\'une formule ne casse pas la détection de tableau', () => {
+    const out = richText('valeur absolue $|x|$ simple')
+    expect(out).not.toContain('<table')
+    expect(out).toContain('data-latex="|x|"')
+  })
+
+  it('la mise en forme (**gras**) fonctionne toujours à côté d\'une formule', () => {
+    const out = richText('**Important** : $x^2$')
+    expect(out).toContain('<strong>Important</strong>')
+    expect(out).toContain('data-latex="x^2"')
+  })
+
+  it('un texte sans "$" ne produit aucun span katex-pending', () => {
+    expect(richText('rien de spécial ici')).not.toContain('katex-pending')
+  })
+})

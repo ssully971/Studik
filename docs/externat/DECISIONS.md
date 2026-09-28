@@ -516,3 +516,28 @@ entière plutôt que fait rapidement en même temps que le reste.
   correct → mode binôme desktop (2 colonnes) et mobile (onglets) → circuit complet sur 2 stations
   (transition, avance, dernière station termine le circuit et revient à la liste). Aucune régression
   détectée, `npm test` (440 tests, +22 pour ecos-timer.js/ecos-scoring.js) et `npm run build` verts.
+
+## Lot 6 — Conditions d'examen
+
+### KaTeX (§5.11), jamais fait en phase 1
+**Contexte.** §5.11 prévoyait KaTeX dès le lot 3, avec repli explicite vers le lot 6 "si ça
+complique trop le build". Relecture de `DECISIONS.md`/`CLAUDE.md` : aucune trace de KaTeX ni de
+décision de le reporter — un oubli pur et simple de la phase 1, pas un report consigné. Corrigé
+maintenant plutôt que signalé comme dette supplémentaire.
+**Retenu.** `richText()` (lib/richtext.js) extrait `$$...$$`/`$...$` en jetons neutres **avant**
+le reste du pipeline (comme les images), pour deux raisons : un `|` dans une formule (valeur
+absolue `$|x|$`) ne doit pas être pris pour une colonne de tableau, et le LaTeX brut ne doit pas
+subir les autres transformations (`**gras**` etc.) avant d'atteindre KaTeX. Le rendu réel
+(`activerKatex(scopeEl)`) est une fonction séparée, appelée après la pose du HTML dans le DOM —
+`richText()` reste synchrone, `katex` + sa CSS ne sont chargés (`await import(...)`) que si au
+moins un `.katex-pending` existe réellement dans le scope (vérifié au build : chunk `katex-*.js`
+~260 Ko séparé, +2 Ko seulement sur le bundle principal).
+**Écarté.** Rendre `richText()` asynchrone pour intégrer katex directement : aurait cassé son
+usage synchrone dans un template literal sur une dizaine d'appels existants, pour un gain nul.
+
+### Bug trouvé en passant : ecos-station.js oubliait `activerInteractionsRichText`
+**Contexte.** En ajoutant `activerKatex` à chaque appelant de `richText()`, découverte que
+`ecos-station.js` (lot 5) appelait `richText()` pour la vignette/les consignes/le script mais
+n'appelait jamais `activerInteractionsRichText` — le bouton "Afficher l'image" et le masquage des
+normes d'un éventuel tableau y étaient donc silencieusement inertes.
+**Statut.** Corrigé dans ce commit (un seul appel ajouté, au même endroit que `activerKatex`).
