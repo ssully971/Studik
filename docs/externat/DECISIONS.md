@@ -479,3 +479,40 @@ ce qui dépasse le cadre d'une intégration de retours et mérite d'être décou
 entière plutôt que fait rapidement en même temps que le reste.
 
 `npm test` (418 tests, +3 pour le raccourci `t`) et `npm run build` verts après ce lot.
+
+## Lot 5 — ECOS
+
+- **Chronomètre unique réutilisé pour station (8:00) et transition de circuit (2:00)**
+  (`lib/ecos-timer.js`, pur, testé). **Retenu** : une seule machine à états paramétrée par
+  `dureeTotaleS`, jamais deux implémentations. Le repère de lecture (7:00 restantes) et l'alerte
+  finale (1:00 restante) sont des constantes absolues appliquées seulement quand `etat ===
+  'en_cours'` — jamais évaluées sur un chrono "pret" ou "termine".
+- **Pas de zéro éliminatoire automatique** (§5.9 : "aucune source officielle trouvée"). **Retenu**
+  : `scoreGrille` (lib/ecos-scoring.js) additionne simplement les points des items cochés, sans
+  aucune règle spéciale sur 0/100 — confirmé volontairement, pas un oubli.
+- **Bouton "Terminer maintenant"** ajouté sur l'écran de jeu (absent de la spec, mais permet de
+  quitter le chrono avant la fin naturelle — utile pour s'entraîner sur une partie seulement d'une
+  station, ou en cas d'erreur). **Écarté** : forcer les 8 minutes complètes systématiquement,
+  contraignant sans bénéfice évident en dehors des conditions d'examen réelles (lot 6).
+- **`DOMAINES_ECOS`** (`lib/ecos.js`) ne liste que 10 des 11 domaines du guide CNG — le 11e reste
+  inconnu (voir A-FAIRE-SULLIVAN.md). Liste purement indicative pour le filtre de `#ecos-stations`,
+  pas une contrainte en base (le schéma §4.4 a toujours `domaine text`, sans `check`) : un domaine
+  hors liste reste importable sans erreur, cohérent avec le principe déjà appliqué à `tags`.
+- **Mode binôme sur un seul appareil** : bascule par onglets sur mobile (`<button data-onglet>`),
+  écran partagé en CSS grid 2 colonnes à partir de 860px (même seuil que `.fiche-layout`, §CLAUDE.md
+  "Décisions de conception") — jamais les deux affichages en même temps dans le DOM visible, la
+  grille de l'examinateur reste la même instance HTML des deux côtés du breakpoint (pas de
+  duplication de logique de cochage).
+- **Enregistrement audio (`MediaRecorder`) strictement en mémoire** : `URL.createObjectURL`, jamais
+  de upload Supabase (quota 1 Go, §9). Une permission micro refusée désactive silencieusement
+  `enregistrerAudio` plutôt que de bloquer le démarrage de la station — l'audio est un bonus, pas
+  une condition pour jouer.
+- **Circuit lancé depuis `#ecos-stations`** via des cases à cocher par ligne + bouton "Lancer un
+  circuit (N)" (`lib/ecos-circuit.js`, même principe que `edn-session.js`) — l'ordre de sélection
+  (un `Set`, qui conserve l'ordre d'insertion en JS) devient l'ordre du circuit, pas un tri
+  alphabétique ou par date qui serait moins prévisible pour l'utilisateur qui choisit lui-même.
+- Testé en direct (Playwright + mock Supabase) : liste → choix de mode → chrono qui décroît
+  réellement (Date.now(), pas un compteur décrémenté) → révélation solo → auto-pointage → score
+  correct → mode binôme desktop (2 colonnes) et mobile (onglets) → circuit complet sur 2 stations
+  (transition, avance, dernière station termine le circuit et revient à la liste). Aucune régression
+  détectée, `npm test` (440 tests, +22 pour ecos-timer.js/ecos-scoring.js) et `npm run build` verts.

@@ -53,4 +53,21 @@ réelle). Coche au fur et à mesure.
 ## Une fois la phase 1 relue et mergée
 
 9. Donne tes retours à Claude pour lancer la phase 2 (§10 "Prompts de lancement" de la spec, prompt
-   "Phase 2").
+   "Phase 2"). **Fait** : PR #1 fusionnée, retours donnés le 28/09, phase 2 lancée sur
+   `externat-v2-phase2`.
+
+## Phase 2 (lots 5 à 8)
+
+10. **Compléter le 11e domaine de compétence ECOS** : `DOMAINES_ECOS` dans `src/lib/ecos.js` n'en
+    liste que 10 (les seuls confirmés dans le guide CNG 2026 à ma connaissance) — ajoute le 11e
+    directement dans ce tableau quand tu l'auras trouvé (aucune contrainte en base, un domaine
+    hors liste ne bloque rien à l'import, cette liste ne sert qu'au filtre de `#ecos-stations`).
+11. **Importer des stations ECOS de test** via `prompt-ecos-station.md` (colle
+    `prompt-contexte-maitre-externat.md` avant), cible "Stations ECOS" dans `#import`, puis :
+    - Joue une station en mode solo (`#ecos-station/:id`) : vérifie le repère à 7:00 restantes, le
+      bip/l'alerte à 1:00, que le chrono reste juste si tu changes d'onglet puis reviens.
+    - Teste l'enregistrement audio optionnel (demande la permission micro du navigateur) : vérifie
+      qu'il est bien réécoutable/téléchargeable et qu'aucune donnée audio n'apparaît dans la table
+      `ecos_tentatives` de Supabase (l'audio ne doit jamais quitter le navigateur).
+    - Teste le mode binôme (bascule Candidat/Examinateur) sur mobile et en écran partagé desktop.
+    - Teste le mode circuit (plusieurs stations, transition 2:00 entre chacune).

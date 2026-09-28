@@ -29,6 +29,7 @@ import { renderEdnQuestion } from './pages/externat/edn-question.js'
 import { renderEdnDossier } from './pages/externat/edn-dossier.js'
 import { renderEdnZap } from './pages/externat/edn-zap.js'
 import { renderEcosStations } from './pages/externat/ecos-stations.js'
+import { renderEcosStation } from './pages/externat/ecos-station.js'
 import { renderEdnSessionResume } from './pages/externat/edn-session.js'
 import { renderAccueil } from './pages/accueil.js'
 import { renderReferentiel } from './pages/referentiel.js'
@@ -61,6 +62,7 @@ const EDN_ROUTE_HANDLERS = {
   'edn-dossier': (content, id, segment) => renderEdnDossier(content, id, segment),
   'edn-zap': (content, id) => renderEdnZap(content, id),
   'ecos-stations': (content) => renderEcosStations(content),
+  'ecos-station': (content, id, segment) => renderEcosStation(content, id, segment),
   'edn-session-resume': (content) => renderEdnSessionResume(content),
 }
 

@@ -2074,6 +2074,37 @@ a.tag:hover,
   }
 }
 
+/* Station ECOS mode binôme (§5.9) : un seul appareil, écran partagé sur desktop (candidat/
+   examinateur côte à côte), onglets fixes sur mobile — jamais les deux affichés en même temps. */
+.ecos-binome-desktop {
+  display: none;
+}
+
+#binome-onglets {
+  margin-bottom: 16px;
+}
+
+@media (min-width: 860px) {
+  .ecos-binome-mobile {
+    display: none;
+  }
+
+  #binome-onglets {
+    display: none;
+  }
+
+  .ecos-binome-desktop {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .ecos-binome-desktop > div {
+    min-width: 0;
+  }
+}
+
 .org-tree {
   display: flex;
   flex-direction: column;
