@@ -859,3 +859,41 @@ mémoire dans le navigateur) via la vraie page Paramètres : export réel (tél�
 JSON inspecté), restauration de ce même fichier, restauration d'un ancien fichier sans `version`,
 refus propre d'un fichier malformé et d'une référence irrésoluble — aucune écriture dans ces deux
 derniers cas, aucune erreur console.
+
+### Popup heatmap masquée derrière la section Matières : la cause réelle n'était pas l'hypothèse initiale
+
+**Contexte.** Au survol/tap de `.streak-card` (accueil P2), `.heatmap-popup` (calendrier de streak,
+`z-index: 20`) se peignait systématiquement SOUS la section "Matières" qui suit dans le DOM, en
+mode verre dépoli. L'hypothèse de départ ciblait `isolation: isolate` sur `.streak-card` (ajouté
+au commit be80880), en s'appuyant sur un piège déjà documenté dans CLAUDE.md pour un bug similaire
+côté heatmap Externat.
+
+**Retenu.** Vérifié empiriquement (Playwright, en isolant chaque variable une par une) que
+`isolation: isolate` n'est PAS la cause : retirer cette seule propriété ne change rien tant que le
+mode verre dépoli est actif, et sans mode verre le bug n'existe pas du tout, avec ou sans
+isolation. La vraie cause est `[data-glass="on"] .settings-card { backdrop-filter: ... }` — cette
+règle s'applique aussi à `.streak-card` (qui est un `.settings-card`), et `backdrop-filter`
+recrée exactement le même piège de contexte d'empilement qu'`isolation: isolate`, indépendamment
+d'elle. Corrigé en ajoutant un `z-index: 5` explicite sur `.streak-card:hover`/`.streak-card.ouvert`
+(bien en dessous des `z-index: 50` de `.modal-overlay`, jamais en conflit avec une modale) : peu
+importe ce qui promeut `.streak-card` en contexte d'empilement isolé, un z-index explicite le fait
+gagner face à la section suivante, qui reste elle à z-index automatique.
+
+Effet de bord découvert pendant la correction : une fois le popup effectivement peint au-dessus,
+son fond `background: var(--surface-2)` — rendu translucide par le mode verre dépoli — laissait
+transparaître le texte de la section du dessous, NET et illisible, sans aucun flou. Cause : le
+parent direct du popup (`.streak-card`) a déjà son propre `backdrop-filter` en mode verre ; un
+second `backdrop-filter` imbriqué sur le popup lui-même ne parvient pas, dans Chromium, à flouter
+ce qui est peint par un élément extérieur à ce parent (une autre section du DOM) — seule la
+translucidité du fond s'applique, sans le flou attendu. Corrigé en gardant `.heatmap-popup` HORS
+de la liste `[data-glass="on"] .settings-card, ...` et en lui donnant un fond toujours opaque
+(`rgb(var(--surface-rgb))` plutôt que `var(--surface-2)`), qui ne varie pas avec le mode verre.
+
+**Écarté.** Ajouter `.heatmap-popup` à la liste des sélecteurs `[data-glass="on"]` qui reçoivent
+`backdrop-filter` — testé, ne résout pas la lisibilité (voir effet de bord ci-dessus) et aurait
+rendu ce petit popup utilitaire aussi translucide qu'une grande carte, sans bénéfice.
+
+Vérifié en direct (Playwright, mock Supabase en mémoire) à 375px et 1280px, avec et sans fond
+d'écran/mode verre dépoli, au survol (desktop) comme via `.ouvert` (tap tactile), avec un jeu de
+données volontairement chargé (8 matières) pour garantir un chevauchement géométrique réel entre
+le popup et la section Matières dans tous les cas. `npm test` et `npm run build` verts.

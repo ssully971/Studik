@@ -1874,11 +1874,25 @@ a.tag:hover,
 
 .streak-card {
   position: relative;
-  /* isolation crée un contexte d'empilement dédié : le z-index de .heatmap-popup ne dépend plus
-     de ce qui l'entoure (une section suivante pourrait sinon, selon le navigateur, finir au-dessus
-     du popup malgré son z-index positif — .streak-card seul en position:relative n'établit pas de
-     contexte d'empilement). */
+  /* isolation crée un contexte d'empilement dédié pour .heatmap-popup, mais ça ne suffit pas :
+     en mode verre dépoli, [data-glass="on"] .settings-card (donc .streak-card lui-même) reçoit
+     un backdrop-filter, qui crée AUSSI son propre contexte d'empilement sur .streak-card — avec
+     un z-index toujours "auto" côté carte, ce contexte se fait quand même repeindre par-dessus
+     par la section suivante (Matières), qui vient plus tard dans le DOM. Testé : sans backdrop-
+     filter (mode sans verre), pas de bug, avec ou sans isolation. Le vrai correctif est donc le
+     z-index explicite ci-dessous sur .streak-card, pas l'isolation. */
   isolation: isolate;
+}
+
+.streak-card:hover,
+.streak-card.ouvert {
+  /* Sans ça, en mode verre dépoli, le backdrop-filter du mode verre sur .streak-card promeut la
+     carte dans son propre contexte d'empilement mais toujours à un rang équivalent à "auto" :
+     la section Matières qui suit dans le DOM repasse alors au-dessus de toute la carte, popup
+     ouvert inclus. Un z-index explicite ici fait gagner .streak-card face à cette section (qui
+     reste, elle, à z-index automatique) — bien en dessous de .modal-overlay (50) pour ne jamais
+     passer devant une modale. */
+  z-index: 5;
 }
 
 .heatmap-popup {
@@ -1886,7 +1900,13 @@ a.tag:hover,
   top: calc(100% + 8px);
   left: 0;
   right: 0;
-  background: var(--surface-2);
+  /* Toujours opaque, y compris en mode verre dépoli : .streak-card (son parent direct) a
+     déjà son propre backdrop-filter, et un second backdrop-filter imbriqué sur le popup ne
+     parvient pas à flouter ce qui est peint par la section suivante (Matières) — seule la
+     translucidité de --surface-2 s'appliquerait alors, laissant ce texte transparaître net
+     et illisible sous le popup. rgba(..., 1) via --surface-rgb garde le même dégradé de gris
+     que --surface-2 mais sans jamais devenir translucide. */
+  background: rgb(var(--surface-rgb));
   border: 1px solid var(--hairline);
   border-radius: 8px;
   padding: 14px;
