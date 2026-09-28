@@ -92,6 +92,8 @@ Chaque nouvelle table doit recevoir un `grant select, insert, update, delete on 
 - **Le piège des écouteurs accumulés sur une cible persistante s'applique aussi à `window`**, pas seulement `container`/`document` — rencontré sur `#edn-zap/:id` (éditeur de zones), où un `window.addEventListener('resize', ...)` posé naïvement à l'intérieur du `render()` interne de la page (rappelé à chaque interaction, pas seulement à chaque navigation) se serait accumulé indéfiniment. Corrigé en le posant une seule fois par navigation, hors de `render()`, avec le même principe de dédoublonnage que `tag-filter.js` (garder la référence de la fonction, `removeEventListener` avant de la reposer).
 - **Un groupe de boutons radio a besoin d'un `name` partagé identique** pour que cocher l'un décoche vraiment les autres — sans lui, chaque `<input type="radio">` se comporte comme son propre groupe indépendant. Rencontré sur le rendu QRU du moteur EDN (`pages/externat/question-engine.js`) : une première version générait les radios via un helper générique sans `name`, ce qui aurait laissé cocher plusieurs "bonnes réponses" en même temps sans qu'aucune erreur ne se manifeste (juste un score toujours à 0, silencieusement).
 - **Un module statiquement importé par `pages/import.js` ne doit dépendre d'aucun module chargé à la demande (zod)**, même indirectement — sinon Vite fusionne zod dans le chunk principal malgré l'`await import('../lib/import-schemas.js')` déjà en place ailleurs dans le même fichier (avertissement de build `INEFFECTIVE_DYNAMIC_IMPORT`, chunk principal +110 Ko). Rencontré en ajoutant `idFieldPourCible` (utilisée par `pages/import.js` avant même le clic sur "Importer", donc importée statiquement) directement depuis `lib/import-schemas.js`. Corrigé en sortant cette fonction (et la petite table qu'elle consulte) dans `lib/import-targets.js`, sans aucune dépendance à zod ; `import-schemas.js` la réexporte pour ne rien casser côté API existante. Toujours vérifier après un `npm run build` qu'`import-schemas-*.js` reste un chunk séparé.
+- **Une popup/carte qui doit apparaître au-dessus d'un voisin `position: relative`/`sticky` a besoin que ce voisin n'ait pas involontairement créé son propre contexte d'empilement** (`isolation: isolate`, `transform`, `filter`...) — sinon même un `z-index` très supérieur sur la popup ne suffit pas à passer devant, puisque la comparaison se fait entre contextes d'empilement parents, pas entre les éléments eux-mêmes. Rencontré sur la popup de détail d'une case de heatmap (phase Externat, retours post-phase-1) : corrigé en retirant l'`isolation: isolate` posé sur le conteneur de la heatmap.
+- **`question-engine.js` (`renderEtVerrouillerCorrection` et consorts) cible ses zones par id fixe** (`#zone-reponse`, `#correction-zone`, `#items-group`) — tout écran qui affiche plusieurs questions dans le même DOM (ex. l'écran de relecture du mode examen, `edn-examen.js`) doit reproduire ces MÊMES ids par bloc plutôt que les rendre uniques (`correction-zone-1`, `correction-zone-2`...), sinon la fonction cible silencieusement le premier bloc trouvé (ou aucun) et la correction ne s'affiche jamais sur les autres. Ça reste sûr : `container.querySelector(...)` est scopé au sous-arbre du conteneur passé, même si ça produit un document avec des ids dupliqués au sens strict du HTML. Rencontré en construisant l'écran de relecture du mode examen (lot 6), détecté par dump du HTML rendu.
 
 ## Tests
 
@@ -158,9 +160,69 @@ migrations).
   `#edn-question` et `#edn-dossier`, jamais dupliqué). Barème totalement séparé de
   `lib/scoring.js` (P2, Outremed) — ne jamais les mélanger. Le dossier applique le "no-back"
   (`resoudreRaccourci` désactive `←` sur `edn-dossier`, voir `lib/raccourcis.js`) : une question
-  validée est verrouillée définitivement, jamais de bouton précédent. LCA (écran partagé) et le
-  mode examen (chrono global, aucune correction avant la fin) sont hors périmètre tant que la
-  phase 2 (lot 6) n'est pas faite — `#edn-dossier` affiche un message d'attente pour ces dossiers.
+  validée est verrouillée définitivement, jamais de bouton précédent. Les dossiers `LCA` (écran
+  partagé, `#edn-dossier`) affichent une coquille persistante (`<iframe>` du texte source à gauche,
+  onglets sur mobile via `data-onglet-mobile`) + zone de question qui se remplace question par
+  question (`renderQuestionCourante`), jamais tout le dossier.
+- **Rendu LaTeX** (`richtext.js`, `extraireFormules`/`activerKatex`) : KaTeX est chargé en lazy
+  (`import()` dynamique + sa CSS), jamais dans le bundle principal — vérifier après `npm run
+  build` qu'il reste dans un chunk séparé. Utilisé par `edn-question.js`/`edn-dossier.js`/
+  `ecos-station.js` (ce dernier appelle aussi `activerInteractionsRichText`, oublié dans une
+  première version du lot 5).
+- **Constantes biologiques** (`pages/externat/constantes-modal.js`) : modale flottante
+  (`#constantes-flottant-btn`/`#constantes-modal-overlay`), accessible depuis n'importe quelle page
+  externat, raccourci clavier `v` (bare, voir `lib/raccourcis.js`). Cache module (`getConstantes()`)
+  pour ne pas re-fetcher à chaque ouverture.
+- **Mode examen** (`pages/externat/edn-examen.js`, lancé depuis `#edn-banque`) : chrono global
+  unique, aucune correction avant la fin (juste "Suivant"/"Terminer l'examen"), aplati les dossiers
+  choisis en unités de question individuelles taguées `origineCible` pour un enchaînement uniforme.
+  L'écran de relecture (`renderRevueEtBilan`) réutilise `question-engine.js` tel quel par bloc — voir
+  le piège dédié aux ids fixes plus haut. Un seul sélecteur de tags d'erreur partagé pour tout
+  l'examen (`renderChoixTagsPuisEnregistrer`), puis `enregistrerToutesLesOrigines` regroupe par
+  cible d'origine pour appeler `enregistrerTentative` une fois par cible (`mode:'examen'`). "Mode
+  Simulateur UNESS" (option cochée au lancement) applique un thème visuel neutre isolé à cet écran
+  (`.simulateur-uness` + `body:has(.simulateur-uness)`, fond d'écran/effet verre dépoli suspendus
+  sans toucher le reste du site).
+- **ECOS** (`lib/ecos.js`, `lib/ecos-timer.js`, `lib/ecos-scoring.js`, `lib/ecos-tentatives.js`,
+  `lib/ecos-audio.js`, `pages/externat/ecos-stations.js`/`ecos-station.js`/`ecos-circuit.js`) :
+  chrono de station pur et testé (8 min, repère à 7:00, alerte finale à 1:00, bip sonore via
+  `AudioContext` mis en cache), grille de correction sans élimination automatique à zéro (juste
+  `itemsCritiquesManques` informatif). Trois modes de jeu : solo (enregistrement audio optionnel via
+  `MediaRecorder`, jamais envoyé à Supabase — reste dans le navigateur, self-assessment ensuite),
+  binôme (bascule Candidat/Examinateur, layout dédié desktop `.ecos-binome-desktop` en écran
+  partagé vs. onglets mobile `.ecos-binome-mobile`/`#binome-onglets`), circuit (plusieurs stations
+  enchaînées, transition de 2 min entre chacune, voir `ecos-circuit.js`). `DOMAINES_ECOS` n'a que 10
+  des 11 domaines officiels du CNG — le 11e reste à ajouter par Sullivan (voir
+  `A-FAIRE-SULLIVAN.md`), sans contrainte en base (un domaine hors liste ne bloque rien à l'import).
+- **Statistiques** (`pages/externat/edn-stats.js`, `lib/edn-stats.js`) : réussite par
+  spécialité/item/format/rang docimologique, note AA estimée (`noteAAEstimee`, seuil de validation
+  14/20, pondération ×2 pour une question issue d'un dossier LCA — attention à appliquer ce même
+  poids partout où une moyenne pondérée est recalculée), réussite ECOS par domaine, réussite par
+  heure/par durée de session (fatigue — le calcul de "pause" compare chaque tentative à la
+  PRÉCÉDENTE, pas au début de la session, sinon aucune session ne peut jamais dépasser le seuil de
+  pause). Exports CSV (format Anki, `lib/edn-export.js`) et PDF (`exporterErreursExternatPDF`,
+  `lib/pdf.js`) limités aux questions isolées (dossiers exclus, pas de granularité par
+  sous-question à ce niveau).
+- **Hors-ligne / PWA** (`vite.config.js` + `vite-plugin-pwa`, `lib/offline-db.js`,
+  `lib/offline-queue.js`, `lib/offline-preparer.js`) : "Préparer le hors-ligne" (tableau de bord
+  Externat) télécharge du contenu dans IndexedDB pour la LECTURE seulement — ça ne fait PAS lire les
+  joueurs de question/dossier depuis IndexedDB quand la connexion tombe (changement architectural
+  trop large, décision explicite, voir `DECISIONS.md`). `enregistrerTentative`/
+  `enregistrerTentativeEcos` détectent l'absence de réseau (`navigator.onLine` + repli sur
+  `TypeError`) et mettent la tentative en file (`mettreEnFile`, IndexedDB) au lieu d'échouer ; au
+  retour en ligne, `rejouerFileTentatives` réinsère chaque ligne en `upsert`
+  `ignoreDuplicates:true` (idempotent) puis ne recalcule le SRS **qu'une fois par cible affectée**
+  en rejouant tout son historique trié par date (`rejouerHistoriqueSrs`), jamais tentative par
+  tentative — nécessaire car l'ordre/l'état intermédiaire ne sont pas fiables après une file
+  hors-ligne. `offline-queue.js` ne connaît que "une table, une ligne, des ids pour le SRS", jamais
+  la forme exacte d'une tentative EDN/ECOS, pour éviter un import circulaire avec
+  `edn-tentatives.js`/`ecos-tentatives.js`. Indicateur `#hors-ligne-indicatif` (topbar) mis à jour
+  via un évènement DOM dédié (`EVENEMENT_FILE_CHANGEE`) à chaque changement de la file, pas
+  seulement sur `online`/`offline`, sinon il reste caché après une mise en file pendant que la page
+  est déjà hors-ligne. **Ne jamais lancer `npm test`/`npm run build` avec un mock de
+  `lib/supabase.js` encore en place** (utilisé pour les tests Playwright manuels hors-ligne) — le
+  mock référence `window` au niveau module, ce qui casse vitest (pas de jsdom) sur des fichiers de
+  test sans rapport ; toujours restaurer le vrai `supabase.js` avant.
 - **Éditeur ZAP** (`pages/externat/edn-zap.js`, `#edn-zap/:id`) : SEULE exception au principe "pas
   de saisie de contenu dans l'UI" (des coordonnées de clic ne peuvent pas venir d'un JSON généré
   par une IA). Le rayon d'une zone est en % de la LARGEUR de l'image ; sa hauteur visuelle doit
