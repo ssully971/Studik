@@ -18,8 +18,8 @@ import {
   renommerCoursFiches,
 } from '../lib/fiches.js'
 import { getPeriodeActuelle } from '../lib/periode.js'
-import { getAllCas, updateCas, renommerMatiereCas, renommerCoursCas } from '../lib/cas.js'
-import { getAllQcmRaw, updateQcm, renommerMatiereQcm, renommerCoursQcm } from '../lib/qcm.js'
+import { getAllCas, updateCas, renommerMatiereCas, renommerSousMatiereCas, renommerCoursCas } from '../lib/cas.js'
+import { getAllQcmRaw, updateQcm, renommerMatiereQcm, renommerSousMatiereQcm, renommerCoursQcm } from '../lib/qcm.js'
 import { getTousLesAttachements, attacherContenu, detacherContenu, getCoursAttaches } from '../lib/contenuCours.js'
 import { slugify } from '../lib/slug.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
@@ -118,9 +118,9 @@ export async function renderOrganisation(container) {
     attachementsParCours[a.cours_id].push(a)
   })
 
-  // Index du contenu rattaché : fiches par (matière, sous-matière, cours) — elles ont les
-  // deux champs. Cas/QCM n'ont pas de sous_matiere en base : ils sont indexés par (matière du
-  // premier niveau, cours) uniquement.
+  // Index du contenu rattaché, par (matière, sous-matière, cours) — fiches, cas et QCM ont
+  // maintenant tous les trois champs (voir migration 002 : sous_matiere ajoutée à
+  // cas_cliniques/qcm, qui n'avaient jusqu'ici que matiere+cours).
   const indexFiches = {}
   fiches.forEach((f) => {
     if (!f.cours) return
@@ -132,7 +132,7 @@ export async function renderOrganisation(container) {
   const indexCas = {}
   cas.forEach((c) => {
     if (!c.cours) return
-    const cle = `${c.matiere} ${c.cours}`
+    const cle = cleContenu(c.matiere, c.sous_matiere, c.cours)
     if (!indexCas[cle]) indexCas[cle] = []
     indexCas[cle].push(c)
   })
@@ -141,17 +141,18 @@ export async function renderOrganisation(container) {
   qcm.forEach((q) => {
     if (!q.cours) return
     ;(q.matieres || []).forEach((m) => {
-      const cle = `${m} ${q.cours}`
+      const cle = cleContenu(m, q.sous_matiere, q.cours)
       if (!indexQcm[cle]) indexQcm[cle] = []
       indexQcm[cle].push(q)
     })
   })
 
   function contenuDuCours(racineNom, sousMatiereNom, coursNom, coursId) {
+    const cle = cleContenu(racineNom, sousMatiereNom, coursNom)
     const base = {
-      fiches: [...(indexFiches[cleContenu(racineNom, sousMatiereNom, coursNom)] || [])],
-      cas: [...(indexCas[`${racineNom} ${coursNom}`] || [])],
-      qcm: [...(indexQcm[`${racineNom} ${coursNom}`] || [])],
+      fiches: [...(indexFiches[cle] || [])],
+      cas: [...(indexCas[cle] || [])],
+      qcm: [...(indexQcm[cle] || [])],
     }
     ;(attachementsParCours[coursId] || []).forEach((a) => {
       const cle = a.contenu_type === 'fiche' ? 'fiches' : a.contenu_type
@@ -185,8 +186,8 @@ export async function renderOrganisation(container) {
   if (backfillsEstCours.length > 0) Promise.all(backfillsEstCours).catch(() => {})
 
   // Contenu non rattaché à un cours connu (champ cours vide, ou qui ne correspond à aucun
-  // cours existant dans cette matière) : regroupé au niveau de la matière (cas/QCM, qui n'ont
-  // pas de sous_matiere en base) ou de la sous-matière (fiches), pour ne jamais rester invisible.
+  // cours existant dans cette matière) : regroupé au niveau de la matière, ou de la
+  // sous-matière si l'élément en a une, pour ne jamais rester invisible.
   const coursConnusParRacine = {}
   function collecterCoursConnus(noeud, profondeur, racineNom) {
     if (estCours(noeud, profondeur)) {
@@ -215,8 +216,8 @@ export async function renderOrganisation(container) {
     const connus = coursConnusParRacine[racineNom] || new Set()
     const base = {
       fiches: fiches.filter((f) => f.matiere === racineNom && !f.sous_matiere && (!f.cours || !connus.has(f.cours))),
-      cas: cas.filter((c) => c.matiere === racineNom && (!c.cours || !connus.has(c.cours))),
-      qcm: qcm.filter((q) => (q.matieres || []).includes(racineNom) && (!q.cours || !connus.has(q.cours))),
+      cas: cas.filter((c) => c.matiere === racineNom && !c.sous_matiere && (!c.cours || !connus.has(c.cours))),
+      qcm: qcm.filter((q) => (q.matieres || []).includes(racineNom) && !q.sous_matiere && (!q.cours || !connus.has(q.cours))),
     }
     return fusionnerAttachements(base, racineId)
   }
@@ -225,8 +226,10 @@ export async function renderOrganisation(container) {
     const connus = coursConnusParRacine[racineNom] || new Set()
     const base = {
       fiches: fiches.filter((f) => f.matiere === racineNom && f.sous_matiere === sousMatiereNom && (!f.cours || !connus.has(f.cours))),
-      cas: [],
-      qcm: [],
+      cas: cas.filter((c) => c.matiere === racineNom && c.sous_matiere === sousMatiereNom && (!c.cours || !connus.has(c.cours))),
+      qcm: qcm.filter(
+        (q) => (q.matieres || []).includes(racineNom) && q.sous_matiere === sousMatiereNom && (!q.cours || !connus.has(q.cours))
+      ),
     }
     return fusionnerAttachements(base, sousMatiereId)
   }
@@ -477,7 +480,7 @@ export async function renderOrganisation(container) {
 
     const lieu =
       type === 'qcm'
-        ? `${(item.matieres || []).join(', ') || 'aucune matière'}${item.cours ? ' › ' + item.cours : ' (aucun cours)'}`
+        ? `${(item.matieres || []).join(', ') || 'aucune matière'}${item.sous_matiere ? ' › ' + item.sous_matiere : ''}${item.cours ? ' › ' + item.cours : ' (aucun cours)'}`
         : `${item.matiere}${item.sous_matiere ? ' › ' + item.sous_matiere : ''}${item.cours ? ' › ' + item.cours : ' (aucun cours)'}`
     document.getElementById('assigner-lieu-actuel').textContent = `Lieu principal actuel : ${lieu}`
     document.getElementById('assigner-status').textContent = ''
@@ -528,18 +531,8 @@ export async function renderOrganisation(container) {
     const cible = tousLesEmplacementsCache.find((c) => c.id === emplacementId)
     if (!cible) return
     const { type } = assignerCourant
-    // Cas/QCM n'ont pas de sous_matiere en base : "Déplacer" vers une sous-matière ne peut pas
-    // les y faire apparaître (seul le niveau matière/cours existe pour ces deux types) — le
-    // dire clairement plutôt que de silencieusement ne rien faire (le champ cible restait
-    // identique à sa valeur actuelle, donc rien ne bougeait sans qu'aucune erreur ne s'affiche).
-    // "Attacher" (contenu_cours) n'a pas cette limite : c'est le chemin qui marche pour de vrai.
-    if (type !== 'fiches' && cible.niveau === 'sous-matiere') {
-      statusEl.textContent =
-        'Les cas et QCM n\'ont pas de sous-matière propre (seulement matière et cours) — « Déplacer » ne peut pas placer ceci ici. Utilise plutôt « Attacher aussi ici » ci-dessous pour le rattacher précisément à cette sous-matière.'
-      statusEl.className = 'import-status'
-      return
-    }
-
+    // Fiches, cas et QCM ont tous les trois une colonne sous_matiere (migration 002) : peu
+    // importe le type, la cible peut être une matière, une sous-matière ou un cours.
     const parties = cible.chemin.split(' › ')
     const coursCible = cible.niveau === 'cours' ? cible.nom : null
     const sousMatiereCible = cible.niveau === 'cours' ? (parties.length === 3 ? parties[1] : null) : cible.niveau === 'sous-matiere' ? cible.nom : null
@@ -549,10 +542,10 @@ export async function renderOrganisation(container) {
       if (type === 'fiches') {
         await updateFiche(id, { matiere: cible.racine, sous_matiere: sousMatiereCible, cours: coursCible })
       } else if (type === 'cas') {
-        await updateCas(id, { matiere: cible.racine, cours: coursCible })
+        await updateCas(id, { matiere: cible.racine, sous_matiere: sousMatiereCible, cours: coursCible })
       } else {
         const matieres = (item.matieres || []).includes(cible.racine) ? item.matieres : [...(item.matieres || []), cible.racine]
-        await updateQcm(id, { matieres, cours: coursCible })
+        await updateQcm(id, { matieres, sous_matiere: sousMatiereCible, cours: coursCible })
       }
       assignerOverlay.classList.add('hidden')
       await recharger()
@@ -706,14 +699,14 @@ export async function renderOrganisation(container) {
     const contenu = contenuDuCours(racineAncienne, sousMatiereAncienne, noeud.nom, noeud.id)
     await Promise.all([
       ...contenu.fiches.filter((f) => !f._attache).map((f) => updateFiche(f.id, { matiere: racineNouvelle, sous_matiere: sousMatiereNouvelle, cours: noeud.nom })),
-      ...contenu.cas.filter((c) => !c._attache).map((c) => updateCas(c.id, { matiere: racineNouvelle, cours: noeud.nom })),
+      ...contenu.cas.filter((c) => !c._attache).map((c) => updateCas(c.id, { matiere: racineNouvelle, sous_matiere: sousMatiereNouvelle, cours: noeud.nom })),
       ...contenu.qcm
         .filter((q) => !q._attache)
         .map((q) => {
           const matieres = (q.matieres || []).includes(racineAncienne)
             ? q.matieres.map((m) => (m === racineAncienne ? racineNouvelle : m))
             : [...(q.matieres || []), racineNouvelle]
-          return updateQcm(q.id, { matieres, cours: noeud.nom })
+          return updateQcm(q.id, { matieres, sous_matiere: sousMatiereNouvelle, cours: noeud.nom })
         }),
     ])
   }
@@ -933,22 +926,26 @@ export async function renderOrganisation(container) {
     const parent = noeudsParId[noeud.parent_id]
     if (!parent) return
     if (!estCours(noeud, profondeur)) {
-      await renommerSousMatiereFiches(parent.nom, ancienNom, nouveauNom)
+      await Promise.all([
+        renommerSousMatiereFiches(parent.nom, ancienNom, nouveauNom),
+        renommerSousMatiereCas(parent.nom, ancienNom, nouveauNom),
+        renommerSousMatiereQcm(parent.nom, ancienNom, nouveauNom),
+      ])
       return
     }
     if (profondeur === 1) {
       await Promise.all([
         renommerCoursFiches(parent.nom, null, ancienNom, nouveauNom),
-        renommerCoursCas(parent.nom, ancienNom, nouveauNom),
-        renommerCoursQcm(parent.nom, ancienNom, nouveauNom),
+        renommerCoursCas(parent.nom, null, ancienNom, nouveauNom),
+        renommerCoursQcm(parent.nom, null, ancienNom, nouveauNom),
       ])
     } else {
       const racine = noeudsParId[parent.parent_id]
       if (!racine) return
       await Promise.all([
         renommerCoursFiches(racine.nom, parent.nom, ancienNom, nouveauNom),
-        renommerCoursCas(racine.nom, ancienNom, nouveauNom),
-        renommerCoursQcm(racine.nom, ancienNom, nouveauNom),
+        renommerCoursCas(racine.nom, parent.nom, ancienNom, nouveauNom),
+        renommerCoursQcm(racine.nom, parent.nom, ancienNom, nouveauNom),
       ])
     }
   }
@@ -1103,13 +1100,13 @@ export async function renderOrganisation(container) {
       `
     }
     if (type === 'cas') {
-      const chemin = `${item.matiere}${item.cours ? ' › ' + item.cours : ''} · niveau ${item.niveau}`
+      const chemin = `${item.matiere}${item.sous_matiere ? ' › ' + item.sous_matiere : ''}${item.cours ? ' › ' + item.cours : ''} · niveau ${item.niveau}`
       return `
         <p class="settings-desc">${escapeHtml(chemin)}</p>
         <p style="margin-top: 10px; font-size: 13px;">${escapeHtml(item.enonce?.situation || '').slice(0, 300)}</p>
       `
     }
-    const chemin = `${(item.matieres || []).join(', ')}${item.cours ? ' › ' + item.cours : ''}`
+    const chemin = `${(item.matieres || []).join(', ')}${item.sous_matiere ? ' › ' + item.sous_matiere : ''}${item.cours ? ' › ' + item.cours : ''}`
     const premiereQuestion = item.questions?.[0]?.enonce
     return `
       <p class="settings-desc">${escapeHtml(chemin)} · ${item.questions?.length || 0} question${item.questions?.length !== 1 ? 's' : ''}</p>

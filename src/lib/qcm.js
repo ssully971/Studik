@@ -168,8 +168,17 @@ export async function renommerMatiereQcm(ancienNom, nouveauNom) {
   }
 }
 
-export async function renommerCoursQcm(nomMatiere, ancienNom, nouveauNom) {
-  const { error } = await supabase.from('qcm').update({ cours: nouveauNom }).contains('matieres', [nomMatiere]).eq('cours', ancienNom)
+export async function renommerSousMatiereQcm(nomMatiere, ancienNom, nouveauNom) {
+  const { error } = await supabase.from('qcm').update({ sous_matiere: nouveauNom }).contains('matieres', [nomMatiere]).eq('sous_matiere', ancienNom)
+  if (error) throw error
+}
+
+// sousMatiere = null pour un cours directement rattaché à la matière (pas de couche
+// sous-matière au-dessus) — même signature que renommerCoursFiches (lib/fiches.js).
+export async function renommerCoursQcm(nomMatiere, sousMatiere, ancienNom, nouveauNom) {
+  let query = supabase.from('qcm').update({ cours: nouveauNom }).contains('matieres', [nomMatiere]).eq('cours', ancienNom)
+  query = sousMatiere ? query.eq('sous_matiere', sousMatiere) : query.is('sous_matiere', null)
+  const { error } = await query
   if (error) throw error
 }
 
