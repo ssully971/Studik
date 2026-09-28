@@ -927,3 +927,33 @@ Vérifié en direct (Playwright, mock Supabase en mémoire) à 375px et 1280px, 
 d'écran/mode verre dépoli, au survol (desktop) comme via `.ouvert` (tap tactile), avec un jeu de
 données volontairement chargé (8 matières) pour garantir un chevauchement géométrique réel entre
 le popup et la section Matières dans tous les cas. `npm test` et `npm run build` verts.
+
+## Organisation (P2) : "Déplacer" un cas/QCM vers une sous-matière — message plutôt que schéma
+
+**Contexte.** Signalé par Sullivan : impossible de mettre un élément directement dans une
+sous-matière sans cours, alors que ça marche pour une matière. Reproduit en direct (Playwright,
+mock Supabase) : pour une FICHE, "Déplacer ici" vers une sous-matière fonctionne (colonne
+`sous_matiere` existante, mise à jour correctement). Pour un CAS ou un QCM, le même bouton
+n'affichait aucune erreur mais ne faisait RIEN — `cas_cliniques`/`qcm` n'ont pas de colonne
+`sous_matiere` en base (seulement `matiere` + `cours`), donc `organisation.js` retombait
+silencieusement sur `{matiere: cible.racine, cours: null}`, des valeurs déjà identiques à
+l'état non classé de l'élément.
+
+**Retenu.** Bloquer l'action côté UI (pas d'appel à `updateCas`/`updateQcm`) et afficher un
+message explicite quand la cible choisie est une sous-matière et l'élément un cas/QCM, qui
+renvoie vers le bouton "Attacher aussi ici" juste en dessous (`contenu_cours`, qui accepte
+n'importe quel niveau de la hiérarchie — matière, sous-matière ou cours — sans cette limite,
+vérifié en direct que l'attachement fonctionne bien et que l'élément apparaît ensuite
+"Directement dans" la sous-matière visée). Aucun changement de comportement pour les fiches.
+
+**Écarté.** Ajouter une colonne `sous_matiere` à `cas_cliniques` et `qcm` pour qu'ils supportent
+vraiment ce niveau comme les fiches — proposé à Sullivan (avec l'option message ci-dessus), qui a
+choisi la seconde : pas de migration, pas de code à toucher dans tout ce qui lit/filtre déjà
+`cas_cliniques`/`qcm` par matière/cours (renommage en cascade, exports, stats...), pour un usage
+qui reste possible via "Attacher aussi ici".
+
+`npm test`/`npm run build` verts. Vérifié en direct (Playwright, mock Supabase) : le message
+s'affiche pour un cas ciblant une sous-matière sans modifier la ligne en base ; "Attacher aussi
+ici" depuis la même modale fonctionne toujours et rend l'élément visible sous la sous-matière ;
+aucune régression sur le déplacement d'une fiche vers une sous-matière (fonctionnait déjà,
+continue de fonctionner).
