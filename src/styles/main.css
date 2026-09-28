@@ -1073,6 +1073,23 @@ a.tag:hover,
   color: #C46A5C;
 }
 
+/* Propositions de QCM (qcm-jouer, qcm-retry-session, moteur Externat question-engine.js)
+   UNIQUEMENT — .checkbox-label reste inchangée partout ailleurs (Paramètres, Organisation,
+   ECOS...). Case et texte plus grands, zone tactile ≥44px (recommandation d'accessibilité
+   tactile), sans toucher au code couleur ok/missed/wrong ni aux data-item consommés par les
+   raccourcis clavier (classes ajoutées en plus, jamais à la place). */
+.checkbox-label.qcm-proposition {
+  font-size: 16px;
+  padding: 14px 16px;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.checkbox-label.qcm-proposition input {
+  width: 20px;
+  height: 20px;
+}
+
 .correction {
   margin-top: 20px;
   border-top: 1px solid var(--hairline);

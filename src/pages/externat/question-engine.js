@@ -25,7 +25,7 @@ const CLES_TCS = ['-2', '-1', '0', '1', '2']
 
 function ligneCheckbox(type, i, p, name) {
   return `
-    <label class="checkbox-label" data-item="${i}" data-texte-filtre="${escapeHtml((p.texte || '').toLowerCase())}">
+    <label class="checkbox-label qcm-proposition" data-item="${i}" data-texte-filtre="${escapeHtml((p.texte || '').toLowerCase())}">
       <input type="${type}" ${name ? `name="${name}"` : ''} data-index="${i}" data-prop-id="${escapeHtml(p.id)}" />
       <span>${richText(p.texte)}</span>
     </label>
@@ -64,7 +64,7 @@ export function renderZoneReponse(question, propositions) {
       `
     case 'TCS':
       return `<div class="checkbox-group" id="items-group">${CLES_TCS.map((cle, i) => `
-        <label class="checkbox-label" data-item="${i}">
+        <label class="checkbox-label qcm-proposition" data-item="${i}">
           <input type="radio" name="tcs-reponse" data-index="${i}" data-vote="${cle}" />
           <span>${escapeHtml(LABELS_TCS[i])}</span>
         </label>

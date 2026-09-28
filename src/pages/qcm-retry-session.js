@@ -93,7 +93,7 @@ export async function renderQcmRetrySession(container) {
             ${q.items
               .map(
                 (item, i) => `
-              <label class="checkbox-label" data-item="${i}">
+              <label class="checkbox-label qcm-proposition" data-item="${i}">
                 <input type="checkbox" data-index="${i}" />
                 <span>${escapeHtml(item.texte)}</span>
               </label>
