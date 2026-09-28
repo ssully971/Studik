@@ -1259,6 +1259,30 @@ a.tag:hover,
   display: none;
 }
 
+/* Bouton flottant "Constantes biologiques" (§8 lot 6) : visible sur tous les écrans externat
+   (bascule dans main.js/appliquerNavPourCycle, jamais par page), masqué en mode P2 via .hidden
+   (règle combinée, comme chaque composant .hidden de ce projet — voir CLAUDE.md). */
+.constantes-flottant-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 15;
+}
+
+.constantes-flottant-btn.hidden {
+  display: none;
+}
+
 .mobile-search-toggle {
   display: none;
 }
@@ -1488,6 +1512,12 @@ a.tag:hover,
     justify-content: center;
     font-size: 18px;
     font-weight: 700;
+  }
+
+  /* Bouton flottant "Constantes biologiques" (§8 lot 6) : remonté au-dessus de la tabbar mobile
+     fixe, jamais superposé dessus. */
+  .constantes-flottant-btn {
+    bottom: 76px;
   }
 
     .search-wrapper {

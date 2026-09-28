@@ -563,3 +563,20 @@ seul arbre avec `data-onglet-mobile` suffit ici puisqu'il n'y a qu'un seul id `#
 à cibler, pas de risque de doublon d'id contrairement à la grille ECOS cochable des deux côtés.
 Les questions de LCA comptant double dans les statistiques (§5.9/§8) : reporté au lot 7 (page
 Stats), pas une préoccupation du joueur lui-même.
+
+### Modale Constantes biologiques : bouton flottant dans la coquille, pas une page
+**Contexte.** §8 lot 6 : "accessible depuis tous les écrans externat (bouton flottant et raccourci
+clavier libre, vérifié dans le résolveur)".
+**Retenu.** `pages/externat/constantes-modal.js` + un bouton flottant posé une seule fois dans
+`renderShell` (main.js), visible/masqué par `appliquerNavPourCycle()` selon le cycle courant —
+jamais par page, pour rester vraiment disponible "depuis tous les écrans" sans dépendre de quelle
+page est montée. Réutilise `.modal-overlay`/`.modal-panel` (classes déjà partagées) : Échap la
+ferme gratuitement via le mécanisme générique déjà câblé dans `executerRaccourci`
+(`close-modal` cherche n'importe quel `.modal-overlay:not(.hidden)`), aucun code à ajouter.
+Cache module (un seul appel réseau par session, les valeurs ne changent jamais en cours de route).
+**Raccourci clavier "v"** : `resoudreRaccourci` le résout sur N'IMPORTE QUELLE route, y compris en
+P2 (fonction pure, ignore le cycle par conception, même principe que `routeAccueilParDefaut()`
+pour "g h") — c'est `executerRaccourci` (main.js) qui vérifie `estExternat()` avant d'ouvrir la
+modale, pas le résolveur. Testé : "v" en P2 ne fait rien, "v" en Externat bascule la modale.
+**Écarté.** Une page `#constantes` séparée : aurait perdu le contexte de la question/du dossier en
+cours à chaque consultation (rupture du flux d'examen), contrairement à une modale superposée.

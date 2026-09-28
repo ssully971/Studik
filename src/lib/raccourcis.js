@@ -127,6 +127,11 @@ export function resoudreRaccourci(ctx) {
   if (key === '/') return { type: 'focus-search' }
   if (key === '?') return { type: 'help' }
   if (key.toLowerCase() === 'c') return { type: 'navigate', hash: '#capture' }
+  // Constantes biologiques (§8 lot 6) : "raccourci clavier libre" demandé par la spec — v(aleurs),
+  // libre partout (aucune route ne l'utilise). Résolu ici indépendamment du cycle P2/Externat
+  // (fonction pure, ne connaît pas le cycle) ; main.js n'exécute l'action que si le cycle est
+  // Externat, même principe que routeAccueilParDefaut()/executerRaccourci pour '#accueil'.
+  if (key.toLowerCase() === 'v') return { type: 'toggle-constantes' }
 
   if (key.toLowerCase() === 'n' && !ROUTES_SANS_N_R.includes(route)) return { type: 'navigate', hash: '#entrainement' }
   if (key.toLowerCase() === 'r' && !ROUTES_SANS_N_R.includes(route)) return { type: 'navigate', hash: '#revision' }
@@ -204,5 +209,6 @@ export function tableAide() {
     { touches: 'j / k, ↓ / ↑', description: 'Se déplacer dans une liste (référentiel, révision, erreurs, tag)' },
     { touches: 'Entrée', description: 'Ouvrir la ligne sélectionnée (référentiel, révision, tag)' },
     { touches: 't', description: 'Basculer Import ↔ Prompts (page #import)' },
+    { touches: 'v', description: 'Constantes biologiques (mode Externat)' },
   ]
 }

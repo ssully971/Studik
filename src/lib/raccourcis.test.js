@@ -351,13 +351,25 @@ describe('"t" bascule Import/Prompts sur #import', () => {
   })
 })
 
+describe('"v" ouvre/ferme les constantes biologiques (§8 lot 6)', () => {
+  it('résout sur n\'importe quelle route (le filtrage par cycle se fait dans main.js, pas ici)', () => {
+    expect(resoudreRaccourci({ route: 'edn-accueil', key: 'v', elementsPresents: [] })).toEqual({ type: 'toggle-constantes' })
+    expect(resoudreRaccourci({ route: 'accueil', key: 'v', elementsPresents: [] })).toEqual({ type: 'toggle-constantes' })
+  })
+
+  it('pas de collision : "v" reste sans effet le temps d\'une séquence "g" en attente', () => {
+    const ctx = { route: 'accueil', key: 'v', elementsPresents: [], sequenceEnAttente: { expireAt: Date.now() + 500 } }
+    expect(resoudreRaccourci(ctx)).toEqual({ type: 'clear-sequence' })
+  })
+})
+
 describe("absence de collision dans un même contexte", () => {
   // Pour chaque route, un ensemble représentatif de touches ne doit jamais produire deux
   // interprétations différentes selon l'ordre des règles : on vérifie juste qu'une seule
   // branche du résolveur répond par touche (propriété structurelle du code, testée par la
   // stabilité du résultat sur plusieurs appels identiques + absence de throw).
   const routes = ['accueil', 'referentiel', 'revision', 'erreurs', 'tag', 'entrainement', 'session', 'fiche', 'qcm-jouer', 'qcm-retry-session']
-  const touches = ['/', 'n', 'r', ' ', 'Enter', 'Escape', 'c', 'g', 'e', 'b', 'p', 'j', 'k', '1', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']
+  const touches = ['/', 'n', 'r', ' ', 'Enter', 'Escape', 'c', 'g', 'e', 'b', 'p', 'j', 'k', 't', 'v', '1', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']
 
   routes.forEach((route) => {
     touches.forEach((key) => {

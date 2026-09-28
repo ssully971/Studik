@@ -31,6 +31,7 @@ import { renderEdnZap } from './pages/externat/edn-zap.js'
 import { renderEcosStations } from './pages/externat/ecos-stations.js'
 import { renderEcosStation } from './pages/externat/ecos-station.js'
 import { renderEdnSessionResume } from './pages/externat/edn-session.js'
+import { toggleModaleConstantes, fermerModaleConstantes } from './pages/externat/constantes-modal.js'
 import { renderAccueil } from './pages/accueil.js'
 import { renderReferentiel } from './pages/referentiel.js'
 import { renderImport } from './pages/import.js'
@@ -188,6 +189,10 @@ function appliquerNavPourCycle() {
   const badge = document.getElementById('cycle-badge')
   if (badge) badge.textContent = cycle === 'externat' ? 'EXTERNAT' : 'P2'
 
+  const constantesBtn = document.getElementById('constantes-flottant-btn')
+  if (constantesBtn) constantesBtn.classList.toggle('hidden', cycle !== 'externat')
+  if (cycle !== 'externat') fermerModaleConstantes()
+
   appliquerVisibilitePeriodeSelect()
 
   router()
@@ -248,6 +253,17 @@ function renderShell(user) {
     </header>
     <main id="content"></main>
     <nav class="mobile-tabbar"></nav>
+
+    <button id="constantes-flottant-btn" class="constantes-flottant-btn hidden" type="button" title="Constantes biologiques (v)">🧪</button>
+    <div id="constantes-modal-overlay" class="modal-overlay hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <span class="voice">Constantes biologiques</span>
+          <button id="constantes-modal-close" class="btn" style="width: auto;">Fermer</button>
+        </div>
+        <div id="constantes-modal-content"></div>
+      </div>
+    </div>
   `
 
   const dropdown = document.getElementById('menu-dropdown')
@@ -271,6 +287,12 @@ function renderShell(user) {
     window.location.hash = '#parametres'
     router()
     requestAnimationFrame(() => document.getElementById('cycle-card')?.scrollIntoView({ block: 'start' }))
+  })
+
+  document.getElementById('constantes-flottant-btn').addEventListener('click', () => toggleModaleConstantes())
+  document.getElementById('constantes-modal-close').addEventListener('click', () => fermerModaleConstantes())
+  document.getElementById('constantes-modal-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'constantes-modal-overlay') fermerModaleConstantes()
   })
 
   const searchWrapper = document.getElementById('search-wrapper')
@@ -636,6 +658,12 @@ function executerRaccourci(action) {
       break
     case 'close-modal':
       document.querySelector('.modal-overlay:not(.hidden)')?.classList.add('hidden')
+      break
+    case 'toggle-constantes':
+      // resoudreRaccourci() résout "v" indépendamment du cycle (fonction pure) ; seule cette
+      // couche DOM sait qu'il ne doit agir qu'en mode Externat, même principe que
+      // routeAccueilParDefaut() ci-dessus pour "g h".
+      if (estExternat()) toggleModaleConstantes()
       break
     case 'escape-default':
       echapParDefaut(action.goBack)
