@@ -527,15 +527,25 @@ export async function renderOrganisation(container) {
     const emplacementId = document.getElementById('assigner-cours-select').value
     const cible = tousLesEmplacementsCache.find((c) => c.id === emplacementId)
     if (!cible) return
+    const { type } = assignerCourant
+    // Cas/QCM n'ont pas de sous_matiere en base : "Déplacer" vers une sous-matière ne peut pas
+    // les y faire apparaître (seul le niveau matière/cours existe pour ces deux types) — le
+    // dire clairement plutôt que de silencieusement ne rien faire (le champ cible restait
+    // identique à sa valeur actuelle, donc rien ne bougeait sans qu'aucune erreur ne s'affiche).
+    // "Attacher" (contenu_cours) n'a pas cette limite : c'est le chemin qui marche pour de vrai.
+    if (type !== 'fiches' && cible.niveau === 'sous-matiere') {
+      statusEl.textContent =
+        'Les cas et QCM n\'ont pas de sous-matière propre (seulement matière et cours) — « Déplacer » ne peut pas placer ceci ici. Utilise plutôt « Attacher aussi ici » ci-dessous pour le rattacher précisément à cette sous-matière.'
+      statusEl.className = 'import-status'
+      return
+    }
+
     const parties = cible.chemin.split(' › ')
-    // Cas/QCM n'ont pas de sous_matiere en base : viser une sous-matière retombe sur sa matière,
-    // sans cours précis — mieux qu'un échec, et rattrapable via "Attacher aussi ici" au niveau
-    // exact voulu (contenu_cours n'a pas cette limite).
     const coursCible = cible.niveau === 'cours' ? cible.nom : null
     const sousMatiereCible = cible.niveau === 'cours' ? (parties.length === 3 ? parties[1] : null) : cible.niveau === 'sous-matiere' ? cible.nom : null
 
     try {
-      const { type, id, item } = assignerCourant
+      const { id, item } = assignerCourant
       if (type === 'fiches') {
         await updateFiche(id, { matiere: cible.racine, sous_matiere: sousMatiereCible, cours: coursCible })
       } else if (type === 'cas') {
