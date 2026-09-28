@@ -5,6 +5,7 @@ import { estTableAbsente, htmlMigrationManquante } from '../../lib/externat-sche
 import { escapeHtml } from '../../lib/escape.js'
 import { afficherLoader } from '../../lib/loader.js'
 import { demarrerSessionExternat } from './edn-session.js'
+import { demarrerExamenExterne } from './edn-examen.js'
 
 const STATUTS = ['brouillon', 'valide', 'archive']
 
@@ -63,6 +64,7 @@ export async function renderEdnBanque(container) {
 
       <div class="import-actions">
         <button class="btn primary" id="banque-lancer-session-btn" style="width: auto;">Lancer une session sur ces résultats</button>
+        <button class="btn" id="banque-lancer-examen-btn" style="width: auto;">Lancer un examen (chrono global)</button>
       </div>
 
       <div id="banque-list" class="fiches-list"></div>
@@ -100,6 +102,8 @@ export async function renderEdnBanque(container) {
     document.getElementById('banque-count').textContent = `${filtrees.length} / ${lignes.length}`
     const lancerBtn = document.getElementById('banque-lancer-session-btn')
     if (lancerBtn) lancerBtn.disabled = filtrees.length === 0
+    const lancerExamenBtn = document.getElementById('banque-lancer-examen-btn')
+    if (lancerExamenBtn) lancerExamenBtn.disabled = filtrees.length === 0
     renderListe(filtrees)
   }
 
@@ -219,6 +223,19 @@ export async function renderEdnBanque(container) {
   document.getElementById('banque-lancer-session-btn').addEventListener('click', () => {
     if (filtreesCourantes.length === 0) return
     demarrerSessionExternat(filtreesCourantes, `Banque (${filtreesCourantes.length})`, 'entrainement')
+  })
+
+  document.getElementById('banque-lancer-examen-btn').addEventListener('click', () => {
+    if (filtreesCourantes.length === 0) return
+    const saisie = window.prompt('Durée de l\'examen en minutes :', '60')
+    if (saisie === null) return
+    const dureeMinutes = Number(saisie)
+    if (!Number.isFinite(dureeMinutes) || dureeMinutes <= 0) {
+      alert('Durée invalide.')
+      return
+    }
+    const simulateurUness = window.confirm('Activer le thème "Simulateur UNESS" (clair, sans fond d\'écran) pour cet examen ?')
+    demarrerExamenExterne(filtreesCourantes, dureeMinutes, simulateurUness)
   })
 
   document.getElementById('banque-corriger-btn').addEventListener('click', (e) => {

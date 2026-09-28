@@ -31,6 +31,7 @@ import { renderEdnZap } from './pages/externat/edn-zap.js'
 import { renderEcosStations } from './pages/externat/ecos-stations.js'
 import { renderEcosStation } from './pages/externat/ecos-station.js'
 import { renderEdnSessionResume } from './pages/externat/edn-session.js'
+import { renderEdnExamen } from './pages/externat/edn-examen.js'
 import { toggleModaleConstantes, fermerModaleConstantes } from './pages/externat/constantes-modal.js'
 import { renderAccueil } from './pages/accueil.js'
 import { renderReferentiel } from './pages/referentiel.js'
@@ -65,6 +66,7 @@ const EDN_ROUTE_HANDLERS = {
   'ecos-stations': (content) => renderEcosStations(content),
   'ecos-station': (content, id, segment) => renderEcosStation(content, id, segment),
   'edn-session-resume': (content) => renderEdnSessionResume(content),
+  'edn-examen': (content) => renderEdnExamen(content),
 }
 
 function estRouteExternat(route) {

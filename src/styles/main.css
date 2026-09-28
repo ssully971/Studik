@@ -2621,3 +2621,43 @@ a.tag:hover,
 @keyframes spinner-rotation {
   to { transform: rotate(360deg); }
 }
+
+/* Option "Simulateur UNESS" (§8 lot 6) : thème clair et sobre, limité à l'écran d'examen — une
+   classe sur le conteneur de l'examen (jamais un thème global/persisté, contrairement au mode
+   sombre/clair habituel du site qu'on n'a pas). Redéfinit les tokens de couleur comme le fait déjà
+   @media print pour un besoin similaire (voir CLAUDE.md), sans fond d'écran ni verre dépoli.
+   body:has(...) reste scopé à la présence réelle de la classe dans le DOM (jamais persisté au-delà
+   de la page d'examen montée). */
+.simulateur-uness {
+  --ink: #F4F4F0;
+  --surface: #FFFFFF;
+  --surface-2: #ECECE8;
+  --hairline: #D6D6D0;
+  --text: #1A1A1A;
+  --text-dim: #555555;
+  --text-faint: #8A8A85;
+  --clinique: #4A4A4A;
+  --mecanisme: #4A4A4A;
+  --structure: #4A4A4A;
+  background: var(--ink);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.simulateur-uness .checkbox-label.wrong,
+.simulateur-uness .edn-prop-wrong {
+  border-color: var(--hairline);
+  color: var(--text);
+}
+
+body:has(.simulateur-uness) #wallpaper-layer {
+  display: none;
+}
+
+body:has(.simulateur-uness) .topbar,
+body:has(.simulateur-uness) .mobile-tabbar {
+  background: #FFFFFF !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}

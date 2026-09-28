@@ -580,3 +580,49 @@ pour "g h") — c'est `executerRaccourci` (main.js) qui vérifie `estExternat()`
 modale, pas le résolveur. Testé : "v" en P2 ne fait rien, "v" en Externat bascule la modale.
 **Écarté.** Une page `#constantes` séparée : aurait perdu le contexte de la question/du dossier en
 cours à chaque consultation (rupture du flux d'examen), contrairement à une modale superposée.
+
+### Mode examen (§8 lot 6) : joueur dédié `edn-examen.js`, pas une variante de mode dans edn-question/edn-dossier
+**Contexte.** §8 : "compte à rebours global configurable, soumission forcée à zéro, aucune
+correction avant la fin." Très différent du flux entraînement existant (correction immédiate après
+chaque question, chrono par question, tag d'erreur immédiat et bloquant si raté).
+**Retenu.** Un nouveau module `pages/externat/edn-examen.js` (`demarrerExamenExterne(cibles,
+dureeMinutes, simulateurUness)`, lancé depuis un bouton "Lancer un examen" sur `#edn-banque`),
+plutôt que d'ajouter un 3e mode dans `edn-question.js`/`edn-dossier.js` déjà denses. Chaque dossier
+sélectionné est **éclaté** en questions individuelles pour l'examen (un seul chrono global sur
+l'ensemble, questions et dossiers mélangés librement) — mais les tentatives restent regroupées et
+enregistrées **une par origine** (dossier ou question isolée) à la fin, exactement comme en
+entraînement, pas une tentative par question de dossier.
+**Écarté.** Garder la structure "un dossier = ses questions ensemble" pendant l'examen lui-même :
+le chrono global rend cette distinction sans intérêt pendant le jeu (aucune question ne se
+distingue visuellement d'une autre), seul le regroupement au moment d'enregistrer compte.
+**Tags d'erreur au bilan (§7.4 : "proposé au bilan de fin" en mode examen)** : un seul sélecteur de
+tags pour tout l'examen (appliqué à chaque origine ratée) plutôt qu'un sélecteur par origine —
+`attacherTagsErreurChips` cible un id fixe `#tags-erreur-chips`, non paramétrable ; multiplier les
+instances aurait demandé de le modifier pour un gain marginal (l'examen entier partage déjà un
+seul contexte de révision).
+**Bug trouvé et corrigé en testant en direct** : le premier jet de l'écran de revue utilisait des
+ids uniques par bloc (`zone-reponse-revue-${i}`/`correction-revue-${i}`) pour éviter les doublons
+d'id — mais `renderEtVerrouillerCorrection` (question-engine.js) cherche `#correction-zone` **tel
+quel**, sans paramètre. Résultat : aucune correction ne s'affichait (retour silencieux de la
+fonction, `zone` valant `null`). Corrigé en réutilisant les ids exacts attendus (`#zone-reponse`,
+`#correction-zone`) : `querySelector` reste scopé au sous-arbre de CHAQUE bloc de la revue, donc
+l'id dupliqué document-wide (HTML invalide mais sans conséquence pratique ici) résout correctement
+la bonne zone pour chaque question — confirmé par un test Playwright qui dumpait le HTML réel de
+la revue avant de conclure, pas seulement un contrôle de présence de classe CSS.
+**Simulateur UNESS** : classe `.simulateur-uness` posée sur le conteneur (`.wrap`) de chaque écran
+du joueur d'examen, jamais un thème global. Redéfinit les tokens de couleur (comme `@media print`
+le fait déjà pour un besoin similaire) et neutralise les deux classes de correction qui utilisent
+une couleur codée en dur plutôt qu'une variable (`.checkbox-label.wrong`, `.edn-prop-wrong`,
+toutes deux `#C46A5C`) — couverture volontairement limitée aux éléments de correction réellement
+visibles sur cet écran, pas un audit exhaustif de chaque couleur codée en dur du site. `#wallpaper-
+layer` et le verre dépoli de la topbar/tabbar sont masqués via `body:has(.simulateur-uness)`,
+scopé à la présence réelle de la classe dans le DOM (jamais persisté au-delà de la page montée).
+**Raccourcis clavier** : `edn-examen` ajoutée à `ROUTES_QCM` (Entrée retombe directement sur
+"suivant-btn", il n'y a pas de "valider-btn" puisqu'aucune correction n'est montrée avant la fin ;
+1-5 cochent une proposition), à `ROUTES_SANS_ARROW_LEFT` et à `ROUTES_SANS_N_R` (quitter un examen
+en cours par accident coûterait bien plus qu'une seule question).
+Vérifié en direct (Playwright, dialogues `prompt`/`confirm` interceptés) : sélection dans la
+Banque → lancement → chrono global qui décroît → aucune correction avant la fin → revue avec
+correction colorée correcte pour chaque question → tags d'erreur optionnels → tentatives
+enregistrées une par origine → soumission forcée confirmée en laissant le chrono expirer sans
+interagir. `npm test` (473 tests) et `npm run build` verts.
