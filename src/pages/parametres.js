@@ -1,4 +1,7 @@
 import { getCurrentUser, updatePseudo, updatePassword } from '../lib/auth.js'
+import { getCycle, setCycle, estExternat, getAfficherP2EnExternat, setAfficherP2EnExternat } from '../lib/cycle.js'
+import { getPlafondRevisions, setPlafondRevisions } from '../lib/edn-dashboard.js'
+import { getTagsErreur, setTagsErreur, TAGS_ERREUR_DEFAUT } from '../lib/edn-tags-erreur.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
 import { getFiches, getAllFichesRaw, insertFiches, deleteAllFiches } from '../lib/fiches.js'
 import { getAllCas, insertCas, deleteAllCas, getStatsTentatives, deleteAllTentatives, restaurerTentatives } from '../lib/cas.js'
@@ -91,6 +94,18 @@ export async function renderParametres(container) {
   const user = await getCurrentUser()
   const pseudoActuel = user?.user_metadata?.pseudo || ''
 
+  const modeExternat = estExternat()
+  let plafondRevisions = 100
+  let tagsErreur = TAGS_ERREUR_DEFAUT
+  if (modeExternat) {
+    try {
+      ;[plafondRevisions, tagsErreur] = await Promise.all([getPlafondRevisions(), getTagsErreur()])
+    } catch {
+      // dégradation propre : garde les valeurs par défaut si la migration externat n'est pas
+      // encore appliquée ou en cas d'erreur réseau
+    }
+  }
+
   container.innerHTML = `
     <div class="wrap">
       <div class="section-head">
@@ -102,6 +117,49 @@ export async function renderParametres(container) {
           <h3 class="voice">Compte</h3>
           <p class="settings-desc">Connecté en tant que ${user?.email || ''}</p>
         </div>
+
+        <div class="settings-card" id="cycle-card">
+          <h3 class="voice">Cycle d'études</h3>
+          <p class="settings-desc">Change l'accueil, la navigation et les filtres entre le référentiel P2 et le mode Externat (EDN/ECOS). L'identité visuelle ne change pas.</p>
+          <div class="import-actions">
+            <button id="cycle-preclinique-btn" class="btn${getCycle() === 'preclinique' ? ' primary' : ''}" style="width: auto;">P2 (préclinique)</button>
+            <button id="cycle-externat-btn" class="btn${getCycle() === 'externat' ? ' primary' : ''}" style="width: auto;">Externat</button>
+          </div>
+          ${
+            modeExternat
+              ? `
+          <label class="checkbox-label" style="width: auto; margin-top: 14px;">
+            <input type="checkbox" id="afficher-p2-en-externat-checkbox" ${getAfficherP2EnExternat() ? 'checked' : ''} />
+            <span>Afficher le Référentiel et le contenu P2 du Carnet d'erreurs en mode Externat (étiquetés "(P2)")</span>
+          </label>
+          `
+              : ''
+          }
+        </div>
+
+        ${
+          modeExternat
+            ? `
+        <div class="settings-card">
+          <h3 class="voice">Externat — révision</h3>
+          <p class="settings-desc">Plafond anti-surcharge du SRS (§7.1) : au-delà, les cibles dues sont reportées (par priorité puis par ancienneté du retard), jamais perdues.</p>
+          <label style="font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 4px;">Révisions max / jour</label>
+          <input type="number" id="plafond-revisions-input" class="search-input settings-input" min="1" value="${plafondRevisions}" style="max-width: 120px;" />
+          <div class="import-actions">
+            <button id="plafond-revisions-save-btn" class="btn primary" style="width: auto;">Enregistrer</button>
+            ${statusHTML('plafond-revisions-status')}
+          </div>
+
+          <p class="settings-desc" style="margin-top: 16px;">Tags d'erreur du carnet (§7.4), un par ligne.</p>
+          <textarea id="tags-erreur-textarea" class="notes-textarea" style="min-height: 100px;">${tagsErreur.join('\n')}</textarea>
+          <div class="import-actions">
+            <button id="tags-erreur-save-btn" class="btn primary" style="width: auto;">Enregistrer</button>
+            ${statusHTML('tags-erreur-status')}
+          </div>
+        </div>
+        `
+            : ''
+        }
 
         <div class="settings-card">
           <h3 class="voice">Thème</h3>
@@ -276,6 +334,56 @@ export async function renderParametres(container) {
       </div>
     </div>
   `
+
+  document.getElementById('cycle-preclinique-btn').addEventListener('click', async () => {
+    if (getCycle() === 'preclinique') return
+    if (!(await demanderConfirmation('Repasser en mode P2 ? La navigation et l’accueil redeviennent ceux du référentiel P2.'))) return
+    setCycle('preclinique')
+    renderParametres(container)
+  })
+
+  document.getElementById('cycle-externat-btn').addEventListener('click', async () => {
+    if (getCycle() === 'externat') return
+    if (!(await demanderConfirmation('Passer en mode Externat ? La navigation et l’accueil basculent vers le tableau de bord Externat.'))) return
+    setCycle('externat')
+    renderParametres(container)
+  })
+
+  document.getElementById('afficher-p2-en-externat-checkbox')?.addEventListener('change', (e) => {
+    setAfficherP2EnExternat(e.target.checked)
+  })
+
+  document.getElementById('plafond-revisions-save-btn')?.addEventListener('click', async () => {
+    const valeur = parseInt(document.getElementById('plafond-revisions-input').value, 10)
+    if (!Number.isInteger(valeur) || valeur < 1) {
+      setStatus('plafond-revisions-status', 'Entre un nombre entier ≥ 1.', 'error')
+      return
+    }
+    try {
+      await setPlafondRevisions(valeur)
+      setStatus('plafond-revisions-status', 'Enregistré.', 'success')
+    } catch (err) {
+      setStatus('plafond-revisions-status', 'Erreur : ' + err.message, 'error')
+    }
+  })
+
+  document.getElementById('tags-erreur-save-btn')?.addEventListener('click', async () => {
+    const tags = document
+      .getElementById('tags-erreur-textarea')
+      .value.split('\n')
+      .map((t) => t.trim())
+      .filter(Boolean)
+    if (tags.length === 0) {
+      setStatus('tags-erreur-status', 'Au moins un tag est nécessaire.', 'error')
+      return
+    }
+    try {
+      await setTagsErreur(tags)
+      setStatus('tags-erreur-status', 'Enregistré.', 'success')
+    } catch (err) {
+      setStatus('tags-erreur-status', 'Erreur : ' + err.message, 'error')
+    }
+  })
 
   document.getElementById('theme-dark-btn').addEventListener('click', () => {
     setTheme('dark')

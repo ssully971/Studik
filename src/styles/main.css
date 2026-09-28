@@ -844,6 +844,136 @@ a.tag:hover,
   font-weight: 600;
 }
 
+.rt-list {
+  margin: 8px 0 8px 18px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.rt-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.rt-table th,
+.rt-table td {
+  border: 1px solid var(--hairline);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.rt-table th {
+  color: var(--text-dim);
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 500;
+  background: var(--surface-2);
+}
+
+.rt-table.normes-masquees th:last-child,
+.rt-table.normes-masquees td:last-child {
+  display: none;
+}
+
+.normes-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 12px;
+  color: var(--text-dim);
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  padding: 4px 10px;
+  background: var(--surface-2);
+  cursor: pointer;
+  margin: 6px 0;
+  width: auto;
+}
+
+.normes-toggle-btn:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
+/* Moteur docimologique EDN (§5) — code couleur de correction propre (vert/rouge/bleu-gris),
+   distinct des classes item-explication-* de qcm-jouer.js dont le "manqué" est ocre. */
+.edn-prop-ok {
+  color: var(--clinique);
+}
+
+.edn-prop-wrong {
+  color: #C46A5C;
+}
+
+.edn-prop-neutre {
+  color: var(--structure);
+}
+
+.zap-image-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  touch-action: manipulation;
+}
+
+.zap-image-wrap img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid var(--hairline);
+  cursor: crosshair;
+}
+
+.zap-marker {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: rgba(232, 136, 122, 0.85);
+  border: 2px solid #fff;
+  pointer-events: none;
+}
+
+.zap-zone {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid var(--structure);
+  pointer-events: none;
+}
+
+.zap-zone-ok {
+  border-color: var(--clinique);
+  background: rgba(78, 161, 137, 0.15);
+}
+
+.zap-zone-neutre {
+  border-color: var(--structure);
+  background: rgba(108, 143, 194, 0.12);
+}
+
+.edn-progress {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.edn-progress-segment {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-2);
+}
+
+.edn-progress-segment.rempli {
+  background: var(--structure);
+}
+
 .notes-textarea {
   width: 100%;
   min-height: 100px;
@@ -994,6 +1124,25 @@ a.tag:hover,
 .now-cell .desc {
   font-size: 12px;
   color: var(--text-dim);
+}
+
+.cycle-badge {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 4px 9px;
+  cursor: pointer;
+  flex-shrink: 0;
+  width: auto;
+}
+
+.cycle-badge:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
 }
 
 .periode-select {
@@ -1581,6 +1730,11 @@ a.tag:hover,
 
 .streak-card {
   position: relative;
+  /* isolation crée un contexte d'empilement dédié : le z-index de .heatmap-popup ne dépend plus
+     de ce qui l'entoure (une section suivante pourrait sinon, selon le navigateur, finir au-dessus
+     du popup malgré son z-index positif — .streak-card seul en position:relative n'établit pas de
+     contexte d'empilement). */
+  isolation: isolate;
 }
 
 .heatmap-popup {
@@ -1597,7 +1751,7 @@ a.tag:hover,
   pointer-events: none;
   transform: translateY(-4px);
   transition: opacity 0.15s ease, transform 0.15s ease;
-  z-index: 5;
+  z-index: 20;
 }
 
 .streak-card:hover .heatmap-popup,

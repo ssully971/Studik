@@ -5,15 +5,19 @@ import { supabase } from './supabase.js'
 // Nécessaire car `supabase.upsert()` construit toujours une ligne complète
 // avant de vérifier le conflit, donc une mise à jour partielle omettant une
 // colonne NOT NULL (ex. "titre") est rejetée même quand la ligne existe déjà.
-export async function upsertPartiel(table, items) {
+//
+// `idColumn` : nom de la colonne clé primaire dans la table ET dans chaque item (par défaut
+// "id" — "numero" pour r2c_items/r2c_sdd, voir lib/r2c.js, dont la clé est un entier).
+export async function upsertPartiel(table, items, idColumn = 'id') {
   const results = []
   for (const item of items) {
-    const { data: existing, error: errCheck } = await supabase.from(table).select('id').eq('id', item.id).maybeSingle()
+    const idValeur = item[idColumn]
+    const { data: existing, error: errCheck } = await supabase.from(table).select(idColumn).eq(idColumn, idValeur).maybeSingle()
     if (errCheck) throw errCheck
 
     if (existing) {
-      const { id, ...champs } = item
-      const { data, error } = await supabase.from(table).update(champs).eq('id', id).select()
+      const { [idColumn]: _id, ...champs } = item
+      const { data, error } = await supabase.from(table).update(champs).eq(idColumn, idValeur).select()
       if (error) throw error
       results.push(data[0])
     } else {
