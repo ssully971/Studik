@@ -4,6 +4,7 @@ import { getPeriodeActuelle } from '../lib/periode.js'
 import { checkinAujourdhui, getCheckins } from '../lib/checkins.js'
 import { computeStreak } from '../lib/streak.js'
 import { getAllTentativesQcmStats } from '../lib/qcm.js'
+import { getProgressions } from '../lib/qcm-progression.js'
 import { getMatieres, buildMatiereColorMap, couleurTab, getArbreMatieres, estCoursNoeud } from '../lib/matieres.js'
 import { getActiviteParJour } from '../lib/activite.js'
 import { getTentativesRatees } from '../lib/cas.js'
@@ -82,6 +83,8 @@ export async function renderAccueil(container) {
         <div class="heatmap-popup" id="heatmap-popup"></div>
       </div>
 
+      <div id="reprendre-section"></div>
+
       <div class="section-head">
         <h2 class="voice">Matières</h2>
         <span class="count" id="matiere-count"></span>
@@ -152,14 +155,53 @@ export async function renderAccueil(container) {
 
   try {
     const periode = getPeriodeActuelle()
-    const [fiches, tentativesQcm, matieres, arbre, erreursCas, erreursQcm] = await Promise.all([
+    const [fiches, tentativesQcm, matieres, arbre, erreursCas, erreursQcm, progressionsQcm] = await Promise.all([
       getFiches(periode ? { annee: periode.annee, semestre: periode.semestre } : {}),
       getAllTentativesQcmStats(),
       getMatieres({}),
       getArbreMatieres(periode ? { annee: periode.annee, semestre: periode.semestre } : {}),
       getTentativesRatees(),
       getQcmTentativesARevoir(),
+      getProgressions().catch(() => []),
     ])
+
+    // Bloc masqué s'il n'y a aucun QCM en cours — voir CLAUDE.md sur `class="hidden"` qui ne
+    // masque rien sans règle CSS dédiée : ici on ne rend simplement rien plutôt que de poser la
+    // classe. `p.qcm` peut être absent (QCM supprimé depuis) : ces lignes-là sont ignorées.
+    const reprises = progressionsQcm.filter((p) => p.qcm)
+    const reprendreSection = document.getElementById('reprendre-section')
+    if (reprises.length > 0) {
+      reprendreSection.innerHTML = `
+        <div class="section-head" style="margin-top: 40px;">
+          <h2 class="voice">Reprendre</h2>
+          <span class="count">${reprises.length} QCM en cours</span>
+        </div>
+        <div class="fiches-list">
+          ${reprises
+            .map((p) => {
+              const total = p.qcm.questions?.length || 0
+              return `
+            <div class="fiche-row">
+              <div class="tab"></div>
+              <div class="fiche-body">
+                <div class="fiche-top">
+                  <span class="fiche-title voice">${escapeHtml(p.qcm.titre)}</span>
+                  <span class="type-label">${escapeHtml(p.mode)}</span>
+                </div>
+                <div class="fiche-meta">Question ${p.index_courant + 1} / ${total}</div>
+              </div>
+              <div class="fiche-actions">
+                <a href="#qcm-jouer/${p.qcm_id}" class="btn primary" style="width: auto;">Reprendre</a>
+              </div>
+            </div>
+          `
+            })
+            .join('')}
+        </div>
+      `
+    } else {
+      reprendreSection.innerHTML = ''
+    }
     const ordreParMatiere = {}
     matieres.forEach((m) => {
       ordreParMatiere[m.nom] = m.ordre_affichage ?? 0

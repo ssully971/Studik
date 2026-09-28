@@ -54,6 +54,19 @@ describe('séquence "g" puis une lettre', () => {
     expect(r).toEqual({ type: 'navigate', hash: SEQUENCE_G.f, clearSequence: true })
   })
 
+  it('g puis r navigue vers le bloc "Reprendre" (accueil) — distinct de "r" seul (#revision)', () => {
+    const rSequence = resoudreRaccourci({
+      route: 'accueil',
+      key: 'r',
+      sequenceEnAttente: { expireAt: 2000 },
+      maintenant: 1500,
+    })
+    expect(rSequence).toEqual({ type: 'navigate', hash: '#accueil', clearSequence: true })
+
+    const rSeul = resoudreRaccourci({ route: 'accueil', key: 'r', maintenant: 1500 })
+    expect(rSeul).toEqual({ type: 'navigate', hash: '#revision' })
+  })
+
   it('toutes les lettres de SEQUENCE_G résolvent la bonne route', () => {
     Object.entries(SEQUENCE_G).forEach(([lettre, hash]) => {
       const r = resoudreRaccourci({

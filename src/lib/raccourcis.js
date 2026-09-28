@@ -14,6 +14,12 @@ export const SEQUENCE_G = {
   s: '#session',
   t: '#stats',
   i: '#import',
+  // "r" ne fait doublon avec "h" qu'en apparence : les deux ciblent '#accueil' au niveau de ce
+  // module pur, mais c'est la même astuce que "t" (Import ↔ Prompts en simple, Statistiques en
+  // séquence g) — une même touche a un sens différent en simple touche ("r" = #revision, hors
+  // séquence) et en séquence "g" (ici, "reprendre" : rejoint le bloc "Reprendre" du bloc
+  // QCM-en-cours sur l'accueil P2, voir accueil.js).
+  r: '#accueil',
 }
 
 const LIBELLES_SEQUENCE_G = {
@@ -24,6 +30,7 @@ const LIBELLES_SEQUENCE_G = {
   s: 'Session de révision',
   t: 'Statistiques',
   i: 'Import',
+  r: 'Reprendre un QCM en cours',
 }
 
 // "n" et "r" (navigation globale) désactivés ici : en jeu, ils risqueraient de faire quitter une
