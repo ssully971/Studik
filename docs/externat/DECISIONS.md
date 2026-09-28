@@ -343,3 +343,96 @@ l'identité visuelle noir OLED/Lora/IBM Plex) pour les écrans Externat qui vont
 données avant affichage (`#import`, listes `#edn-banque`/`#edn-items`, tableau de bord), pas un
 correctif isolé au seul bouton d'import.
 **Écarté (pour l'instant).** Corriger immédiatement : reporté au même titre que le point ci-dessus.
+
+## Retours de Sullivan après test complet de la phase 1 (navigation, banque, ZAP, import)
+
+### Corrigé maintenant : le popup heatmap de `#accueil` (P2) pouvait finir mal empilé par rapport au texte suivant
+**Contexte.** Signalé : "la heatmap se retrouve sous le texte des matières alors que c'est censé
+superposer le tout". Vérifié en direct (Playwright, `#accueil` en P2, `.streak-card` survolée) :
+`.streak-card` a `position: relative` mais **n'établit pas de contexte d'empilement** à lui seul
+(il faut `position` + un `z-index` autre que `auto`, ou une propriété comme `isolation`) — le
+`z-index: 5` de `.heatmap-popup` se retrouvait donc évalué dans le contexte d'empilement du
+premier ancêtre qui en établit un (potentiellement bien plus haut que `.streak-card`), ce qui rend
+l'empilement final dépendant de tout le reste de la page au lieu d'être garanti localement. Le
+test headless montre que Chromium retombait sur ses pieds (le popup masquait bien le titre
+"Matières" suivant), mais ce n'est pas une garantie sur tous les moteurs/contextes — d'où le rendu
+inversé constaté par Sullivan sur son propre appareil.
+**Retenu.** `.streak-card` reçoit `isolation: isolate` (crée un contexte d'empilement dédié, sans
+changer le layout) ; `.heatmap-popup` passe de `z-index: 5` à `z-index: 20` par marge de sécurité.
+Le popup est désormais garanti au-dessus de tout ce qui suit `.streak-card`, quel que soit le
+reste de la page. `npm test`/`npm run build` toujours verts après ce changement CSS pur.
+**À confirmer par Sullivan** sur son appareil réel — je n'ai pas pu reproduire à l'identique le
+sens exact du bug signalé, seulement l'ambiguïté d'empilement qui le permettait.
+
+### Reporté phase 2 : Banque (`#edn-banque`) — pas de tri, pas d'enchaînement en série
+**Contexte.** "Il n'y a pas de quoi trier les questions... je dois forcément taper dans la barre
+de recherche. Et je n'ai pas moyen de les faire à la chaîne, faut que je tape un par un." Vérifié
+dans le code (`pages/externat/edn-banque.js`) : filtres actuels = recherche texte, type
+(dossier/question), statut, à corriger, suspendues du SRS — aucun tri (alphabétique/date/format),
+et aucune action pour lancer une session sur le résultat filtré (seul un clic ouvre une question
+à la fois). Rejoint un point déjà noté plus haut ("Carte 'Série' simplifiée...") : le lanceur de
+série multi-critères avait été explicitement écarté de la phase 1, remis en jeu ici.
+**Statut.** Reporté à la phase 2. **Reste à faire** : (a) un tri sur `#banque-list` (au moins
+alphabétique et par statut) ; (b) un bouton "Lancer une session sur ces résultats" qui réutilise
+`pages/externat/edn-session.js` (déjà conçu pour enchaîner plusieurs cibles) avec la liste
+filtrée courante comme scope, sur le même principe que "Refaire ces erreurs" du carnet.
+**Écarté (pour l'instant).** Implémenter tout de suite : périmètre trop large pour un correctif
+isolé (nouvelle entrée dans le moteur de session), à faire avec le reste de la phase 2.
+
+### Reporté phase 2 : aucun retour visuel au clic sur une question/dossier en attendant le chargement
+**Contexte.** "J'appuie sur une question, et ça ne fait rien tant que ce n'est pas chargé."
+Rejoint et précise le point "absence générale de retour visuel pendant le chargement" déjà noté
+ci-dessus (skeleton/spinner) — s'applique en particulier au clic sur une ligne de `#edn-banque`
+vers `#edn-question/:id`/`#edn-dossier/:id`.
+**Statut.** Regroupé avec le mécanisme de chargement déjà prévu pour la phase 2 (même solution
+technique : indicateur visuel réutilisable), pas un correctif séparé.
+
+### Reporté phase 2 : image ZAP attachable directement depuis l'import
+**Contexte.** "Ce serait bien que directement depuis l'import on puisse mettre les photos [ZAP]
+car importer puis retourner dans la banque pour corriger ça, ça fait beaucoup." Actuellement
+`prompt-edn-zap.md` importe l'énoncé seul (`zones: []`, aucune image) — l'image est téléversée
+ensuite dans l'éditeur `#edn-zap/:id`, en repassant par la banque pour la retrouver.
+**Statut.** Reporté à la phase 2 : `#import` est un import JSON texte (paste), pas un formulaire
+avec upload de fichier — attacher une image au moment de l'import est un changement de flux (pas
+juste un ajout de champ), à concevoir avec Sullivan (un seul item à la fois ? plusieurs ? avant ou
+après validation du JSON ?) plutôt qu'à trancher seul.
+
+### Reporté phase 2 (P2, hors périmètre Externat mais noté ici pour ne pas le perdre) : popup "importer des photos ?" après import d'un QCM
+**Contexte.** "Si je fais un QCM de P2, ce serait bien qu'après l'import une petite popup me
+demande si je veux importer des photos, et si oui pour quelle(s) question(s)." Aujourd'hui
+`q.image` (voir CLAUDE.md, section Validation à l'import) se rajoute uniquement après coup, à la
+main, dans `#qcm/:id`. Même besoin que le point ZAP ci-dessus (attacher une image tout de suite
+après un import), mais côté P2 — les deux gagneraient à partager la même solution technique.
+**Statut.** Reporté, à concevoir en même temps que le point ZAP ci-dessus (mécanisme commun
+d'upload post-import), pas un correctif isolé.
+
+### Reporté phase 2 : questions isolées jamais regroupées en série jouable
+**Contexte.** "Quand je fais une liste de qcm [questions isolées], il n'y a aucun endroit où ils
+sont regroupés. Chaque question est seule, il n'y a pas moyen de les faire une par une [à la
+suite]." Même besoin que le point "Banque — pas d'enchaînement en série" ci-dessus : une session
+lancée depuis un ensemble filtré de `#edn-banque` couvrirait aussi ce cas (les questions isolées
+en résultat de filtre).
+**Statut.** Fusionné avec le point Banque ci-dessus, pas un chantier séparé.
+
+### Reporté phase 2 : `#import` — replier "Tags de référence" et "Comment ça marche" par défaut
+**Contexte.** "Ce serait bien que les tags et le 'comment ça marche' soient enroulés par défaut,
+et qu'il faille appuyer dessus pour les dérouler, car ça prend de la place."
+**Statut.** Reporté. **Reste à faire** : rendre ces deux cartes de `renderModePrompts`
+(`src/pages/import.js`) repliables (fermées par défaut, bouton/en-tête cliquable pour déplier),
+même mécanisme que les autres sections repliables déjà présentes sur le site (ex. carte streak).
+
+### Reporté phase 2 : raccourci clavier pour basculer entre Import et Prompts
+**Contexte.** "Ce serait bien un raccourci pour switch entre l'import et les prompts si je dois
+générer à la chaîne."
+**Statut.** Reporté — à intégrer dans `lib/raccourcis.js`/`resoudreRaccourci` (fonction pure et
+testée, voir section Raccourcis clavier de CLAUDE.md) plutôt que branché à la main dans
+`import.js`, pour rester cohérent avec le reste du système de raccourcis.
+
+### Rappel transverse : les correctifs communs P2/Externat (chargement, upload post-import) doivent s'appliquer aux deux modes
+**Contexte.** "Les éléments communs à P2 et externat, faut appliquer les changements [de ce type]
+dans le lot 2 [phase 2]." Rappel explicite de Sullivan : les mécanismes partagés entre les deux
+modes (indicateur de chargement, popup d'upload post-import) doivent être conçus une seule fois et
+réutilisés par les deux modes, jamais dupliqués/divergents entre P2 et Externat.
+**Retenu.** Noté ici comme contrainte de conception pour la phase 2, à relire avant de commencer
+ces chantiers (indicateur de chargement déjà écrit comme "réutilisable" plus haut ; le mécanisme
+d'upload post-import ZAP/QCM est explicitement designé comme un point commun ci-dessus).

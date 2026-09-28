@@ -1730,6 +1730,11 @@ a.tag:hover,
 
 .streak-card {
   position: relative;
+  /* isolation crée un contexte d'empilement dédié : le z-index de .heatmap-popup ne dépend plus
+     de ce qui l'entoure (une section suivante pourrait sinon, selon le navigateur, finir au-dessus
+     du popup malgré son z-index positif — .streak-card seul en position:relative n'établit pas de
+     contexte d'empilement). */
+  isolation: isolate;
 }
 
 .heatmap-popup {
@@ -1746,7 +1751,7 @@ a.tag:hover,
   pointer-events: none;
   transform: translateY(-4px);
   transition: opacity 0.15s ease, transform 0.15s ease;
-  z-index: 5;
+  z-index: 20;
 }
 
 .streak-card:hover .heatmap-popup,
