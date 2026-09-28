@@ -1145,6 +1145,24 @@ a.tag:hover,
   border-color: var(--text-dim);
 }
 
+/* Indicateur discret "hors-ligne · N en attente" (§8 lot 8) — même gabarit que .cycle-badge,
+   jamais cliquable (pas d'action, juste un constat). */
+.hors-ligne-indicatif {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #C46A5C;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 4px 9px;
+  flex-shrink: 0;
+}
+
+.hors-ligne-indicatif.hidden {
+  display: none;
+}
+
 .periode-select {
   background: var(--surface);
   border: 1px solid var(--hairline);

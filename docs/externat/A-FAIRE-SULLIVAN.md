@@ -71,3 +71,15 @@ réelle). Coche au fur et à mesure.
       `ecos_tentatives` de Supabase (l'audio ne doit jamais quitter le navigateur).
     - Teste le mode binôme (bascule Candidat/Examinateur) sur mobile et en écran partagé desktop.
     - Teste le mode circuit (plusieurs stations, transition 2:00 entre chacune).
+12. **Tester le hors-ligne (§8 lot 8)**, uniquement possible sur le vrai déploiement (pas dans
+    cette session, aucun accès à ta base ni à un vrai navigateur avec IndexedDB persistant) :
+    - Ouvre l'app, clique "Préparer le hors-ligne" (tableau de bord Externat), vérifie qu'un
+      message donne le nombre de cibles préparées.
+    - Coupe le Wi-Fi/les données, réponds à une question ou un dossier : l'indicateur "Hors ligne ·
+      N en attente" doit apparaître en haut à droite, sans message d'erreur.
+    - Réactive la connexion : l'indicateur doit disparaître après quelques secondes (rejeu
+      automatique) — vérifie dans Supabase que la/les tentative(s) sont bien arrivées dans
+      `edn_tentatives`/`ecos_tentatives`, et que `edn_srs` reflète bien le score.
+    - Installe l'app en PWA (icône "Ajouter à l'écran d'accueil" sur mobile, ou l'icône
+      d'installation dans la barre d'adresse sur desktop) et vérifie qu'elle s'ouvre sans barre de
+      navigateur, avec l'icône Studik.

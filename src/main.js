@@ -34,6 +34,7 @@ import { renderEdnSessionResume } from './pages/externat/edn-session.js'
 import { renderEdnExamen } from './pages/externat/edn-examen.js'
 import { renderEdnStats } from './pages/externat/edn-stats.js'
 import { toggleModaleConstantes, fermerModaleConstantes } from './pages/externat/constantes-modal.js'
+import { compterTentativesEnAttente, rejouerFileTentatives, EVENEMENT_FILE_CHANGEE } from './lib/offline-queue.js'
 import { renderAccueil } from './pages/accueil.js'
 import { renderReferentiel } from './pages/referentiel.js'
 import { renderImport } from './pages/import.js'
@@ -198,8 +199,38 @@ function appliquerNavPourCycle() {
   if (cycle !== 'externat') fermerModaleConstantes()
 
   appliquerVisibilitePeriodeSelect()
+  majIndicatifHorsLigne()
 
   router()
+}
+
+// Indicateur discret "hors-ligne · N en attente" (§8 lot 8) — Externat uniquement (le hors-ligne
+// ne concerne que le SRS/les tentatives EDN/ECOS, aucune fonctionnalité P2 n'y est liée). Mis à
+// jour sur chaque changement de cycle et à chaque évènement online/offline (voir init()).
+async function majIndicatifHorsLigne() {
+  const indicatif = document.getElementById('hors-ligne-indicatif')
+  if (!indicatif) return
+
+  if (!estExternat()) {
+    indicatif.classList.add('hidden')
+    return
+  }
+
+  let enAttente = 0
+  try {
+    enAttente = await compterTentativesEnAttente()
+  } catch {
+    enAttente = 0
+  }
+
+  const horsLigne = typeof navigator !== 'undefined' && navigator.onLine === false
+  if (!horsLigne && enAttente === 0) {
+    indicatif.classList.add('hidden')
+    return
+  }
+
+  indicatif.classList.remove('hidden')
+  indicatif.textContent = horsLigne ? `Hors ligne · ${enAttente} en attente` : `${enAttente} en attente`
 }
 
 let searchCache = null
@@ -242,6 +273,7 @@ function renderShell(user) {
           <div class="brand voice">Studik</div>
           <button id="cycle-badge" class="cycle-badge" type="button" title="Cycle d'études — clique pour changer"></button>
           <select id="periode-select" class="periode-select"></select>
+          <span id="hors-ligne-indicatif" class="hors-ligne-indicatif hidden"></span>
         </div>
         <nav></nav>
         <div class="search-wrapper" id="search-wrapper">
@@ -758,6 +790,20 @@ async function init() {
   setupRaccourcisClavier()
   onCycleChange(() => appliquerNavPourCycle())
   onAfficherP2EnExternatChange(() => appliquerNavPourCycle())
+
+  // Hors-ligne (§8 lot 8) : au retour du réseau, rejoue la file d'attente (insert idempotent +
+  // recalcul SRS) puis rafraîchit l'indicateur ; à la perte du réseau, seulement l'indicateur.
+  window.addEventListener('online', async () => {
+    try {
+      await rejouerFileTentatives()
+    } catch (err) {
+      console.error('Erreur rejeu file hors-ligne', err)
+    }
+    majIndicatifHorsLigne()
+  })
+  window.addEventListener('offline', () => majIndicatifHorsLigne())
+  window.addEventListener(EVENEMENT_FILE_CHANGEE, () => majIndicatifHorsLigne())
+  majIndicatifHorsLigne()
 }
 
 init()

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { prochainEtatSrs, selectionnerCiblesDues, estDue, PALIERS_JOURS } from './edn-srs.js'
+import { prochainEtatSrs, selectionnerCiblesDues, estDue, PALIERS_JOURS, rejouerHistoriqueSrs } from './edn-srs.js'
 
 const MAINTENANT = new Date('2026-01-01T00:00:00Z')
 
@@ -116,5 +116,48 @@ describe('estDue', () => {
 
   it('une cible dont la date est dans le futur n’est pas due', () => {
     expect(estDue({ suspendue: false, prochaine_revision: '2030-01-01' }, MAINTENANT)).toBe(false)
+  })
+})
+
+describe('rejouerHistoriqueSrs (§8 lot 8 : recalcul hors-ligne)', () => {
+  it('rejouer un historique donne le même résultat que les appliquer un par un dans le même ordre', () => {
+    const t1 = { score: 1, scoreMax: 1, dateTentative: '2026-01-01' }
+    const t2 = { score: 1, scoreMax: 1, dateTentative: '2026-01-02' }
+
+    const e1 = prochainEtatSrs({ scoreNormalise: 1, maintenant: new Date(t1.dateTentative) })
+    const e2 = prochainEtatSrs({
+      etapeActuelle: e1.etape,
+      reussitesParfaitesConsecutives: e1.reussitesParfaitesConsecutives,
+      scoreNormalise: 1,
+      maintenant: new Date(t2.dateTentative),
+    })
+
+    const rejoue = rejouerHistoriqueSrs([t1, t2])
+    expect(rejoue.etape).toBe(e2.etape)
+    expect(rejoue.reussitesParfaitesConsecutives).toBe(e2.reussitesParfaitesConsecutives)
+    expect(rejoue.prochaineRevision).toEqual(e2.prochaineRevision)
+  })
+
+  it('un historique vide retourne null (aucune tentative à rejouer)', () => {
+    expect(rejouerHistoriqueSrs([])).toBeNull()
+  })
+
+  it('respecte la règle des 3 réussites parfaites pour un item prioritaire', () => {
+    const dates = ['2026-01-01', '2026-01-02', '2026-01-03']
+    const tentatives = dates.map((d) => ({ score: 1, scoreMax: 1, dateTentative: d }))
+    const rejoue = rejouerHistoriqueSrs(tentatives, true)
+    // 3 réussites parfaites consécutives -> avance d'un palier (les 2 premières clampent à
+    // l'étape 0 sans avancer, la 3e avance depuis cette étape 0), compteur remis à 0.
+    expect(rejoue.etape).toBe(1)
+    expect(rejoue.reussitesParfaitesConsecutives).toBe(0)
+  })
+
+  it('un échec au milieu de l’historique ramène au premier palier avant de reprendre', () => {
+    const tentatives = [
+      { score: 1, scoreMax: 1, dateTentative: '2026-01-01' },
+      { score: 0, scoreMax: 1, dateTentative: '2026-01-02' },
+    ]
+    const rejoue = rejouerHistoriqueSrs(tentatives)
+    expect(rejoue.etape).toBe(0)
   })
 })

@@ -1,10 +1,11 @@
 import { supabase } from './supabase.js'
+import { mettreEnFile } from './offline-queue.js'
 
 // Tentatives ECOS (§4.4, §5.9) — append-only comme edn-tentatives.js, mais sans SRS : les
 // stations ECOS ne sont pas revues par répétition espacée (hors périmètre de la spec).
 export async function enregistrerTentativeEcos({ stationId, mode, cochees, score, scoreMax, global = null, dureeS = null, notes = null }) {
   const id = crypto.randomUUID()
-  const { error } = await supabase.from('ecos_tentatives').insert({
+  const ligne = {
     id,
     station_id: stationId,
     mode,
@@ -15,8 +16,25 @@ export async function enregistrerTentativeEcos({ stationId, mode, cochees, score
     duree_s: dureeS,
     notes,
     date_tentative: new Date().toISOString(),
-  })
-  if (error) throw error
+  }
+
+  // Mise en file hors-ligne (§8 lot 8) — même mécanisme que edn-tentatives.js, jamais de SRS ici
+  // de toute façon (pas de recalcul à faire au retour du réseau pour l'ECOS).
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    await mettreEnFile('ecos_tentatives', id, ligne)
+    return id
+  }
+
+  try {
+    const { error } = await supabase.from('ecos_tentatives').insert(ligne)
+    if (error) throw error
+  } catch (err) {
+    if (err instanceof TypeError) {
+      await mettreEnFile('ecos_tentatives', id, ligne)
+      return id
+    }
+    throw err
+  }
   return id
 }
 

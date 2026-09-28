@@ -694,3 +694,69 @@ rester compatible avec un import Anki basique sans avoir à cocher "Allow HTML i
 tableau de bord complet avec données réalistes (spécialités, items, ECOS, fatigue), filtre
 d'obsolescence qui distingue correctement obsolète/non-obsolète, export CSV et PDF déclenchant
 chacun un téléchargement réel avec le bon contenu.
+
+## Lot 8 — Hors-ligne (PWA)
+
+### `vite-plugin-pwa` est compatible Vite 8 — vérifié réellement, pas juste sur la déclaration de peerDependencies
+**Contexte.** §8 : "Vérifie d'abord que vite-plugin-pwa est compatible avec Vite 8. Sinon, écris un
+service worker minimal à la main et consigne le choix."
+**Retenu.** `peerDependencies` de vite-plugin-pwa 1.3.0 couvre déjà `^8.0.0`, et surtout un
+`npm run build` réel (pas juste `npm install`) génère correctement `dist/sw.js` +
+`dist/workbox-*.js` (37 entrées précachées, ~4,3 Mo) sans aucune erreur — la déclaration seule
+n'aurait pas suffi à en être sûr sur une version aussi récente de Vite. Premier `vite.config.js`
+du projet (il n'en existait aucun jusqu'ici, Vite tournait sur ses réglages par défaut).
+**`manifest: false`** dans la config du plugin : `public/site.webmanifest` existe déjà et reste la
+seule source du manifeste (§8 : "plutôt que d'en créer un second") — le plugin se contente
+d'injecter l'enregistrement du service worker (`registerSW.js`) dans `index.html`.
+**Écarté.** Écrire un service worker à la main : inutile, la compatibilité réelle est confirmée.
+
+### Tentatives hors-ligne : détection à l'avance (`navigator.onLine`) + repli sur erreur réseau, jamais une seule des deux
+**Contexte.** §8 : "mises en file dans IndexedDB avec leur id UUID client et leur date_tentative
+locale... rejouées au retour du réseau par un insert idempotent."
+**Retenu.** `enregistrerTentative`/`enregistrerTentativeEcos` vérifient `navigator.onLine` AVANT de
+tenter la requête (évite une tentative de connexion vouée à l'échec, et son délai), mais mettent
+aussi en file si la requête échoue malgré `onLine === true` (cas réel : `navigator.onLine` peut
+rester vrai sans connectivité effective) — détecté via `err instanceof TypeError`, signature du
+`fetch` natif qui n'atteint jamais le serveur, jamais confondu avec une vraie erreur métier/
+validation renvoyée PAR le serveur (celle-ci continue de remonter normalement).
+**Aucune mise à jour SRS incrémentale pendant la mise en file** : contrairement au chemin en ligne
+(qui met à jour le SRS immédiatement après chaque tentative), une tentative mise en file ne touche
+JAMAIS `edn_srs` — l'état "avant" n'est pas fiable tant que d'autres tentatives en attente
+n'ont pas encore été rejouées. Tout le recalcul SRS se fait au retour du réseau.
+**Recalcul SRS par rejeu complet de l'historique, pas incrémental** : `rejouerHistoriqueSrs`
+(lib/edn-srs.js, pur, testé) reconstruit l'état final d'une cible en rejouant TOUTES ses
+tentatives triées par `date_tentative`, plutôt que d'appliquer seulement les tentatives mises en
+file par-dessus l'état déjà en base — robuste si d'autres tentatives (en ligne, sur un autre
+appareil) se sont ajoutées à la même cible pendant la coupure.
+**File générique** (`lib/offline-queue.js`) : ne connaît qu'"une table, une ligne, éventuellement
+des items pour le SRS" — jamais la forme précise d'une tentative EDN ou ECOS. Ce module NE
+dépend PAS de `edn-tentatives.js`/`ecos-tentatives.js` (qui construisent leur ligne avant de la
+mettre en file) : évite un import circulaire, `edn-tentatives.js` important lui `mettreEnFile`
+depuis `offline-queue.js`.
+**Indicateur "hors-ligne · N en attente"** : mis à jour via un évènement DOM
+(`studik:file-hors-ligne-changee`) émis par `offline-queue.js` à chaque ajout/rejeu, écouté par
+main.js — jamais un import direct de main.js dans un module `lib/`, qui inverserait la
+dépendance. Bug trouvé en testant en direct : l'indicateur ne se rafraîchissait qu'au changement
+de cycle ou aux évènements `online`/`offline`, jamais juste après une mise en file pendant qu'on
+restait déjà hors-ligne — corrigé par cet évènement dédié.
+
+### "Préparer le hors-ligne" : télécharge le contenu à afficher, pas un mode de jeu hors-ligne complet
+**Contexte.** §8 : "télécharge dans IndexedDB les cibles dues du jour (au plafond) et leurs
+images."
+**Retenu.** Réutilise `getCiblesDuesTriees`/`getPlafondRevisions` (lib/edn-dashboard.js, déjà
+utilisées par le tableau de bord — même définition de "cibles dues" partout) et enregistre le
+contenu de chaque cible (question ou dossier+questions) + ses images dans IndexedDB.
+**Écarté (portée volontairement limitée).** Faire fonctionner le JOUEUR de questions/dossiers
+lui-même hors-ligne (lire depuis IndexedDB si le réseau est coupé) : aurait demandé un repli
+hors-ligne dans `edn-question.js`/`edn-dossier.js`/`question-engine.js`, un changement bien plus
+large que "préparer le contenu". Le bouton télécharge ce qu'il faut pour consulter (lecture), les
+TENTATIVES hors-ligne (écriture) sont déjà couvertes par la file — les deux réunis suffisent à
+l'usage principal (réviser dans le métro), sans réécrire toute la couche de données en mode
+"offline-first".
+
+`npm test` (512 tests, +4 pour `rejouerHistoriqueSrs`) et `npm run build` verts (SW généré avec
+succès). Vérifié en direct (Playwright, `navigator.onLine` forcé plutôt que le vrai mode hors-ligne
+du navigateur pour ne pas couper aussi la connexion au serveur de développement) : tentative mise
+en file pendant la coupure (aucun insert tenté), indicateur affiché immédiatement, retour en ligne
+→ rejeu idempotent + recalcul SRS + file vidée + indicateur qui disparaît, bouton "Préparer le
+hors-ligne" sans erreur.
