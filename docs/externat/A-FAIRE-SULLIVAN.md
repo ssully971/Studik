@@ -24,11 +24,19 @@ réelle). Coche au fur et à mesure.
      "SDD".
    - Marque toi-même les items "prioritaires" (must-know) sur `#edn-items` une fois importés —
      ce flag est personnel, aucune IA ne le déduit.
-6. **Compléter le 11e domaine de compétence ECOS** (guide CNG) dans la constante dédiée du code
-   (§5.9 de la spec) — seuls 10 des 11 domaines connus ont été codés en dur, le 11e t'appartient
-   (Claude n'invente pas de contenu médical/officiel).
+6. **Tester le moteur de questions** (lot 3), une fois un dossier/questions importés (via un JSON
+   de test ou en attendant les prompts du lot 4) :
+   - Joueur de question isolée `#edn-question/:id` pour chacun des 7 formats.
+   - Joueur de dossier `#edn-dossier/:id` (DP/KFP/TCS) : vérifie qu'aucun bouton "précédent"
+     n'apparaît jamais et qu'une question validée reste bien verrouillée (no-back, §5.10). Les
+     dossiers de type LCA affichent volontairement un message d'attente (lot 6).
+   - Éditeur de zones `#edn-zap/:id` sur un vrai téléphone/tablette (tactile) : pose un point,
+     ajuste son rayon, supprime-le, enregistre, puis vérifie que le cercle reste bien un cercle
+     (pas une ellipse) même sur une image très large/étroite.
 7. **Relire `docs/externat/DECISIONS.md`** avant de donner ton feedback pour la phase 2 : chaque
-   arbitrage pris sans te demander y est journalisé avec le contexte et l'alternative écartée.
+   arbitrage pris sans te demander y est journalisé avec le contexte et l'alternative écartée
+   (dont le 11e domaine de compétence ECOS et l'ajout de la forme "rect" en ZAP, à trancher en
+   phase 2).
 
 ## Une fois la phase 1 relue et mergée
 

@@ -83,11 +83,3 @@ export async function updateDossierSignalement(id, aCorriger, noteCorrection) {
   const { error } = await supabase.from('edn_dossiers').update({ a_corriger: aCorriger, note_correction: noteCorrection }).eq('id', id)
   if (error) throw error
 }
-
-export async function updateZonesQuestion(id, zones) {
-  const { data, error } = await supabase.from('edn_questions').select('contenu').eq('id', id).single()
-  if (error) throw error
-  const contenu = { ...(data.contenu || {}), zones }
-  const { error: errUpdate } = await supabase.from('edn_questions').update({ contenu }).eq('id', id)
-  if (errUpdate) throw errUpdate
-}

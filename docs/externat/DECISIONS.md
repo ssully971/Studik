@@ -120,7 +120,85 @@ niveau de chacune de ses questions imbriquées.
 
 ## Lot 3 — Moteur
 
-_(à compléter)_
+### Coquille du document officiel sur l'exemple QRP
+**Contexte.** §5.4 : l'exemple officiel donne "{1,3,5} → 1 pt (2/2)" alors que le calcul (3
+propositions vraies/indispensables cochées sur n=3) donne 3/3 = 1.
+**Retenu.** Implémenté et testé comme 3/3 = 1 (la valeur numérique du score, 1, est de toute façon
+la même que celle du document officiel — seule l'annotation "(2/2)" entre parenthèses est
+incohérente avec l'énoncé). Testé explicitement dans `edn-scoring.test.js` avec un commentaire
+renvoyant ici.
+**Écarté.** Reproduire une éventuelle règle cachée qui expliquerait "(2/2)" : aucune ne se déduit
+du reste du document, plus probablement une coquille de relecture du document source.
+
+### Couleurs de correction propres au moteur EDN, distinctes de qcm-jouer.js
+**Contexte.** §5.10 demande "vert = coché juste ; rouge = coché faux ; neutre (bleu/gris) = vrai
+non coché. Réutilise les classes de correction de qcm-jouer.js si elles existent." Mais la classe
+"manqué" de qcm-jouer.js (`item-explication-missed`) est ocre (`var(--mecanisme)`), pas bleu/gris.
+**Retenu.** Nouvelles classes `edn-prop-ok`/`edn-prop-wrong`/`edn-prop-neutre` (bleu/gris via
+`var(--structure)`), qui reprennent la même STRUCTURE de distinction (juste/faux/neutre) que
+qcm-jouer.js sans copier une couleur qui contredirait la spec.
+**Écarté.** Réutiliser telles quelles les classes `item-explication-*` : couleur incompatible avec
+la demande explicite.
+
+### Récapitulatif d'une tentative de dossier = une seule ligne `edn_tentatives`
+**Contexte.** §4.3 : l'unité de révision d'un DP/KFP/TCS est le dossier entier, pas chacune de ses
+questions.
+**Retenu.** `edn-dossier.js` calcule le score de chaque question au fil de l'eau (verrouillage
+immédiat, no-back) mais n'enregistre qu'UNE tentative à la toute fin (`cible: 'd:<id>'`,
+`detail` = tableau des scores par question). Le SRS (lot 4) portera donc sur le dossier entier,
+pas sur ses sous-questions.
+**Écarté.** Une ligne `edn_tentatives` par question d'un dossier : aurait rendu le SRS incohérent
+avec la règle du no-back (§4.3, "on ne révise pas une question de DP hors de son dossier").
+
+### Comptage double des questions de LCA : reporté aux statistiques (lot 7), pas à la notation brute
+**Contexte.** §5.10 : "Les questions de LCA comptent double dans les statistiques, comme à
+l'officiel."
+**Retenu.** `scoreDossier`/l'enregistrement de la tentative restent une somme simple (poids 1 par
+question) ; le facteur ×2 pour les LCA s'appliquera au moment de l'agrégation en statistiques
+(lot 7), pas dans `edn_tentatives.detail` ni dans le score brut stocké. Séparer la donnée brute
+(ce qui s'est réellement passé) de sa pondération à l'affichage évite de devoir choisir a priori
+"double de quoi" (score déjà su à l'écriture vs. pondération recalculable à tout moment).
+**Écarté.** Multiplier le score par 2 dès l'enregistrement pour un dossier LCA.
+
+### LCA hors périmètre du lot 3
+**Contexte.** §8 place explicitement "LCA (écran partagé)" dans le lot 6 (phase 2), pas le lot 3.
+**Retenu.** `edn-dossier.js` affiche un message "arrive au lot 6" pour `dossier.type === 'LCA'`
+plutôt que d'improviser un rendu minimal non spécifié (l'écran partagé desktop/onglets mobile est
+une exigence d'interface à part entière, pas un simple réglage).
+
+### ZAP : seule la forme "cercle" est implémentée
+**Contexte.** §5.6 : "Formes : cercle obligatoire. rect... optionnel si c'est simple à ajouter."
+**Retenu.** Seul "cercle" est géré par l'éditeur (`edn-zap.js`) et le rendu de correction — le
+moteur de score (`zoneToucheeParClic`) sait déjà gérer "rect" (testé), donc l'ajouter à l'éditeur
+plus tard n'impliquera aucune refonte du calcul.
+**Écarté.** Ajouter "rect" maintenant : aurait demandé une interaction d'édition supplémentaire
+(glisser pour définir un rectangle) non couverte par le temps disponible sur ce lot.
+
+### Événements pointer aussi bien dans le joueur ZAP que dans l'éditeur
+**Contexte.** §5.6 n'exige les événements pointer explicitement que pour l'éditeur ("Elle doit
+fonctionner au doigt, avec les événements pointer").
+**Retenu.** Le joueur (`question-engine.js`) écoute aussi `pointerup` plutôt que `click` sur
+l'image ZAP, par cohérence et pour la même fiabilité tactile — c'est le même geste (poser un
+point), aucune raison qu'il se comporte différemment entre édition et jeu.
+
+### `ajusterScoreQroc` ne peut jamais faire baisser le score automatique
+**Contexte.** §5.7 : le bouton "Ma réponse était juste / acceptable" rectifie un score jugé trop
+sévère par la comparaison textuelle automatique.
+**Retenu.** `ajusterScoreQroc(scoreAuto, 'acceptable')` renvoie `Math.max(scoreAuto, 0.5)` : si
+l'automatique avait déjà donné 1 (exact), cliquer "acceptable" par erreur ne le fait pas
+redescendre à 0,5. Le bouton est un filet de sécurité à la hausse, jamais un moyen de se pénaliser
+par erreur de clic.
+
+### Flake pré-existant observé dans `raccourcis.test.js` (non lié à ce lot)
+**Contexte.** Le test "absence de collision dans un même contexte" (déjà présent avant la phase
+Externat) appelle deux fois `resoudreRaccourci` avec `maintenant: Date.now()` implicite pour
+vérifier la stabilité du résultat ; la touche "g" produit `{ type: 'sequence-start', expireAt:
+maintenant + 1000 }`, et les deux appels peuvent, très rarement, tomber de part et d'autre d'une
+frontière de milliseconde et donc différer d'1 ms. Observé une fois sur plusieurs dizaines
+d'exécutions pendant ce lot, jamais reproduit en isolant ce seul fichier.
+**Retenu.** Ne pas corriger : ce test et son défaut existaient avant cette phase, aucune ligne
+listée dans le §8 ne demande d'y toucher, et le corriger reviendrait à modifier un test hors du
+périmètre "moteur" de ce lot sans que Sullivan l'ait demandé. Signalé ici pour transparence.
 
 ## Lot 4 — Rétention
 

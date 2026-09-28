@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resoudreRaccourci, SEQUENCE_G, ROUTES_SANS_N_R, ROUTES_LISTE } from './raccourcis.js'
+import { resoudreRaccourci, SEQUENCE_G, ROUTES_SANS_N_R, ROUTES_LISTE, ROUTES_SANS_ARROW_LEFT } from './raccourcis.js'
 
 describe('garde de saisie', () => {
   it('bloque les raccourcis quand le focus est sur un champ texte', () => {
@@ -294,6 +294,43 @@ describe('Listes (référentiel, révision, erreurs, tag)', () => {
       type: 'focus-move',
       direction: 1,
     })
+  })
+})
+
+describe('Joueur de questions/dossiers Externat (edn-question, edn-dossier)', () => {
+  it('même mécanique que le QCM : Entrée = premier présent parmi valider/suivant/finir', () => {
+    expect(resoudreRaccourci({ route: 'edn-question', key: 'Enter', elementsPresents: ['finir-btn'] })).toEqual({
+      type: 'click',
+      id: 'finir-btn',
+    })
+  })
+
+  it('1 à 5 cochent une proposition présente', () => {
+    expect(resoudreRaccourci({ route: 'edn-dossier', key: '2', elementsPresents: ['item-2'] })).toEqual({
+      type: 'toggle-item',
+      index: 1,
+    })
+  })
+
+  it("← ne fait RIEN sur edn-dossier, même si un bouton precedent-btn existait par erreur (no-back, §5.10)", () => {
+    expect(resoudreRaccourci({ route: 'edn-dossier', key: 'ArrowLeft', elementsPresents: ['precedent-btn'] })).toBeNull()
+  })
+
+  it('← fonctionne normalement sur edn-question (pas de no-back à un niveau isolé)', () => {
+    expect(resoudreRaccourci({ route: 'edn-question', key: 'ArrowLeft', elementsPresents: ['precedent-btn'] })).toEqual({
+      type: 'click',
+      id: 'precedent-btn',
+    })
+  })
+
+  it('"edn-dossier" est bien dans ROUTES_SANS_ARROW_LEFT', () => {
+    expect(ROUTES_SANS_ARROW_LEFT).toContain('edn-dossier')
+  })
+
+  it('n et r sont désactivés sur edn-question et edn-dossier', () => {
+    expect(resoudreRaccourci({ route: 'edn-question', key: 'n' })).toBeNull()
+    expect(resoudreRaccourci({ route: 'edn-dossier', key: 'r' })).toBeNull()
+    expect(ROUTES_SANS_N_R).toEqual(expect.arrayContaining(['edn-question', 'edn-dossier']))
   })
 })
 

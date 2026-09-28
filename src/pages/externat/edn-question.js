@@ -1,22 +1,91 @@
-import { supabase } from '../../lib/supabase.js'
+import { getQuestionById } from '../../lib/edn-content.js'
 import { estTableAbsente, htmlMigrationManquante } from '../../lib/externat-schema.js'
+import { escapeHtml } from '../../lib/escape.js'
+import { richText, activerInteractionsRichText } from '../../lib/richtext.js'
+import { scoreQuestion, ajusterScoreQroc } from '../../lib/edn-scoring.js'
+import { enregistrerTentative, cibleQuestion } from '../../lib/edn-tentatives.js'
+import {
+  ordonnerPropositions,
+  reponseInitiale,
+  renderZoneReponse,
+  attacherInteractions,
+  renderEtVerrouillerCorrection,
+  attacherAjustementQroc,
+} from './question-engine.js'
 
-// Joueur de question isolée (§5, §8 lot 3).
+// Joueur de questions isolées (§5, §8 lot 3). Une question de dossier se joue via #edn-dossier ;
+// cette page ne gère que les questions dont dossier_id est null (§4.3 : "on ne révise pas une
+// question de DP hors de son dossier").
 export async function renderEdnQuestion(container, id) {
   container.innerHTML = `<div class="wrap"><p class="voice">Chargement…</p></div>`
 
-  const { error } = await supabase.from('edn_questions').select('id').eq('id', id).limit(1)
-  if (error && estTableAbsente(error)) {
-    container.innerHTML = `<div class="wrap"><div class="section-head"><h2 class="voice">Question</h2></div>${htmlMigrationManquante('001')}</div>`
+  let question
+  try {
+    question = await getQuestionById(id)
+  } catch (err) {
+    if (estTableAbsente(err)) {
+      container.innerHTML = `<div class="wrap"><div class="section-head"><h2 class="voice">Question</h2></div>${htmlMigrationManquante('001')}</div>`
+      return
+    }
+    container.innerHTML = `<div class="wrap"><p class="empty-note">Erreur : ${escapeHtml(err.message)}</p></div>`
     return
   }
+
+  const propositions = ordonnerPropositions(question)
+  const state = { reponse: reponseInitiale(question.format), score: null, debut: Date.now() }
 
   container.innerHTML = `
     <div class="wrap">
       <div class="section-head">
-        <h2 class="voice">Question</h2>
+        <h2 class="voice">${escapeHtml(question.format)} · rang ${escapeHtml(question.rang)}</h2>
       </div>
-      <p class="empty-note">Le joueur de questions (7 formats) arrive au lot 3.</p>
+
+      <div class="cas-card">
+        <p class="cas-situation">${richText(question.enonce)}</p>
+        ${question.image ? `<div class="qcm-question-image"><img src="${escapeHtml(question.image)}" alt="" /></div>` : ''}
+
+        <div id="zone-reponse">${renderZoneReponse(question, propositions)}</div>
+
+        <div class="import-actions" id="question-actions">
+          <button id="valider-btn" class="btn primary" style="width: auto;">Valider <kbd class="kbd-hint">Espace</kbd></button>
+        </div>
+        <div id="correction-zone" class="correction hidden"></div>
+      </div>
     </div>
   `
+
+  const wrap = container.querySelector('.wrap')
+  activerInteractionsRichText(wrap)
+  attacherInteractions(wrap, question, state)
+
+  document.getElementById('valider-btn').addEventListener('click', () => {
+    state.score = scoreQuestion(question, state.reponse)
+    renderEtVerrouillerCorrection(wrap, question, propositions, state.reponse, state.score)
+    if (question.format === 'QROC') {
+      attacherAjustementQroc(wrap, (ajustement) => {
+        state.score = ajusterScoreQroc(state.score, ajustement)
+      })
+    }
+    document.getElementById('question-actions').innerHTML = `<button id="finir-btn" class="btn primary" style="width: auto;">Terminer <kbd class="kbd-hint">↵</kbd></button>`
+    document.getElementById('finir-btn').addEventListener('click', terminer)
+  })
+
+  async function terminer() {
+    const finirBtn = document.getElementById('finir-btn')
+    finirBtn.disabled = true
+    try {
+      await enregistrerTentative({
+        cible: cibleQuestion(question.id),
+        mode: 'entrainement',
+        reponses: state.reponse,
+        score: state.score,
+        scoreMax: 1,
+        dureeS: Math.round((Date.now() - state.debut) / 1000),
+        tagsErreur: [],
+      })
+    } catch (err) {
+      console.error('Erreur enregistrement tentative EDN', err)
+    }
+    window.location.hash = '#edn-banque'
+  }
 }
