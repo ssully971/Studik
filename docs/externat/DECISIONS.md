@@ -760,3 +760,41 @@ du navigateur pour ne pas couper aussi la connexion au serveur de développement
 en file pendant la coupure (aucun insert tenté), indicateur affiché immédiatement, retour en ligne
 → rejeu idempotent + recalcul SRS + file vidée + indicateur qui disparaît, bouton "Préparer le
 hors-ligne" sans erreur.
+
+## Fiabilité et interface — branche `reliability-and-ui-fixes` (après la phase 2)
+
+### Pagination Supabase : un helper générique, pas de `.range()` au cas par cas
+
+**Contexte.** Demande explicite de Sullivan, après avoir réalisé que PostgREST plafonne toute
+lecture à 1000 lignes sans erreur (silencieusement tronqué au-delà) et qu'aucune requête du
+projet — P2 ou Externat — n'utilisait `.range()`. Audit imposé de chaque lecture Supabase,
+classée A (lecture complète pouvant dépasser 1000 lignes)/B (bornée volontairement, à ne pas
+toucher)/C (agrégat calculé côté client).
+
+**Retenu.** `lib/supabase-paginate.js` (voir CLAUDE.md, section "Lectures Supabase et
+pagination", pour le détail et la règle de classification) : `paginerTout` (pages de 1000 via
+`.range()`) et `requeteParLots` (`.in()` découpé en lots de 200). Appliqués à toutes les lectures
+classées A, aussi bien P2 (fiches, cas, QCM, tentatives, matières/cours, captures, checkins,
+contenu_cours) que Externat (dossiers/questions EDN, tentatives EDN, stations/tentatives ECOS,
+état SRS). Colonnes de tri existantes complétées par un critère de départage garantissant un
+ordre total (le plus souvent `id`) partout où ce n'était pas déjà le cas.
+
+**Écarté : des fonctions/vues Postgres pour les agrégats (catégorie C).** `getStatsTentatives`,
+`getAllTentativesQcmStats`, `getToutesLesTentativesEdn`, `getToutesLesTentativesEcos` continuent
+de calculer leurs statistiques côté client à partir de l'historique complet, simplement lu en
+entier via `paginerTout` comme une lecture A plutôt que via une fonction SQL dédiée. Aucun
+mécanisme de fonction/vue Postgres n'existe ailleurs dans ce projet ; en introduire un pour
+quelques agrégats aurait ajouté une seconde façon de faire pour un gain qui ne se justifie pas à
+l'échelle d'un usage solo. Un seul helper, une seule convention.
+
+**Bug trouvé en corrigeant tous les `.in()` du projet (pas un bug rapporté)** :
+`resoudreCiblesEnDetail` (`lib/edn-carnet.js`, carnet d'erreurs Externat) construisait bien
+`idsQuestions`/`idsDossiers`, mais ne les passait jamais à un `.in()` — les deux requêtes lisaient
+la table entière (`edn_questions`/`edn_dossiers`) à chaque affichage, sans effet visible (la map
+finale ne gardait que ce qui était utilisé). Corrigé au passage : `.in('id', lot)` ajouté,
+découpé par `requeteParLots`. Voir CLAUDE.md, pièges déjà rencontrés.
+
+`npm test` (528 tests, +15 pour `lib/supabase-paginate.test.js`) et `npm run build` verts. Vérifié
+par un test "fumée" temporaire (mock Supabase, 1500 fiches / 1300 checkins, supprimé après
+vérification — pas dans l'historique) que `getAllFichesRaw`/`getFiches`/`getCheckins` renvoient
+bien tout, pas seulement les 1000 premières lignes.

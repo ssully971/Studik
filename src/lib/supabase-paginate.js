@@ -53,7 +53,10 @@ export async function requeteParLots(ids, fabriqueRequete, { tailleLot = TAILLE_
     lots.map(async (lot) => {
       const { data, error } = await fabriqueRequete(lot)
       if (error) throw error
-      return data
+      // Un .delete()/.update() sans .select() renvoie data: null (pas de représentation
+      // demandée) — utilisé pour ses seuls effets de bord (ex. deleteTentativesByMatiere),
+      // jamais pour sa valeur de retour, mais `null` ferait échouer le .flat() ci-dessous.
+      return data || []
     })
   )
   return reponses.flat()

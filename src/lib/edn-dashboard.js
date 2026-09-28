@@ -4,6 +4,7 @@ import { getCiblesDues } from './edn-srs-data.js'
 import { getNumerosPrioritaires } from './r2c.js'
 import { selectionnerCiblesDues } from './edn-srs.js'
 import { melangerFisherYates } from './edn-shuffle.js'
+import { paginerTout, requeteParLots } from './supabase-paginate.js'
 
 const PLAFOND_PAR_DEFAUT = 100
 
@@ -29,17 +30,17 @@ export async function getCiblesDuesTriees(plafond) {
   const idsQuestions = cibles.filter((c) => c.cible.startsWith('q:')).map((c) => c.cible.slice(2))
   const idsDossiers = cibles.filter((c) => c.cible.startsWith('d:')).map((c) => c.cible.slice(2))
 
-  const [questionsRes, dossiersRes, prioritaires] = await Promise.all([
-    idsQuestions.length ? supabase.from('edn_questions').select('id, items').in('id', idsQuestions) : Promise.resolve({ data: [] }),
-    idsDossiers.length ? supabase.from('edn_dossiers').select('id, items').in('id', idsDossiers) : Promise.resolve({ data: [] }),
+  const [questions, dossiers, prioritaires] = await Promise.all([
+    requeteParLots(idsQuestions, (lot) => supabase.from('edn_questions').select('id, items').in('id', lot)),
+    requeteParLots(idsDossiers, (lot) => supabase.from('edn_dossiers').select('id, items').in('id', lot)),
     getNumerosPrioritaires(),
   ])
 
   const itemsParCible = {}
-  ;(questionsRes.data || []).forEach((q) => {
+  questions.forEach((q) => {
     itemsParCible[`q:${q.id}`] = q.items || []
   })
-  ;(dossiersRes.data || []).forEach((d) => {
+  dossiers.forEach((d) => {
     itemsParCible[`d:${d.id}`] = d.items || []
   })
 
@@ -62,9 +63,8 @@ export async function getCiblesFlash() {
     return [...questions, ...dossiers].slice(0, 5)
   }
 
-  const { data, error } = await supabase.from('edn_tentatives').select('cible').like('cible', 'q:%')
-  if (error) throw error
-  const cibleUniques = Array.from(new Set((data || []).map((t) => t.cible)))
+  const data = await paginerTout(() => supabase.from('edn_tentatives').select('cible').like('cible', 'q:%').order('id'))
+  const cibleUniques = Array.from(new Set(data.map((t) => t.cible)))
   return melangerFisherYates(cibleUniques)
     .slice(0, 5)
     .map((cible) => ({ cible }))

@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { todayLocal } from './date-utils.js'
+import { paginerTout } from './supabase-paginate.js'
 
 export async function checkinAujourdhui() {
   const jour = todayLocal()
@@ -9,8 +10,9 @@ export async function checkinAujourdhui() {
 }
 
 export async function getCheckins() {
-  const { data, error } = await supabase.from('checkins').select('jour').order('jour')
-  if (error) throw error
+  // `jour` est la clé primaire de cette table (voir CLAUDE.md) : déjà un ordre total à lui
+  // seul, aucun tiebreaker à ajouter.
+  const data = await paginerTout(() => supabase.from('checkins').select('jour').order('jour'))
   return data.map((d) => d.jour)
 }
 

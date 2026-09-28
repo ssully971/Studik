@@ -1,13 +1,13 @@
 import { supabase } from './supabase.js'
 import { upsertPartiel } from './upsert.js'
+import { paginerTout } from './supabase-paginate.js'
 
 // ECOS (§4.4, §5.9) : accès aux stations. Le chronomètre pur vit dans lib/ecos-timer.js, la
 // notation dans lib/ecos-scoring.js, les tentatives dans lib/ecos-tentatives.js — jamais mélangés
 // ici pour garder ce fichier aligné sur le principe "un fichier par domaine".
 
 export async function getAllStationIds() {
-  const { data, error } = await supabase.from('ecos_stations').select('id')
-  if (error) throw error
+  const data = await paginerTout(() => supabase.from('ecos_stations').select('id').order('id'))
   return data.map((s) => s.id)
 }
 
@@ -16,9 +16,7 @@ export async function insertStations(items) {
 }
 
 export async function getStations() {
-  const { data, error } = await supabase.from('ecos_stations').select('*').order('date_creation', { ascending: false })
-  if (error) throw error
-  return data
+  return paginerTout(() => supabase.from('ecos_stations').select('*').order('date_creation', { ascending: false }).order('id', { ascending: false }))
 }
 
 export async function getStationById(id) {

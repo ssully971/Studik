@@ -3,6 +3,7 @@ import { prochainEtatSrs } from './edn-srs.js'
 import { getEtatSrs, ecrireEtatSrs } from './edn-srs-data.js'
 import { getNumerosPrioritaires } from './r2c.js'
 import { mettreEnFile } from './offline-queue.js'
+import { paginerTout } from './supabase-paginate.js'
 
 // fetch() natif rejette avec un TypeError quand la requête n'atteint jamais le serveur (pas de
 // réseau, DNS...) — jamais une erreur métier/validation renvoyée PAR le serveur (celle-ci reste
@@ -84,7 +85,5 @@ export function cibleDossier(id) {
 // Historique COMPLET (§8 lot 7, page Stats) — à ne jamais confondre avec
 // lib/edn-carnet.js::getTentativesEdnARevoir(), qui ne garde que la plus récente par cible.
 export async function getToutesLesTentativesEdn() {
-  const { data, error } = await supabase.from('edn_tentatives').select('*').order('date_tentative', { ascending: true })
-  if (error) throw error
-  return data
+  return paginerTout(() => supabase.from('edn_tentatives').select('*').order('date_tentative', { ascending: true }).order('id', { ascending: true }))
 }

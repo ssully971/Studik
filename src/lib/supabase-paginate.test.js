@@ -75,6 +75,13 @@ describe('requeteParLots', () => {
     expect(fabrique).toHaveBeenCalledTimes(3) // 4 + 4 + 2
   })
 
+  it('tolère un data: null (ex. .delete() sans .select())', async () => {
+    const ids = Array.from({ length: 300 }, (_, i) => i)
+    const fabrique = vi.fn(() => Promise.resolve({ data: null, error: null }))
+    const resultat = await requeteParLots(ids, fabrique)
+    expect(resultat).toEqual([])
+  })
+
   it("propage une erreur survenant sur n'importe quel lot", async () => {
     const ids = Array.from({ length: 500 }, (_, i) => i)
     const fabrique = vi.fn((lot) =>

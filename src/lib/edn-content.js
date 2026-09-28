@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { upsertPartiel } from './upsert.js'
+import { paginerTout } from './supabase-paginate.js'
 
 // Dossiers et questions EDN (§4.2). Un dossier importé porte ses questions imbriquées
 // (item.questions) : elles sont éclatées ici en lignes edn_questions avec dossier_id + ordre,
@@ -8,14 +9,12 @@ import { upsertPartiel } from './upsert.js'
 // où l'unité de révision reste le dossier entier, voir §4.3).
 
 export async function getAllDossierIds() {
-  const { data, error } = await supabase.from('edn_dossiers').select('id')
-  if (error) throw error
+  const data = await paginerTout(() => supabase.from('edn_dossiers').select('id').order('id'))
   return data.map((d) => d.id)
 }
 
 export async function getAllQuestionIds() {
-  const { data, error } = await supabase.from('edn_questions').select('id')
-  if (error) throw error
+  const data = await paginerTout(() => supabase.from('edn_questions').select('id').order('id'))
   return data.map((q) => q.id)
 }
 
@@ -63,15 +62,18 @@ export async function getQuestionById(id) {
 }
 
 export async function getAllDossiers() {
-  const { data, error } = await supabase.from('edn_dossiers').select('*').order('date_creation', { ascending: false })
-  if (error) throw error
-  return data
+  return paginerTout(() => supabase.from('edn_dossiers').select('*').order('date_creation', { ascending: false }).order('id', { ascending: false }))
 }
 
 export async function getQuestionsIsolees() {
-  const { data, error } = await supabase.from('edn_questions').select('*').is('dossier_id', null).order('date_creation', { ascending: false })
-  if (error) throw error
-  return data
+  return paginerTout(() =>
+    supabase
+      .from('edn_questions')
+      .select('*')
+      .is('dossier_id', null)
+      .order('date_creation', { ascending: false })
+      .order('id', { ascending: false })
+  )
 }
 
 // Mises à jour génériques (statut, tags, signalement d'erreur — §7.3 Banque) : mêmes champs
