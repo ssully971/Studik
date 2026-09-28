@@ -12,7 +12,16 @@ import { definirTermeRecherche } from './lib/highlight.js'
 import { escapeHtml } from './lib/escape.js'
 import { resoudreRaccourci, tableAide } from './lib/raccourcis.js'
 import { afficherLoader } from './lib/loader.js'
-import { getCycle, estExternat, setCycle, onCycleChange, synchroniserCycleDepuisServeur } from './lib/cycle.js'
+import {
+  getCycle,
+  estExternat,
+  setCycle,
+  onCycleChange,
+  synchroniserCycleDepuisServeur,
+  getAfficherP2EnExternat,
+  onAfficherP2EnExternatChange,
+  synchroniserAfficherP2EnExternatDepuisServeur,
+} from './lib/cycle.js'
 import { renderEdnAccueil } from './pages/externat/edn-accueil.js'
 import { renderEdnItems } from './pages/externat/edn-items.js'
 import { renderEdnBanque } from './pages/externat/edn-banque.js'
@@ -86,13 +95,22 @@ const NAV_P2 = [
   { hash: '#erreurs', route: 'erreurs', label: 'Erreurs', labelCourt: null },
 ]
 
-const NAV_EXTERNAT = [
-  { hash: '#edn-accueil', route: 'edn-accueil', label: 'Accueil', labelCourt: 'Accueil' },
-  { hash: '#edn-banque', route: 'edn-banque', label: 'Banque', labelCourt: 'Banque' },
-  { hash: '#referentiel', route: 'referentiel', label: 'Référentiel', labelCourt: 'Réf.' },
-  { hash: '#erreurs', route: 'erreurs', label: 'Erreurs', labelCourt: 'Erreurs' },
-  { hash: '#ecos-stations', route: 'ecos-stations', label: 'ECOS', labelCourt: null },
-]
+// Le Référentiel (contenu P2, fiches) reste accessible en mode Externat par choix explicite
+// (§3 : "le Référentiel de fiches reste utile en externat"), mais seulement si Sullivan ne l'a pas
+// désactivé (carte "Cycle d'études" de Paramètres) — et toujours étiqueté "(P2)" quand affiché,
+// pour ne jamais laisser croire que c'est du contenu Externat natif.
+function navExternatEntries() {
+  const entries = [
+    { hash: '#edn-accueil', route: 'edn-accueil', label: 'Accueil', labelCourt: 'Accueil' },
+    { hash: '#edn-banque', route: 'edn-banque', label: 'Banque', labelCourt: 'Banque' },
+  ]
+  if (getAfficherP2EnExternat()) {
+    entries.push({ hash: '#referentiel', route: 'referentiel', label: 'Référentiel (P2)', labelCourt: 'Réf. (P2)' })
+  }
+  entries.push({ hash: '#erreurs', route: 'erreurs', label: 'Erreurs', labelCourt: 'Erreurs' })
+  entries.push({ hash: '#ecos-stations', route: 'ecos-stations', label: 'ECOS', labelCourt: null })
+  return entries
+}
 
 // Liens vers les pages de l'autre mode, ajoutés dans le menu secondaire pour ne jamais les
 // rendre inaccessibles (§3 : "Les pages P2 restent accessibles : le Référentiel de fiches reste
@@ -127,7 +145,7 @@ function menuDropdownHTML(cycle) {
     <div class="dropdown-divider mobile-only-link"></div>
   `
   const croise =
-    cycle === 'externat'
+    cycle === 'externat' && getAfficherP2EnExternat()
       ? MENU_CROISE_EXTERNAT.map((e) => `<a href="${e.hash}">${e.label}</a>`).join('') + `<div class="dropdown-divider"></div>`
       : ''
 
@@ -151,7 +169,7 @@ function menuDropdownHTML(cycle) {
 // <a href> qui déclenchent hashchange, jamais de listener direct dessus).
 function appliquerNavPourCycle() {
   const cycle = getCycle()
-  const entries = cycle === 'externat' ? NAV_EXTERNAT : NAV_P2
+  const entries = cycle === 'externat' ? navExternatEntries() : NAV_P2
 
   const navEl = document.querySelector('header nav')
   if (navEl) navEl.innerHTML = navDesktopHTML(entries)
@@ -687,6 +705,7 @@ async function init() {
       synchroniserFondDepuisServeur()
       synchroniserGlassDepuisServeur()
       synchroniserCycleDepuisServeur()
+      synchroniserAfficherP2EnExternatDepuisServeur()
     } else {
       renderLogin()
     }
@@ -704,6 +723,7 @@ async function init() {
   window.addEventListener('hashchange', router)
   setupRaccourcisClavier()
   onCycleChange(() => appliquerNavPourCycle())
+  onAfficherP2EnExternatChange(() => appliquerNavPourCycle())
 }
 
 init()

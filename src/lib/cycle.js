@@ -65,3 +65,58 @@ export async function synchroniserCycleDepuisServeur() {
     // silencieux : hors-ligne, on reste sur le cache local existant
   }
 }
+
+// Le contenu P2 (Référentiel, sections Cas cliniques/QCM du Carnet d'erreurs) reste accessible en
+// mode Externat par choix explicite (§3 de la spec), mais Sullivan doit pouvoir le masquer d'un
+// bouton plutôt que de le subir en permanence — retour direct après test sur l'aperçu réel. Par
+// défaut affiché (comme le comportement déjà en place), et toujours clairement étiqueté "(P2)"
+// quand affiché en mode Externat (voir main.js/carnet-erreurs.js).
+const CLE_AFFICHER_P2 = 'studik_afficher_p2_en_externat'
+const abonnesAfficherP2 = new Set()
+
+export function getAfficherP2EnExternat() {
+  try {
+    const valeur = localStorage.getItem(CLE_AFFICHER_P2)
+    return valeur === null ? true : valeur === 'on'
+  } catch {
+    return true
+  }
+}
+
+function notifierAfficherP2() {
+  abonnesAfficherP2.forEach((fn) => {
+    try {
+      fn(getAfficherP2EnExternat())
+    } catch {
+      // un abonné qui échoue ne doit pas casser les autres
+    }
+  })
+}
+
+export function onAfficherP2EnExternatChange(fn) {
+  abonnesAfficherP2.add(fn)
+  return () => abonnesAfficherP2.delete(fn)
+}
+
+export function setAfficherP2EnExternat(actif) {
+  try {
+    localStorage.setItem(CLE_AFFICHER_P2, actif ? 'on' : 'off')
+  } catch {
+    // silencieux : le cache local reste secondaire par rapport au serveur
+  }
+  notifierAfficherP2()
+  ecrirePreference('afficher_p2_en_externat', actif).catch(() => {})
+}
+
+export async function synchroniserAfficherP2EnExternatDepuisServeur() {
+  try {
+    const valeur = await lirePreference('afficher_p2_en_externat')
+    if (typeof valeur === 'boolean') {
+      const avant = getAfficherP2EnExternat()
+      localStorage.setItem(CLE_AFFICHER_P2, valeur ? 'on' : 'off')
+      if (avant !== valeur) notifierAfficherP2()
+    }
+  } catch {
+    // silencieux : hors-ligne, on reste sur le cache local existant
+  }
+}

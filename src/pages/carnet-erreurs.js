@@ -13,7 +13,7 @@ import { getMatieres, buildMatiereColorMap, couleurTab, getTousLesCoursAplatis }
 import { renderTagFilters } from './tag-filter.js'
 import { renderTagPicker } from './tag-picker.js'
 import { definirScopeRetry } from './qcm-retry-session.js'
-import { estExternat } from '../lib/cycle.js'
+import { estExternat, getAfficherP2EnExternat } from '../lib/cycle.js'
 import { getTentativesEdnARevoir, resoudreCiblesEnDetail } from '../lib/edn-carnet.js'
 import { demarrerSessionExternat } from './externat/edn-session.js'
 
@@ -110,15 +110,23 @@ export async function renderCarnetErreurs(container) {
 async function renderActives(container) {
   container.innerHTML = `<p class="voice">Chargement…</p>`
 
-  let tentatives, tentativesQcm
-  try {
-    ;[tentatives, tentativesQcm] = await Promise.all([getTentativesRatees(), getQcmTentativesARevoir()])
-  } catch (err) {
-    container.innerHTML = `<p class="empty-note">Erreur : ${escapeHtml(err.message)}</p>`
-    return
+  const modeExternat = estExternat()
+  // Le contenu P2 (Cas cliniques/QCM) reste affiché en mode Externat par choix explicite (§3),
+  // mais Sullivan peut le masquer d'une case à cocher (Paramètres → Cycle d'études) — retour
+  // direct après test sur l'aperçu réel. Toujours étiqueté "(P2)" quand affiché en mode Externat.
+  const masquerContenuP2 = modeExternat && !getAfficherP2EnExternat()
+
+  let tentatives = []
+  let tentativesQcm = []
+  if (!masquerContenuP2) {
+    try {
+      ;[tentatives, tentativesQcm] = await Promise.all([getTentativesRatees(), getQcmTentativesARevoir()])
+    } catch (err) {
+      container.innerHTML = `<p class="empty-note">Erreur : ${escapeHtml(err.message)}</p>`
+      return
+    }
   }
 
-  const modeExternat = estExternat()
   let tentativesEdn = []
   let detailParCibleEdn = {}
   if (modeExternat) {
@@ -152,17 +160,23 @@ async function renderActives(container) {
 
     <div class="filters" id="tag-filters"></div>
 
+    ${
+      masquerContenuP2
+        ? ''
+        : `
     <div class="section-head" style="margin-top: 8px; border-bottom: none; padding-bottom: 0;">
-      <h3 class="voice" style="font-size: 15px;">Cas cliniques</h3>
+      <h3 class="voice" style="font-size: 15px;">Cas cliniques${modeExternat ? ' (P2)' : ''}</h3>
     </div>
     <div id="erreurs-list" class="fiches-list" style="margin-bottom: 12px;"></div>
     <div id="erreurs-voir-plus" style="margin-bottom: 32px;"></div>
 
     <div class="section-head" style="border-bottom: none; padding-bottom: 0;">
-      <h3 class="voice" style="font-size: 15px;">QCM</h3>
+      <h3 class="voice" style="font-size: 15px;">QCM${modeExternat ? ' (P2)' : ''}</h3>
     </div>
     <div id="erreurs-qcm-list" class="fiches-list" style="margin-bottom: 12px;"></div>
     <div id="erreurs-qcm-voir-plus" style="margin-bottom: ${modeExternat ? '32px' : '0'};"></div>
+    `
+    }
 
     ${
       modeExternat
@@ -227,7 +241,7 @@ async function renderActives(container) {
       (t) => (t.qcm.matieres || []).join(', ')
     )
 
-    updateCount(casFiltres.length + qcmFiltres.length)
+    updateCount(casFiltres.length + qcmFiltres.length + tentativesEdn.length)
     renderListCas(casFiltres)
     renderListQcm(qcmFiltres)
   }
@@ -275,6 +289,7 @@ async function renderActives(container) {
   function renderListCas(list) {
     const listEl = document.getElementById('erreurs-list')
     const voirPlusEl = document.getElementById('erreurs-voir-plus')
+    if (!listEl || !voirPlusEl) return // section masquée (contenu P2 désactivé en mode Externat)
 
     if (list.length === 0) {
       listEl.innerHTML = `<p class="empty-note">Aucune erreur de cas à revoir.</p>`
@@ -351,6 +366,7 @@ async function renderActives(container) {
   function renderListQcm(list) {
     const listEl = document.getElementById('erreurs-qcm-list')
     const voirPlusEl = document.getElementById('erreurs-qcm-voir-plus')
+    if (!listEl || !voirPlusEl) return // section masquée (contenu P2 désactivé en mode Externat)
 
     if (list.length === 0) {
       listEl.innerHTML = `<p class="empty-note">Aucun QCM à revoir.</p>`

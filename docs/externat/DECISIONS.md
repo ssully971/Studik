@@ -200,6 +200,45 @@ d'exécutions pendant ce lot, jamais reproduit en isolant ce seul fichier.
 listée dans le §8 ne demande d'y toucher, et le corriger reviendrait à modifier un test hors du
 périmètre "moteur" de ce lot sans que Sullivan l'ait demandé. Signalé ici pour transparence.
 
+## Retours de Sullivan après test sur l'aperçu Vercel réel (post-lot 4)
+
+### Sélecteur de période P2 visible en mode Externat (bug)
+**Contexte.** Le sélecteur "Toutes les périodes" (années/semestres de `matieres`, P2 uniquement)
+restait affiché et fonctionnel dans la topbar même en mode Externat.
+**Corrigé.** `appliquerVisibilitePeriodeSelect()` (main.js) le masque dès que `estExternat()`, et
+réapplique la règle à chaque changement de cycle (pas seulement au chargement initial).
+
+### Contenu P2 dans le Référentiel/Carnet d'erreurs en mode Externat : gardé, mais togglable et étiqueté
+**Contexte.** Ces pages restant accessibles en Externat est un choix explicite du §3 de la spec.
+Sullivan a confirmé vouloir les garder accessibles, mais avec un bouton pour les
+activer/désactiver et un étiquetage clair quand affichées.
+**Retenu.** Nouvelle préférence `afficher_p2_en_externat` (`lib/cycle.js`, synchronisée entre
+appareils comme `cycle`, défaut `true`) réglable via une case à cocher dans Paramètres → carte
+"Cycle d'études" (visible seulement en mode Externat). Quand désactivée : l'entrée "Référentiel"
+disparaît de la nav/tabbar/menu Externat, et les sections "Cas cliniques"/"QCM" du Carnet
+d'erreurs (contenu P2) sont masquées — leur fetch est même sauté entièrement, pas juste caché en
+CSS. Quand activée (défaut) : ces entrées/sections restent visibles mais étiquetées "(P2)"
+partout (nav, titres de section) pour ne jamais laisser croire que c'est du contenu Externat natif.
+**Écarté.** Les masquer par défaut : le choix initial de la spec (rester utile en Externat) reste
+le comportement par défaut, seulement rendu réversible.
+
+### Page Stats et "matières" Externat : aucun changement demandé
+**Contexte.** Sullivan a confirmé ne rien vouloir de plus maintenant sur les statistiques
+(le lot 7/phase 2 reste le bon moment) ni sur une éventuelle table de "spécialités Externat"
+dédiée (le texte libre actuel sur les questions/dossiers suffit).
+**Retenu.** Aucun changement de schéma ni de page Stats dans cette session.
+
+### Page Prompts : bandeau de cycle + README propre à l'Externat
+**Contexte.** Sullivan trouvait les prompts "pas assez séparés visuellement" entre P2 et Externat
+sur l'aperçu — alors que le contenu des prompts eux-mêmes changeait déjà bien selon le cycle
+(`promptsActuels()`).
+**Retenu.** Un bandeau "Banque de prompts — P2/EXTERNAT" (badge réutilisant `.cycle-badge`) en
+haut de la page Prompts, ET un nouveau `README-prompts-externat.md` distinct du README P2 pour la
+carte "Comment ça marche" (qui listait encore les fichiers P2 même en mode Externat — trouvé en
+vérifiant le rendu réel, pas seulement le contenu des prompts eux-mêmes).
+**Écarté.** Deux routes séparées (`#import` vs `#edn-import`) : plus de duplication de code pour
+un gain marginal, le bandeau suffit à lever l'ambiguïté visuelle signalée.
+
 ## Lot 4 — Rétention
 
 ### Carnet d'erreurs Externat sans colonne `a_revoir`

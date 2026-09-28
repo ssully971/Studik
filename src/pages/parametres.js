@@ -1,5 +1,5 @@
 import { getCurrentUser, updatePseudo, updatePassword } from '../lib/auth.js'
-import { getCycle, setCycle, estExternat } from '../lib/cycle.js'
+import { getCycle, setCycle, estExternat, getAfficherP2EnExternat, setAfficherP2EnExternat } from '../lib/cycle.js'
 import { getPlafondRevisions, setPlafondRevisions } from '../lib/edn-dashboard.js'
 import { getTagsErreur, setTagsErreur, TAGS_ERREUR_DEFAUT } from '../lib/edn-tags-erreur.js'
 import { demanderConfirmation } from '../lib/confirmer.js'
@@ -125,6 +125,16 @@ export async function renderParametres(container) {
             <button id="cycle-preclinique-btn" class="btn${getCycle() === 'preclinique' ? ' primary' : ''}" style="width: auto;">P2 (préclinique)</button>
             <button id="cycle-externat-btn" class="btn${getCycle() === 'externat' ? ' primary' : ''}" style="width: auto;">Externat</button>
           </div>
+          ${
+            modeExternat
+              ? `
+          <label class="checkbox-label" style="width: auto; margin-top: 14px;">
+            <input type="checkbox" id="afficher-p2-en-externat-checkbox" ${getAfficherP2EnExternat() ? 'checked' : ''} />
+            <span>Afficher le Référentiel et le contenu P2 du Carnet d'erreurs en mode Externat (étiquetés "(P2)")</span>
+          </label>
+          `
+              : ''
+          }
         </div>
 
         ${
@@ -337,6 +347,10 @@ export async function renderParametres(container) {
     if (!(await demanderConfirmation('Passer en mode Externat ? La navigation et l’accueil basculent vers le tableau de bord Externat.'))) return
     setCycle('externat')
     renderParametres(container)
+  })
+
+  document.getElementById('afficher-p2-en-externat-checkbox')?.addEventListener('change', (e) => {
+    setAfficherP2EnExternat(e.target.checked)
   })
 
   document.getElementById('plafond-revisions-save-btn')?.addEventListener('click', async () => {

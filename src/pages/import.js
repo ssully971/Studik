@@ -20,6 +20,7 @@ import promptStructure from '../data/prompts/prompt-fiche-structure.md?raw'
 import promptCas from '../data/prompts/prompt-cas.md?raw'
 import promptQcm from '../data/prompts/prompt-qcm.md?raw'
 import readme from '../data/prompts/README-prompts.md?raw'
+import readmeExternat from '../data/prompts/externat/README-prompts-externat.md?raw'
 import promptContexteMaitreExternat from '../data/prompts/externat/prompt-contexte-maitre-externat.md?raw'
 import promptR2cItems from '../data/prompts/externat/prompt-r2c-items.md?raw'
 import promptR2cSdd from '../data/prompts/externat/prompt-r2c-sdd.md?raw'
@@ -623,7 +624,13 @@ function promptsActuels() {
 
 async function renderModePrompts(container) {
   const PROMPTS = promptsActuels()
+  const modeExternat = estExternat()
   container.innerHTML = `
+    <div class="section-head" style="margin-top: 0;">
+      <h3 class="voice" style="font-size: 16px;">Banque de prompts — <span class="cycle-badge" style="cursor: default;">${modeExternat ? 'EXTERNAT' : 'P2'}</span></h3>
+    </div>
+    <p class="import-hint">${modeExternat ? "Prompts propres au mode Externat (référentiels R2C, questions et dossiers EDN, ECOS, constantes biologiques) — entièrement distincts des prompts P2." : 'Prompts propres au référentiel P2 (fiches, cas, QCM, matières) — bascule en mode Externat (Paramètres) pour voir sa propre banque.'}</p>
+
     <div class="settings-card" style="margin-bottom: 24px;">
       <h3 class="voice">Tags de référence</h3>
       <p class="settings-desc">Ta liste fermée de tags, à copier dans le champ "Tags autorisés" des prompts. Clique un tag pour lui associer une ou plusieurs périodes (📍 = tag scopé) ; laisse-le sans période pour qu'il s'applique partout.</p>
@@ -639,7 +646,7 @@ async function renderModePrompts(container) {
 
     <div class="settings-card" style="margin-bottom: 24px;">
       <h3 class="voice">Comment ça marche</h3>
-      <pre class="prompt-readme">${escapeHtml(readme)}</pre>
+      <pre class="prompt-readme">${escapeHtml(modeExternat ? readmeExternat : readme)}</pre>
     </div>
 
     <div class="fiches-list" id="prompts-list"></div>
